@@ -1,0 +1,35 @@
+# Reference infrastructure for staging and pilot.
+# Local development uses SQLite (ADR-0002); this file is not required for
+# the first coding milestone and is not run on machines without Docker.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: rinavi
+      POSTGRES_PASSWORD: rinavi
+      POSTGRES_DB: rinavi
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: rinavi
+      MINIO_ROOT_PASSWORD: rinavi-dev-only
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+volumes:
+  postgres_data:
+  minio_data:
