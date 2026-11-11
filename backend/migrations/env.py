@@ -19,6 +19,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 from app.modules.identity.models import Session, User  # noqa: F401
+from app.modules.consent.models import ConsentRecord  # noqa: F401
 
 
 def run_migrations_offline() -> None:
