@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.db
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# SDD execution workspace
+.superpowers/
+
+# Node
+node_modules/
+.next/
+out/
+coverage/
+
+# Env
+.env
+.env.local
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
