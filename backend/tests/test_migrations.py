@@ -28,7 +28,21 @@ def test_alembic_upgrade_head_on_clean_database(tmp_path: Path) -> None:
             "consent_records",
             "audit_events",
             "credentials",
+            "documents",
         } <= tables
+        document_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(documents)")
+        }
+        assert {
+            "id",
+            "user_id",
+            "original_filename",
+            "content_type",
+            "size_bytes",
+            "status",
+            "classification",
+            "note",
+        } <= document_columns
         user_columns = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
         assert {"id", "email", "display_name", "created_at"} <= user_columns
         session_columns = {row[1] for row in conn.execute("PRAGMA table_info(sessions)")}

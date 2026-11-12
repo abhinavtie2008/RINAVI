@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     api_v1_prefix: str = "/api/v1"
     database_url: str = f"sqlite+aiosqlite:///{_BACKEND_DIR.as_posix()}/rinavi.db"
+    storage_dir: str = f"{_BACKEND_DIR.as_posix()}/data/vault"
     log_level: str = "INFO"
 
     cookie_name: str = "rinavi_session"
