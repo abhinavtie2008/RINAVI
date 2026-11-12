@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest an idea for RINAVI
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What pain point does this address? Which government-service flow is involved?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What should RINAVI do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: RINAVI V1 is capped at two services with an Assist-first launch.
+      options:
+        - "Fits within V1 scope"
+        - "Post-V1 idea"
+    validations:
+      required: true
