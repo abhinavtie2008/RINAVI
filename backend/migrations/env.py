@@ -23,6 +23,7 @@ from app.modules.consent.models import ConsentRecord  # noqa: F401
 from app.modules.audit.models import AuditEvent  # noqa: F401
 from app.modules.vault.models import Document  # noqa: F401
 from app.modules.documents.models import ExtractedField  # noqa: F401
+from app.modules.profile.models import ProfileValue  # noqa: F401
 
 
 def run_migrations_offline() -> None:
