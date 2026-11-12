@@ -6,12 +6,8 @@ from app.core.redaction import redact_text
 
 class RedactingFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        record.msg = redact_text(str(record.msg))
-        if record.args:
-            record.args = tuple(
-                redact_text(arg) if isinstance(arg, str) else arg
-                for arg in record.args
-            )
+        record.msg = redact_text(record.getMessage())
+        record.args = ()
         return True
 
 

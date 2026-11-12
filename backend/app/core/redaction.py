@@ -1,8 +1,8 @@
 import re
 
 EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-DIGITS_12_PATTERN = re.compile(r"\b\d{12}\b")
-DIGITS_10_PATTERN = re.compile(r"\b\d{10}\b")
+DIGITS_12_PATTERN = re.compile(r"\d{12}")
+DIGITS_10_PATTERN = re.compile(r"\d{10}")
 
 REDACTED = "[REDACTED]"
 
@@ -17,6 +17,9 @@ def redact_text(value: str) -> str:
 def redact(value: object) -> object:
     if isinstance(value, str):
         return redact_text(value)
+    if isinstance(value, int):
+        text = redact_text(str(value))
+        return text if text == REDACTED else value
     if isinstance(value, dict):
         return {key: redact(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
