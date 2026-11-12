@@ -1,0 +1,47 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! RINAVI works with **synthetic data only** — never attach real documents or credentials.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: dropdown
+    id: data-sensitivity
+    attributes:
+      label: Does this involve real citizen data or credentials?
+      description: RINAVI is synthetic-data only. Do not attach real documents.
+      options:
+        - "No — synthetic data only"
+        - "Yes — I will describe it abstractly, without attaching anything"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, browser, and versions (e.g. Windows 11, Chrome, Python 3.14, Node 24)
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Screenshots or logs
+      description: Paste error messages or screenshots (redact anything sensitive).
