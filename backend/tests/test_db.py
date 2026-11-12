@@ -10,7 +10,10 @@ async def test_engine_executes_sql() -> None:
 
 
 def test_default_database_url_is_anchored_to_backend_dir() -> None:
+    from pathlib import Path
+
     from app.core.config import Settings
 
+    backend_dir = Path(__file__).resolve().parents[1].as_posix()
     default = Settings.model_fields["database_url"].default
-    assert "rinavi/backend/rinavi.db" in default.replace("\\", "/")
+    assert default == f"sqlite+aiosqlite:///{backend_dir}/rinavi.db"
