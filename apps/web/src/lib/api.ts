@@ -10,6 +10,16 @@ export class ApiError extends Error {
   }
 }
 
+async function parseResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    throw new ApiError(response.status, `API request failed: ${response.status}`);
+  }
+  if (response.status === 204) {
+    return undefined as T;
+  }
+  return (await response.json()) as T;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -19,11 +29,15 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
       ...init?.headers,
     },
   });
-  if (!response.ok) {
-    throw new ApiError(response.status, `API request failed: ${response.status}`);
-  }
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  return (await response.json()) as T;
+  return parseResponse<T>(response);
+}
+
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  // No explicit Content-Type: the browser sets the multipart boundary.
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+  return parseResponse<T>(response);
 }
