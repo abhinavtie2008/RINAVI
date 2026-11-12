@@ -31,7 +31,9 @@ async def get_current_user(request: Request, db: DbSession) -> User:
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-async def require_active_consent(purpose: str, user: User, db: AsyncSession) -> None:
+async def require_active_consent(
+    purpose: str, user: CurrentUser, db: DbSession
+) -> None:
     if not await consent_service.has_active_consent(db, user, purpose):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
