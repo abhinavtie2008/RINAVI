@@ -8,6 +8,9 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 
+# Local vault storage (synthetic documents only)
+backend/data/
+
 # SDD execution workspace
 .superpowers/
 
