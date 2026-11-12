@@ -1,0 +1,21 @@
+{
+  "slug": "delhi-income-certificate",
+  "name": "Income Certificate (Delhi)",
+  "geography": "Delhi",
+  "department": "Revenue Department, Government of NCT of Delhi",
+  "latest_version": "1.0.0",
+  "summary": "Prepare a Delhi income certificate application with source-linked profile values and evidence checks.",
+  "tags": ["income certificate", "delhi", "e-district"],
+  "fee": "No application fee listed by the official source",
+  "processing_time": "Indicative only: around 14 days after submission; not a guarantee",
+  "sources": [
+    {
+      "title": "e-District Delhi",
+      "url": "https://edistrict.delhigovt.nic.in/"
+    },
+    {
+      "title": "Revenue Department, GNCTD — Income Certificate",
+      "url": "https://revenue.delhi.gov.in/revenue/income-certificate"
+    }
+  ]
+}
