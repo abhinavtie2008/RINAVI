@@ -1,8 +1,13 @@
+import base64
 import json
 
 from httpx import ASGITransport, AsyncClient, Cookies
 
 from app.main import app
+
+
+def b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode().rstrip("=")
 
 
 def make_client() -> AsyncClient:
@@ -90,3 +95,29 @@ async def test_login_finish_with_malformed_credential_returns_400() -> None:
             },
         )
         assert response.status_code == 400
+
+
+async def test_login_finish_with_unknown_valid_credential_returns_401() -> None:
+    async with make_client() as client:
+        begin = await client.post("/api/v1/auth/passkey/login/begin")
+        challenge_id = begin.json()["challenge_id"]
+        raw_id = b64url(b"unknown-credential")
+        response = await client.post(
+            "/api/v1/auth/passkey/login/finish",
+            json={
+                "challenge_id": challenge_id,
+                "credential": json.dumps(
+                    {
+                        "id": raw_id,
+                        "rawId": raw_id,
+                        "type": "public-key",
+                        "response": {
+                            "clientDataJSON": b64url(b'{"type":"webauthn.get"}'),
+                            "authenticatorData": b64url(b"\x00" * 37),
+                            "signature": b64url(b"\x00" * 64),
+                        },
+                    }
+                ),
+            },
+        )
+        assert response.status_code == 401

@@ -33,6 +33,10 @@ async def test_delete_account_wipes_owned_data_and_keeps_audit() -> None:
         response = await client.delete("/api/v1/auth/account")
         assert response.status_code == 204
 
+        set_cookies = response.headers.get_list("set-cookie")
+        clearing = next(h for h in set_cookies if "rinavi_session" in h)
+        assert "max-age=0" in clearing.lower()
+
         me = await client.get("/api/v1/auth/me")
         assert me.status_code == 401
 
@@ -96,7 +100,7 @@ async def test_export_returns_only_own_data() -> None:
                 "/api/v1/auth/dev-signin", json={"email": "bob@example.com"}
             )
             await client_b.post(
-                "/api/v1/consent/grants", json={"purpose": "documents.processing"}
+                "/api/v1/consent/grants", json={"purpose": "profile.sharing"}
             )
 
         response = await client_a.get("/api/v1/auth/export")

@@ -30,6 +30,8 @@ def test_redact_scrubs_numeric_scalars() -> None:
     assert redact(123456789012) == REDACTED
     assert redact(9876543210) == REDACTED
     assert redact(5) == 5
+    assert redact(98765432101) == REDACTED
+    assert redact(-9876543210) == REDACTED
 
 
 def test_redacting_filter_scrubs_message_and_args() -> None:

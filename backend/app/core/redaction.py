@@ -19,7 +19,7 @@ def redact(value: object) -> object:
         return redact_text(value)
     if isinstance(value, int):
         text = redact_text(str(value))
-        return text if text == REDACTED else value
+        return REDACTED if REDACTED in text else value
     if isinstance(value, dict):
         return {key: redact(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):

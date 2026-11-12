@@ -63,6 +63,19 @@ async def test_logout_revokes_session() -> None:
         assert me.status_code == 401
 
 
+async def test_session_cookie_is_httponly_and_samesite_lax() -> None:
+    async with make_client() as client:
+        response = await client.post(
+            "/api/v1/auth/dev-signin", json={"email": "citizen@example.com"}
+        )
+        set_cookies = response.headers.get_list("set-cookie")
+        session_header = next(
+            header for header in set_cookies if "rinavi_session" in header
+        )
+        assert "httponly" in session_header.lower()
+        assert "samesite=lax" in session_header.lower()
+
+
 async def test_dev_signin_disabled_returns_404(monkeypatch) -> None:
     from app.core.config import get_settings
 
