@@ -22,3 +22,8 @@ class UserOut(BaseModel):
 class AccountExport(BaseModel):
     user: UserOut
     consent_records: list[ConsentRecordOut]
+
+
+class PasskeyFinishRequest(BaseModel):
+    challenge_id: str
+    credential: str

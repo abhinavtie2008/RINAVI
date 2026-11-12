@@ -27,6 +27,7 @@ def test_alembic_upgrade_head_on_clean_database(tmp_path: Path) -> None:
             "sessions",
             "consent_records",
             "audit_events",
+            "credentials",
         } <= tables
         user_columns = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
         assert {"id", "email", "display_name", "created_at"} <= user_columns

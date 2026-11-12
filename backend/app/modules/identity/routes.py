@@ -1,10 +1,15 @@
+import json
+
 from fastapi import APIRouter, HTTPException, Request, Response, status
+from sqlalchemy import select
+from webauthn.helpers import bytes_to_base64url, parse_authentication_credential_json
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import get_settings
 from app.modules.consent import schemas as consent_schemas
 from app.modules.consent import service as consent_service
-from app.modules.identity import schemas, service
+from app.modules.identity import schemas, service, webauthn
+from app.modules.identity.models import Credential, User
 
 router = APIRouter(prefix="/auth", tags=["identity"])
 
@@ -68,3 +73,94 @@ async def export_account(user: CurrentUser, db: DbSession) -> schemas.AccountExp
             consent_schemas.ConsentRecordOut.model_validate(r) for r in records
         ],
     )
+
+
+@router.post("/passkey/register/begin")
+async def passkey_register_begin(user: CurrentUser, db: DbSession) -> dict:
+    result = await db.execute(select(Credential).where(Credential.user_id == user.id))
+    existing_ids = [c.credential_id for c in result.scalars()]
+    challenge_id, options_json = webauthn.registration_options(user, existing_ids)
+    return {"challenge_id": challenge_id, "options": json.loads(options_json)}
+
+
+@router.post("/passkey/register/finish", status_code=status.HTTP_201_CREATED)
+async def passkey_register_finish(
+    payload: schemas.PasskeyFinishRequest, user: CurrentUser, db: DbSession
+) -> dict:
+    try:
+        verification = webauthn.verify_registration(payload.challenge_id, payload.credential)
+    except webauthn.PasskeyChallengeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except webauthn.PasskeyVerificationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    db.add(
+        Credential(
+            user_id=user.id,
+            credential_id=bytes_to_base64url(verification.credential_id),
+            public_key=bytes_to_base64url(verification.credential_public_key),
+            sign_count=verification.sign_count,
+        )
+    )
+    await db.commit()
+    return {"status": "registered"}
+
+
+@router.post("/passkey/login/begin")
+async def passkey_login_begin() -> dict:
+    challenge_id, options_json = webauthn.authentication_options()
+    return {"challenge_id": challenge_id, "options": json.loads(options_json)}
+
+
+@router.post("/passkey/login/finish", response_model=schemas.UserOut)
+async def passkey_login_finish(
+    payload: schemas.PasskeyFinishRequest, response: Response, db: DbSession
+) -> schemas.UserOut:
+    settings = get_settings()
+    try:
+        credential = parse_authentication_credential_json(
+            payload.credential
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credential"
+        ) from exc
+
+    result = await db.execute(
+        select(Credential).where(
+            Credential.credential_id == bytes_to_base64url(credential.raw_id)
+        )
+    )
+    stored = result.scalar_one_or_none()
+    if stored is None:
+        webauthn.pop_challenge(payload.challenge_id)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unknown credential"
+        )
+
+    try:
+        new_sign_count = webauthn.verify_authentication(
+            payload.challenge_id, payload.credential, stored
+        )
+    except webauthn.PasskeyChallengeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except webauthn.PasskeyVerificationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    stored.sign_count = new_sign_count
+    user = await db.get(User, stored.user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User no longer exists"
+        )
+    token = await service.create_session(db, user)
+    await db.commit()
+    response.set_cookie(
+        key=settings.cookie_name,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=settings.cookie_secure,
+        max_age=settings.session_ttl_hours * 3600,
+    )
+    return schemas.UserOut.model_validate(user)
