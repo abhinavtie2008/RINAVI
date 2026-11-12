@@ -10,6 +10,7 @@ from app.modules.consent import schemas as consent_schemas
 from app.modules.consent import service as consent_service
 from app.modules.identity import schemas, service, webauthn
 from app.modules.identity.models import Credential, User
+from app.modules.vault.storage import get_storage
 
 router = APIRouter(prefix="/auth", tags=["identity"])
 
@@ -61,6 +62,7 @@ async def delete_account(
     settings = get_settings()
     await service.delete_user(db, user)
     await db.commit()
+    get_storage().purge_user(user.id)
     response.delete_cookie(settings.cookie_name)
 
 

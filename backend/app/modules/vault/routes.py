@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Response, UploadFile, status
 from app.api.deps import ConsentRequired, CurrentUser, DbSession
 from app.modules.audit.service import emit_audit
 from app.modules.documents.pipeline import process_document
+from app.modules.profile import service as profile_service
 from app.modules.vault import schemas, service, validation
 from app.modules.vault.models import DocumentStatus
 from app.modules.vault.storage import get_storage
@@ -60,6 +61,29 @@ async def upload_document(
         )
     await db.commit()
     return schemas.DocumentOut.model_validate(document)
+
+
+@router.delete(
+    "/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_document(
+    document_id: uuid.UUID, user: CurrentUser, db: DbSession
+) -> None:
+    document = await service.get_own_document(db, user, document_id)
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    await profile_service.mark_values_stale(db, user, document.id)
+    await emit_audit(
+        db,
+        actor_user_id=user.id,
+        action="document.deleted",
+        resource_type="document",
+        resource_id=str(document.id),
+        details={"classification": document.classification},
+    )
+    await db.delete(document)
+    await db.commit()
+    get_storage().delete(user.id, document.id)
 
 
 @router.get(
