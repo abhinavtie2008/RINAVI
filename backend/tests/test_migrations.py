@@ -29,6 +29,7 @@ def test_alembic_upgrade_head_on_clean_database(tmp_path: Path) -> None:
             "audit_events",
             "credentials",
             "documents",
+            "extracted_fields",
         } <= tables
         document_columns = {
             row[1] for row in conn.execute("PRAGMA table_info(documents)")
@@ -43,6 +44,17 @@ def test_alembic_upgrade_head_on_clean_database(tmp_path: Path) -> None:
             "classification",
             "note",
         } <= document_columns
+        field_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(extracted_fields)")
+        }
+        assert {
+            "id",
+            "document_id",
+            "field_key",
+            "value",
+            "confidence",
+            "locator",
+        } <= field_columns
         user_columns = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
         assert {"id", "email", "display_name", "created_at"} <= user_columns
         session_columns = {row[1] for row in conn.execute("PRAGMA table_info(sessions)")}

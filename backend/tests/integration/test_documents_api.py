@@ -67,8 +67,7 @@ async def test_upload_stores_document_and_returns_metadata() -> None:
         assert body["original_filename"] == "certificate.txt"
         assert body["content_type"] == "text/plain"
         assert body["size_bytes"] == len(content)
-        # Task 4 flips this to "processed" once the pipeline is wired in.
-        assert body["status"] == "quarantined"
+        assert body["status"] == "processed"
 
         fetched = await client.get(f"{API}/vault/documents/{body['id']}/content")
         assert fetched.status_code == 200

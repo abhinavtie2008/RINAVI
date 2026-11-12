@@ -16,3 +16,13 @@ class DocumentOut(BaseModel):
     note: str | None
     created_at: datetime
     processed_at: datetime | None
+
+
+class ExtractedFieldOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    field_key: str
+    value: str
+    confidence: str
+    locator: str
