@@ -21,7 +21,13 @@ def test_alembic_upgrade_head_on_clean_database(tmp_path: Path) -> None:
             row[0]
             for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
-        assert {"alembic_version", "users", "sessions", "consent_records"} <= tables
+        assert {
+            "alembic_version",
+            "users",
+            "sessions",
+            "consent_records",
+            "audit_events",
+        } <= tables
         user_columns = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
         assert {"id", "email", "display_name", "created_at"} <= user_columns
         session_columns = {row[1] for row in conn.execute("PRAGMA table_info(sessions)")}
