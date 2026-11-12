@@ -12,6 +12,9 @@ export default function Home() {
         <Link href="/vault" className="underline">
           Document vault
         </Link>
+        <Link href="/profile" className="underline">
+          Your profile
+        </Link>
       </nav>
     </main>
   );
