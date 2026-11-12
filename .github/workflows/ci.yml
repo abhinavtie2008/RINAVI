@@ -39,6 +39,9 @@ jobs:
       - name: Lint
         working-directory: apps/web
         run: npm run lint
+      - name: Typegen
+        working-directory: apps/web
+        run: npx next typegen
       - name: Types
         working-directory: apps/web
         run: npx tsc --noEmit

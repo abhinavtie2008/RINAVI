@@ -17,6 +17,7 @@ cd ..
 echo "== web =="
 cd apps/web
 npm run lint
+npx next typegen
 npx tsc --noEmit
 npm run test -- --run
 npm run build
