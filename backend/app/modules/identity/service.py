@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.modules.audit.service import emit_audit
 from app.modules.identity.models import Session, User, utcnow
 
 
@@ -61,3 +62,16 @@ async def revoke_session(db: AsyncSession, token: str) -> None:
     if session is not None:
         session.revoked_at = utcnow()
         await db.flush()
+
+
+async def delete_user(db: AsyncSession, user: User) -> None:
+    await emit_audit(
+        db,
+        actor_user_id=user.id,
+        action="account.deleted",
+        resource_type="user",
+        resource_id=str(user.id),
+        details={"email": user.email},
+    )
+    await db.delete(user)
+    await db.flush()

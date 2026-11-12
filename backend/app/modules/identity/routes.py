@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import get_settings
+from app.modules.consent import schemas as consent_schemas
+from app.modules.consent import service as consent_service
 from app.modules.identity import schemas, service
 
 router = APIRouter(prefix="/auth", tags=["identity"])
@@ -43,3 +45,26 @@ async def logout(request: Request, response: Response, db: DbSession) -> None:
         await service.revoke_session(db, token)
         await db.commit()
     response.delete_cookie(settings.cookie_name)
+
+
+@router.delete("/account", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(
+    response: Response,
+    user: CurrentUser,
+    db: DbSession,
+) -> None:
+    settings = get_settings()
+    await service.delete_user(db, user)
+    await db.commit()
+    response.delete_cookie(settings.cookie_name)
+
+
+@router.get("/export", response_model=schemas.AccountExport)
+async def export_account(user: CurrentUser, db: DbSession) -> schemas.AccountExport:
+    records = await consent_service.list_own_grants(db, user)
+    return schemas.AccountExport(
+        user=schemas.UserOut.model_validate(user),
+        consent_records=[
+            consent_schemas.ConsentRecordOut.model_validate(r) for r in records
+        ],
+    )

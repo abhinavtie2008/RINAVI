@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
+from app.modules.consent.schemas import ConsentRecordOut
+
 
 class DevSigninRequest(BaseModel):
     email: EmailStr
@@ -15,3 +17,8 @@ class UserOut(BaseModel):
     email: str
     display_name: str
     created_at: datetime
+
+
+class AccountExport(BaseModel):
+    user: UserOut
+    consent_records: list[ConsentRecordOut]
