@@ -19,6 +19,7 @@ cd apps/web
 npm run lint
 npx tsc --noEmit
 npm run test -- --run
+npm run build
 cd ..
 
 echo "All checks passed."

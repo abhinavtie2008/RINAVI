@@ -1,6 +1,9 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 class Settings(BaseSettings):
@@ -9,7 +12,7 @@ class Settings(BaseSettings):
     app_name: str = "RINAVI"
     environment: str = "development"
     api_v1_prefix: str = "/api/v1"
-    database_url: str = "sqlite+aiosqlite:///./rinavi.db"
+    database_url: str = f"sqlite+aiosqlite:///{_BACKEND_DIR.as_posix()}/rinavi.db"
     log_level: str = "INFO"
 
     cookie_name: str = "rinavi_session"
