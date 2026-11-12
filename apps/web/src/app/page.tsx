@@ -9,6 +9,9 @@ export default function Home() {
       <AppBanner />
       <SignInArea />
       <nav className="flex gap-4 text-sm">
+        <Link href="/catalog" className="underline">
+          Services
+        </Link>
         <Link href="/vault" className="underline">
           Document vault
         </Link>
