@@ -1,4 +1,5 @@
 import logging
+import time
 
 from app.core.db import async_session_factory
 from app.core.logging import RedactingFilter, configure_logging
@@ -16,6 +17,33 @@ def test_redact_text_scrubs_email_and_digit_runs() -> None:
     assert redact_text("aadhaar 123456789012 end") == "aadhaar [REDACTED] end"
     assert redact_text("phone 9876543210 end") == "phone [REDACTED] end"
     assert redact_text("aadhaar id123456789012 end") == "aadhaar id[REDACTED] end"
+
+
+def test_redact_text_scrubs_multi_label_email_domains() -> None:
+    assert (
+        redact_text("mail citizen@mail.example.com now")
+        == "mail [REDACTED] now"
+    )
+
+
+def test_redact_text_handles_long_unmatched_runs_quickly() -> None:
+    start = time.perf_counter()
+    assert redact_text("%" * 40_000) == "%" * 40_000
+    assert redact_text("a" * 40_000) == "a" * 40_000
+    assert redact_text("user@" + "a" * 40_000) == "user@" + "a" * 40_000
+    assert time.perf_counter() - start < 2.0
+
+
+def test_redact_text_redacts_each_email_non_overlapping() -> None:
+    assert (
+        redact_text("a@b.com x@y.in")
+        == "[REDACTED] [REDACTED]"
+    )
+    assert redact_text("a@b.com@c.com") == "[REDACTED]@c.com"
+
+
+def test_redact_text_preserves_trailing_punctuation() -> None:
+    assert redact_text("mail citizen@example.com. now") == "mail [REDACTED]. now"
 
 
 def test_redact_recurses_into_containers() -> None:
