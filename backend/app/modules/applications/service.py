@@ -5,6 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.applications.models import ApplicationDraft
+from app.modules.applications.schemas import DraftOut, ValidationIssueOut
+from app.modules.applications.validator import validate_draft
 from app.modules.catalog import loader
 from app.modules.catalog.loader import CatalogError, ServicePack
 from app.modules.identity.models import User, utcnow
@@ -262,3 +264,98 @@ async def build_export(
         ["", draft.template_snapshot["guidance"]["not_a_submission_notice"]]
     )
     return "\n".join(lines)
+
+
+PORTAL_DOWN_GUIDANCE = (
+    "If the portal is unavailable, nothing here changes. Your packet stays in "
+    "the locker. Try the official channel again later — RINAVI does not submit "
+    "on your behalf."
+)
+ACKNOWLEDGEMENT_GUIDANCE = (
+    "No acknowledgement yet? Some portals send receipts later. Check your "
+    "email and the portal, then record the acknowledgement number here when "
+    "it arrives."
+)
+
+
+async def build_packet(
+    db: AsyncSession, user: User, draft: ApplicationDraft
+) -> tuple[dict[str, Any], str]:
+    linked_ids = {
+        doc_id for ids in draft.document_links.values() for doc_id in ids
+    }
+    names: dict[str, str] = {}
+    if linked_ids:
+        result = await db.execute(
+            select(Document).where(
+                Document.user_id == user.id,
+                Document.id.in_([uuid.UUID(doc_id) for doc_id in linked_ids]),
+            )
+        )
+        names = {
+            str(document.id): document.original_filename
+            for document in result.scalars()
+        }
+    guidance = draft.template_snapshot["guidance"]
+    service_metadata = loader.get_service(draft.service_slug)
+    snapshot: dict[str, Any] = {
+        "fields": [
+            {
+                "id": field["id"],
+                "label": field["label"],
+                "value": draft.values[field["id"]]["value"],
+                "origin": draft.values[field["id"]]["origin"],
+            }
+            for field in draft.template_snapshot["fields"]
+            if field["id"] in draft.values
+        ],
+        "evidence": [
+            {
+                "group_id": group["id"],
+                "group_label": group["label"],
+                "documents": [
+                    {"document_id": doc_id, "filename": names.get(doc_id, doc_id)}
+                    for doc_id in draft.document_links.get(group["id"], [])
+                ],
+            }
+            for group in draft.template_snapshot["checklist_groups"]
+        ],
+        "declaration": draft.template_snapshot["declaration"],
+        "official_channel_steps": guidance["official_channel_steps"],
+        "processing_time": (
+            service_metadata.processing_time if service_metadata else None
+        ),
+        "not_a_submission_notice": guidance["not_a_submission_notice"],
+        "portal_down_guidance": PORTAL_DOWN_GUIDANCE,
+        "acknowledgement_guidance": ACKNOWLEDGEMENT_GUIDANCE,
+    }
+    return snapshot, await build_export(db, user, draft)
+
+
+async def draft_out(
+    db: AsyncSession, user: User, draft: ApplicationDraft
+) -> DraftOut:
+    profile, states = await collect_validation_inputs(db, user, draft)
+    return DraftOut(
+        id=draft.id,
+        service_slug=draft.service_slug,
+        service_name=draft.service_name,
+        pack_version=draft.pack_version,
+        template_snapshot=draft.template_snapshot,
+        values=draft.values,
+        document_links=draft.document_links,
+        declaration_confirmed=draft.declaration_confirmed,
+        validation=[
+            ValidationIssueOut(**issue)
+            for issue in validate_draft(
+                draft.template_snapshot,
+                draft.values,
+                draft.declaration_confirmed,
+                draft.document_links,
+                states,
+                profile,
+            )
+        ],
+        created_at=draft.created_at,
+        updated_at=draft.updated_at,
+    )

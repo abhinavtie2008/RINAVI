@@ -27,35 +27,6 @@ async def _get_draft_or_404(
     return draft
 
 
-async def _draft_out(
-    db: AsyncSession, user: User, draft: ApplicationDraft
-) -> schemas.DraftOut:
-    profile, states = await service.collect_validation_inputs(db, user, draft)
-    return schemas.DraftOut(
-        id=draft.id,
-        service_slug=draft.service_slug,
-        service_name=draft.service_name,
-        pack_version=draft.pack_version,
-        template_snapshot=draft.template_snapshot,
-        values=draft.values,
-        document_links=draft.document_links,
-        declaration_confirmed=draft.declaration_confirmed,
-        validation=[
-            schemas.ValidationIssueOut(**issue)
-            for issue in validate_draft(
-                draft.template_snapshot,
-                draft.values,
-                draft.declaration_confirmed,
-                draft.document_links,
-                states,
-                profile,
-            )
-        ],
-        created_at=draft.created_at,
-        updated_at=draft.updated_at,
-    )
-
-
 def _raise_draft_error(error: DraftError) -> None:
     http_status = (
         status.HTTP_404_NOT_FOUND
@@ -89,7 +60,7 @@ async def create_draft(
         details={"service_slug": draft.service_slug},
     )
     await db.commit()
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.get(
@@ -97,7 +68,7 @@ async def create_draft(
 )
 async def list_drafts(user: CurrentUser, db: DbSession) -> list[schemas.DraftOut]:
     drafts = await service.list_drafts(db, user)
-    return [await _draft_out(db, user, draft) for draft in drafts]
+    return [await service.draft_out(db, user, draft) for draft in drafts]
 
 
 @router.get(
@@ -107,7 +78,7 @@ async def get_draft(
     draft_id: uuid.UUID, user: CurrentUser, db: DbSession
 ) -> schemas.DraftOut:
     draft = await _get_draft_or_404(db, user, draft_id)
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.put(
@@ -136,7 +107,7 @@ async def update_field(
         details={"field_id": field_id},
     )
     await db.commit()
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.post(
@@ -158,7 +129,7 @@ async def refresh_draft(
         details={"service_slug": draft.service_slug},
     )
     await db.commit()
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.put(
@@ -187,7 +158,7 @@ async def link_document(
         details={"group_id": payload.group_id, "document_id": str(document_id)},
     )
     await db.commit()
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.delete(
@@ -212,7 +183,7 @@ async def unlink_document(
         details={"document_id": str(document_id)},
     )
     await db.commit()
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.put(
@@ -237,7 +208,7 @@ async def update_declaration(
         details={"confirmed": payload.confirmed},
     )
     await db.commit()
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.get(
