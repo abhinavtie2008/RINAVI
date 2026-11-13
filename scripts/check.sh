@@ -10,8 +10,8 @@ if [ ! -d .venv ]; then
 fi
 source .venv/Scripts/activate
 ruff check app tests
-pyright
-pytest -q
+python -m pyright
+python -m pytest -q
 cd ..
 
 echo "== web =="
