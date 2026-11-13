@@ -17,6 +17,8 @@ behalf.
 - **Document vault** — upload PDF/TXT/images, stateful processing (`processed`, `needs_attention`), retry, delete
 - **Extraction** — deterministic field extraction with confidence scores and `line N` locators so you can check where every value came from (OCR/LLM upgrades are planned, not assumed)
 - **Profile review** — promote values from a document, review, correct, confirm — values always carry their source, and deleting the source marks them stale
+- **Service catalog** — a versioned Delhi e-District income-certificate pack with official sources, guidance, evidence checklist, and form template
+- **Application drafts** — confirmed profile values seed source-linked drafts; deterministic preflight leaves missing evidence unresolved, and export is a copy-ready Assist packet, never a submission
 - **Erasure that always works** — deleting a document or your account works even after consent is withdrawn, and purges stored files
 - **Redacted audit trail** — account activity is logged, but document contents and PII never reach the audit log
 
@@ -28,6 +30,7 @@ policy, not a missing feature.
 
 - `apps/web` — Next.js PWA (TypeScript)
 - `backend` — FastAPI modular monolith (Python)
+- `catalog` — versioned, source-linked service definitions and form templates
 - `infra/compose` — reference PostgreSQL/Redis/storage for staging and pilot
 - `docs` — architecture decision records, compliance, evaluation
 - `scripts` — bootstrap, dev, and check commands
@@ -48,5 +51,5 @@ Local development uses SQLite; see
 ## Quality gate
 
 `scripts/check.sh` runs the full gate — backend `ruff`, `pyright`, `pytest`
-(80 tests) and web `eslint`, `tsc`, `vitest` (15 tests), production build.
+(111 tests) and web `eslint`, `tsc`, `vitest` (25 tests), production build.
 The same gate runs in CI on every push and pull request.
