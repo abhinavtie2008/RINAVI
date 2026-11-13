@@ -1,0 +1,61 @@
+{
+  "pack_version": "1.0.0",
+  "service_slug": "delhi-income-certificate",
+  "guidance": {
+    "what_it_is": "An income certificate is issued by the Revenue Department, Government of NCT of Delhi, certifying income from all sources. It is commonly requested for scholarships, fee concessions, and welfare schemes.",
+    "eligibility_notes": [
+      "Apply through e-District Delhi only if the official service accepts your Delhi residence and circumstances.",
+      "The certificate is issued by the competent Revenue Department authority after its own verification."
+    ],
+    "official_channel_steps": [
+      "Register on edistrict.delhigovt.nic.in with your mobile number.",
+      "Select the Revenue Department and the Income Certificate service.",
+      "Fill the online form and upload self-attested supporting documents.",
+      "Review, make the official declaration, and submit the application yourself.",
+      "Save the application number and use the official portal to track status."
+    ],
+    "not_a_submission_notice": "RINAVI prepares this draft for your review only. RINAVI does not submit applications, make declarations on your behalf, or guarantee acceptance, approval, or processing time. You must review, sign, and submit through the official channel yourself."
+  },
+  "checklist_groups": [
+    {
+      "id": "identity_proof",
+      "label": "Identity proof",
+      "requirement": "at_least_one",
+      "accepted_classifications": ["identity"]
+    },
+    {
+      "id": "residence_proof",
+      "label": "Residence proof",
+      "requirement": "at_least_one",
+      "accepted_classifications": []
+    },
+    {
+      "id": "income_evidence",
+      "label": "Income evidence",
+      "requirement": "at_least_one",
+      "accepted_classifications": ["income"]
+    },
+    {
+      "id": "photograph",
+      "label": "Photograph",
+      "requirement": "optional",
+      "accepted_classifications": []
+    }
+  ],
+  "form_template": {
+    "fields": [
+      {"id": "applicant_name", "label": "Applicant name", "binding": "full_name", "required": true, "format": "text"},
+      {"id": "father_or_husband_name", "label": "Father's / husband's name", "binding": "father_name", "required": true, "format": "text"},
+      {"id": "date_of_birth", "label": "Date of birth", "binding": "date_of_birth", "required": true, "format": "date"},
+      {"id": "gender", "label": "Gender", "binding": "gender", "required": false, "format": "text"},
+      {"id": "residence_address", "label": "Residence address", "binding": "address", "required": true, "format": "text"},
+      {"id": "annual_income", "label": "Annual income (INR)", "binding": "annual_income", "required": true, "format": "numeric"},
+      {"id": "occupation", "label": "Occupation", "binding": null, "required": false, "format": "text"},
+      {"id": "purpose", "label": "Purpose of certificate", "binding": null, "required": true, "format": "text"}
+    ],
+    "declaration": {
+      "required": true,
+      "text": "I declare that the particulars given in this application are true and complete to the best of my knowledge and belief. I understand that providing false information may lead to rejection of the application and action under applicable law."
+    }
+  }
+}
