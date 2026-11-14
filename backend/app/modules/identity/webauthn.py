@@ -91,7 +91,7 @@ def registration_options(
         authenticator_selection=AuthenticatorSelectionCriteria(
             authenticator_attachment=AuthenticatorAttachment.PLATFORM,
             resident_key=ResidentKeyRequirement.REQUIRED,
-            user_verification=UserVerificationRequirement.PREFERRED,
+            user_verification=UserVerificationRequirement.REQUIRED,
         ),
         exclude_credentials=[
             PublicKeyCredentialDescriptor(id=base64url_to_bytes(cid))
@@ -107,7 +107,7 @@ def authentication_options() -> tuple[str, str]:
     options = generate_authentication_options(
         rp_id=settings.webauthn_rp_id,
         challenge=challenge,
-        user_verification=UserVerificationRequirement.PREFERRED,
+        user_verification=UserVerificationRequirement.REQUIRED,
     )
     return challenge_id, options_to_json(options)
 
@@ -145,6 +145,7 @@ def verify_authentication(
             expected_rp_id=settings.webauthn_rp_id,
             credential_public_key=base64url_to_bytes(stored.public_key),
             credential_current_sign_count=stored.sign_count,
+            require_user_verification=True,
         )
         return verification.new_sign_count
     except Exception as exc:
