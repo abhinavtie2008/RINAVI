@@ -10,6 +10,7 @@ _tmp = tempfile.mkdtemp(prefix="rinavi-test-")
 _STORAGE_DIR = f"{_tmp}/vault"
 os.environ["RINAVI_DATABASE_URL"] = f"sqlite+aiosqlite:///{_tmp}/rinavi-test.db"
 os.environ["RINAVI_STORAGE_DIR"] = _STORAGE_DIR
+os.environ["RINAVI_ENVIRONMENT"] = "test"
 atexit.register(shutil.rmtree, _tmp, ignore_errors=True)
 
 
