@@ -93,6 +93,9 @@ export function VaultPage() {
   }
 
   async function handleDelete(id: string) {
+    if (!window.confirm("Delete this document? This cannot be undone.")) {
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

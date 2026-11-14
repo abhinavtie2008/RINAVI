@@ -55,6 +55,7 @@ describe("VaultPage", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -124,6 +125,7 @@ describe("VaultPage", () => {
   });
 
   it("deletes a document and removes it from the list", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     mockApi([
       ["/api/v1/consent/grants", () => jsonResponse([ACTIVE_GRANT])],
       ["/api/v1/vault/documents/d1", () => new Response(null, { status: 204 })],
@@ -135,5 +137,25 @@ describe("VaultPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
 
     expect(await screen.findByTestId("vault-empty")).toBeInTheDocument();
+    expect(confirmSpy).toHaveBeenCalledWith(
+      "Delete this document? This cannot be undone."
+    );
+  });
+
+  it("keeps the document when the delete confirmation is declined", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const deleteHandler = vi.fn(() => new Response(null, { status: 204 }));
+    mockApi([
+      ["/api/v1/consent/grants", () => jsonResponse([ACTIVE_GRANT])],
+      ["/api/v1/vault/documents/d1", deleteHandler],
+      ["/api/v1/vault/documents", () => jsonResponse([documentRecord()])],
+    ]);
+
+    render(<VaultPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+
+    expect(deleteHandler).not.toHaveBeenCalled();
+    expect(screen.getByTestId("document-row")).toBeInTheDocument();
   });
 });
