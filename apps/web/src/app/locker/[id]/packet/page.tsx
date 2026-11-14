@@ -2,15 +2,6 @@ import { Suspense } from "react";
 
 import { PacketPage } from "@/features/locker/PacketPage";
 
-async function PacketPageContent({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  return <PacketPage caseId={id} />;
-}
-
 export default function PacketRoute({
   params,
 }: {
@@ -18,7 +9,9 @@ export default function PacketRoute({
 }) {
   return (
     <Suspense fallback={<p>Loading…</p>}>
-      <PacketPageContent params={params} />
+      {params.then(({ id }) => (
+        <PacketPage caseId={id} />
+      ))}
     </Suspense>
   );
 }
