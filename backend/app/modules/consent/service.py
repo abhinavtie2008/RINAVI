@@ -66,4 +66,6 @@ async def has_active_consent(db: AsyncSession, user: User, purpose: str) -> bool
             ConsentRecord.withdrawn_at.is_(None),
         )
     )
-    return result.scalar_one_or_none() is not None
+    # .first() tolerates duplicate active grants from racing requests
+    # instead of raising MultipleResultsFound.
+    return result.scalars().first() is not None
