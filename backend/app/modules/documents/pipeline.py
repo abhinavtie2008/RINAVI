@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +13,8 @@ from app.modules.documents.models import ExtractedField
 from app.modules.identity.models import utcnow
 from app.modules.vault.models import Document, DocumentStatus
 from app.modules.vault.storage import StorageBackend
+
+logger = logging.getLogger(__name__)
 
 _IMAGE_TYPES = {"image/png", "image/jpeg"}
 
@@ -32,9 +36,15 @@ async def process_document(
             text = extract_text_from_pdf(data)
         else:
             text = extract_text_from_txt(data)
-    except Exception:
+    except Exception as exc:
+        logger.error(
+            "Document processing failed for %s: %s: %s",
+            document.id,
+            exc.__class__.__name__,
+            exc,
+        )
         document.status = DocumentStatus.NEEDS_ATTENTION
-        document.note = "extraction_failed"
+        document.note = f"extraction_failed: {exc.__class__.__name__}"[:200]
         await db.flush()
         return
 

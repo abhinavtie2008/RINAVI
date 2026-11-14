@@ -13,6 +13,13 @@ from app.modules.vault.storage import get_storage
 router = APIRouter(prefix="/vault", tags=["vault"])
 
 
+def _safe_download_name(filename: str) -> str:
+    # Citizen-supplied; the charset filter keeps quotes and newlines out of
+    # the Content-Disposition header.
+    safe = "".join(ch for ch in filename if ch.isalnum() or ch in " ._-")
+    return safe or "document"
+
+
 @router.post(
     "/documents",
     response_model=schemas.DocumentOut,
@@ -81,9 +88,17 @@ async def delete_document(
         resource_id=str(document.id),
         details={"classification": document.classification},
     )
+    # Erase the file before dropping the only handle to it. If the unlink
+    # fails, keep the record so the citizen can retry the deletion.
+    try:
+        get_storage().delete(user.id, document.id)
+    except OSError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Document could not be erased; try again",
+        ) from exc
     await db.delete(document)
     await db.commit()
-    get_storage().delete(user.id, document.id)
 
 
 @router.get(
@@ -123,7 +138,17 @@ async def document_content(
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     data = get_storage().read(user.id, document.id)
-    return Response(content=data, media_type=document.content_type)
+    return Response(
+        content=data,
+        media_type=document.content_type,
+        headers={
+            "Cache-Control": "no-store, private",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": (
+                f'attachment; filename="{_safe_download_name(document.original_filename)}"'
+            ),
+        },
+    )
 
 
 @router.get(

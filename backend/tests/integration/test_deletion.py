@@ -112,6 +112,18 @@ async def test_export_returns_only_own_data() -> None:
         assert body["consent_records"][0]["purpose"] == "documents.processing"
 
 
+async def test_export_sets_no_store_and_download_headers() -> None:
+    async with make_client() as client:
+        await client.post(
+            "/api/v1/auth/dev-signin", json={"email": "citizen@example.com"}
+        )
+        response = await client.get("/api/v1/auth/export")
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store, private"
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert response.headers["content-disposition"].startswith("attachment")
+
+
 async def test_export_requires_auth() -> None:
     async with make_client() as client:
         response = await client.get("/api/v1/auth/export")

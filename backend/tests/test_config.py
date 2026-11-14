@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -35,3 +38,18 @@ def test_unsafe_production_settings_are_rejected(
 ) -> None:
     with pytest.raises(ValidationError, match=message):
         Settings(**{**_SAFE_PRODUCTION, **override})
+
+
+def test_environment_default_is_fail_closed() -> None:
+    assert Settings.model_fields["environment"].default == "production"
+
+
+def test_unconfigured_settings_are_rejected(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    for key in list(os.environ):
+        if key.startswith("RINAVI_"):
+            monkeypatch.delenv(key, raising=False)
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValidationError, match="dev sign-in"):
+        Settings()

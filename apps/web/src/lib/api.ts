@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export class ApiError extends Error {
   status: number;
@@ -21,15 +22,28 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
-  return parseResponse<T>(response);
+  const timeoutController = new AbortController();
+  const timer = setTimeout(
+    () => timeoutController.abort(),
+    REQUEST_TIMEOUT_MS,
+  );
+  try {
+    const signal = init?.signal
+      ? AbortSignal.any([init.signal, timeoutController.signal])
+      : timeoutController.signal;
+    const response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      credentials: "include",
+      signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
+    });
+    return await parseResponse<T>(response);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {

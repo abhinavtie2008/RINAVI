@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StringConstraints
 
 
 class ConsentGrantRequest(BaseModel):
-    purpose: str
+    purpose: Annotated[str, StringConstraints(max_length=80)]
 
 
 class ConsentRecordOut(BaseModel):

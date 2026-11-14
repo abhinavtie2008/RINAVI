@@ -18,7 +18,12 @@ def new_session_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+def canonical_email(email: str) -> str:
+    return email.strip().lower()
+
+
 async def get_or_create_user(db: AsyncSession, email: str) -> User:
+    email = canonical_email(email)
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if user is None:

@@ -2,8 +2,10 @@ import pytest
 from fastapi import HTTPException
 
 from app.api.deps import require_active_consent
+from app.core.config import get_settings
 from app.core.db import async_session_factory
 from app.modules.consent import service as consent_service
+from app.modules.consent.models import ConsentRecord
 from app.modules.identity import service as identity_service
 
 
@@ -33,6 +35,22 @@ async def test_guard_blocks_after_withdrawal() -> None:
         with pytest.raises(HTTPException) as exc_info:
             await require_active_consent("documents.processing", user, db)
         assert exc_info.value.status_code == 403
+
+
+async def test_guard_survives_duplicate_active_grants() -> None:
+    async with async_session_factory() as db:
+        user = await identity_service.get_or_create_user(db, "citizen@example.com")
+        await consent_service.grant_consent(db, user, "documents.processing")
+        # Simulate a grant race: a second active record for the same purpose.
+        db.add(
+            ConsentRecord(
+                user_id=user.id,
+                purpose="documents.processing",
+                policy_version=get_settings().consent_policy_version,
+            )
+        )
+        await db.commit()
+        await require_active_consent("documents.processing", user, db)
 
 
 async def test_consent_required_wires_as_route_dependency() -> None:

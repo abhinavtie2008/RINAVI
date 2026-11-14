@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 from app.modules.applications.schemas import DraftOut
 
@@ -36,12 +36,14 @@ class CaseOut(CaseSummaryOut):
 
 class SubmittedEventIn(BaseModel):
     type: Literal["submitted"]
-    reference_number: str | None = None
+    reference_number: Annotated[str | None, StringConstraints(max_length=120)] = None
 
 
 class AcknowledgedEventIn(BaseModel):
     type: Literal["acknowledged"]
-    acknowledgement_number: str | None = None
+    acknowledgement_number: Annotated[
+        str | None, StringConstraints(max_length=120)
+    ] = None
 
 
 class OutcomeReceivedEventIn(BaseModel):

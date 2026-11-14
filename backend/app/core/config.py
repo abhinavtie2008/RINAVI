@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="RINAVI_", env_file=".env")
 
     app_name: str = "RINAVI"
-    environment: str = "development"
+    environment: str = "production"
     api_v1_prefix: str = "/api/v1"
     database_url: str = f"sqlite+aiosqlite:///{_BACKEND_DIR.as_posix()}/rinavi.db"
     storage_dir: str = f"{_BACKEND_DIR.as_posix()}/data/vault"
