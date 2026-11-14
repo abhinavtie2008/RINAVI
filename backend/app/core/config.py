@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
@@ -26,6 +27,18 @@ class Settings(BaseSettings):
     webauthn_rp_id: str = "localhost"
     webauthn_origin: str = "http://localhost:3000"
     webauthn_rp_name: str = "RINAVI"
+
+    @model_validator(mode="after")
+    def _reject_unsafe_production(self) -> "Settings":
+        if self.environment in {"development", "test"}:
+            return self
+        if self.dev_signin_enabled:
+            raise ValueError("dev sign-in must be disabled outside development")
+        if not self.cookie_secure:
+            raise ValueError("cookie_secure must be true outside development")
+        if not self.webauthn_origin.startswith("https://"):
+            raise ValueError("webauthn_origin must use https outside development")
+        return self
 
 
 @lru_cache

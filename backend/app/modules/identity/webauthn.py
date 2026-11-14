@@ -1,4 +1,5 @@
 import secrets
+import time
 from typing import Any
 
 from webauthn import (
@@ -25,7 +26,9 @@ from webauthn.helpers.structs import (
 from app.core.config import get_settings
 from app.modules.identity.models import Credential, User
 
-_pending_challenges: dict[str, bytes] = {}
+_CHALLENGE_TTL_SECONDS = 5 * 60
+_MAX_PENDING_CHALLENGES = 10_000
+_pending_challenges: dict[str, tuple[bytes, float]] = {}
 
 
 class PasskeyChallengeError(Exception):
@@ -36,14 +39,40 @@ class PasskeyVerificationError(Exception):
     pass
 
 
+def _prune_expired_challenges(now: float) -> None:
+    expired = [
+        challenge_id
+        for challenge_id, (_, expires_at) in _pending_challenges.items()
+        if expires_at <= now
+    ]
+    for challenge_id in expired:
+        _pending_challenges.pop(challenge_id, None)
+
+
 def _issue_challenge() -> tuple[str, bytes]:
+    now = time.monotonic()
+    _prune_expired_challenges(now)
+    # The login/begin endpoint is unauthenticated, so bound the store even
+    # when a client never completes a ceremony.
+    while len(_pending_challenges) >= _MAX_PENDING_CHALLENGES:
+        _pending_challenges.pop(next(iter(_pending_challenges)))
     challenge_id = secrets.token_urlsafe(24)
-    _pending_challenges[challenge_id] = secrets.token_bytes(32)
-    return challenge_id, _pending_challenges[challenge_id]
+    challenge = secrets.token_bytes(32)
+    _pending_challenges[challenge_id] = (
+        challenge,
+        now + _CHALLENGE_TTL_SECONDS,
+    )
+    return challenge_id, challenge
 
 
 def pop_challenge(challenge_id: str) -> bytes | None:
-    return _pending_challenges.pop(challenge_id, None)
+    entry = _pending_challenges.pop(challenge_id, None)
+    if entry is None:
+        return None
+    challenge, expires_at = entry
+    if expires_at <= time.monotonic():
+        return None
+    return challenge
 
 
 def registration_options(
@@ -61,7 +90,7 @@ def registration_options(
         attestation=AttestationConveyancePreference.NONE,
         authenticator_selection=AuthenticatorSelectionCriteria(
             authenticator_attachment=AuthenticatorAttachment.PLATFORM,
-            resident_key=ResidentKeyRequirement.PREFERRED,
+            resident_key=ResidentKeyRequirement.REQUIRED,
             user_verification=UserVerificationRequirement.PREFERRED,
         ),
         exclude_credentials=[
