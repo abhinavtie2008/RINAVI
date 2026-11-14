@@ -15,7 +15,34 @@ import {
   updateField,
   type Draft,
 } from "@/lib/applications";
+import { completeDraft, type SuggestedLink } from "@/lib/locker";
 import { listDocuments, type DocumentRecord } from "@/lib/vault";
+
+const SUGGESTED_LINKS_PREFIX = "rinavi:suggested-links:";
+
+function readSuggestedLinks(draftId: string): SuggestedLink[] {
+  try {
+    const raw = window.sessionStorage.getItem(
+      `${SUGGESTED_LINKS_PREFIX}${draftId}`,
+    );
+    if (raw === null) {
+      return [];
+    }
+    const parsed = JSON.parse(raw) as SuggestedLink[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSuggestedLinks(draftId: string, links: SuggestedLink[]): void {
+  const key = `${SUGGESTED_LINKS_PREFIX}${draftId}`;
+  if (links.length === 0) {
+    window.sessionStorage.removeItem(key);
+    return;
+  }
+  window.sessionStorage.setItem(key, JSON.stringify(links));
+}
 
 export function DraftDetail({ draftId }: { draftId: string }) {
   const router = useRouter();
@@ -23,6 +50,7 @@ export function DraftDetail({ draftId }: { draftId: string }) {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [drafting, setDrafting] = useState<Record<string, string>>({});
   const [linkPicks, setLinkPicks] = useState<Record<string, string>>({});
+  const [suggestedLinks, setSuggestedLinks] = useState<SuggestedLink[]>([]);
   const [exportText, setExportText] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +63,7 @@ export function DraftDetail({ draftId }: { draftId: string }) {
           listDocuments(),
         ]);
         setDraft(loadedDraft);
+        setSuggestedLinks(readSuggestedLinks(loadedDraft.id));
         setDocuments(loadedDocuments);
       } catch {
         setError("Could not load the draft.");
@@ -156,6 +185,54 @@ export function DraftDetail({ draftId }: { draftId: string }) {
     }
   }
 
+  async function handleComplete() {
+    if (draft === null) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const completed = await completeDraft(draft.id);
+      router.push(`/locker/${completed.id}`);
+    } catch (completeError) {
+      if (completeError instanceof ApiError && completeError.status === 409) {
+        setError("Resolve the highlighted issues first.");
+      } else {
+        setError("Could not finish the draft.");
+      }
+      setBusy(false);
+    }
+  }
+
+  async function handleAcceptSuggestion(suggestion: SuggestedLink) {
+    if (draft === null) {
+      return;
+    }
+    const draftId = draft.id;
+    setBusy(true);
+    setError(null);
+    try {
+      applyDraft(
+        await linkDocument(draftId, suggestion.document_id, suggestion.group_id),
+      );
+      setSuggestedLinks((current) => {
+        const next = current.filter(
+          (item) =>
+            !(
+              item.document_id === suggestion.document_id &&
+              item.group_id === suggestion.group_id
+            ),
+        );
+        writeSuggestedLinks(draftId, next);
+        return next;
+      });
+    } catch {
+      setError("Could not attach the suggested document.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleDelete() {
     if (draft === null) {
       return;
@@ -219,6 +296,45 @@ export function DraftDetail({ draftId }: { draftId: string }) {
       >
         {draft.template_snapshot.guidance.not_a_submission_notice}
       </p>
+
+      {suggestedLinks.length > 0 ? (
+        <section
+          data-testid="suggested-evidence"
+          className="flex flex-col gap-2 rounded border border-neutral-200 p-4"
+        >
+          <h2 className="text-sm font-medium">
+            Suggested evidence from your previous application
+          </h2>
+          {suggestedLinks.map((suggestion, index) => {
+            const document = documents.find(
+              (candidate) => candidate.id === suggestion.document_id,
+            );
+            const group = draft.template_snapshot.checklist_groups.find(
+              (candidate) => candidate.id === suggestion.group_id,
+            );
+            const filename = document?.original_filename ?? suggestion.document_id;
+            return (
+              <div
+                key={`${suggestion.document_id}-${suggestion.group_id}-${index}`}
+                className="flex items-center gap-2"
+              >
+                <span className="flex-1 text-sm">
+                  {filename} → {group?.label ?? suggestion.group_id}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Attach ${filename}`}
+                  onClick={() => void handleAcceptSuggestion(suggestion)}
+                  disabled={busy}
+                  className="rounded border border-neutral-300 px-3 py-1"
+                >
+                  Attach
+                </button>
+              </div>
+            );
+          })}
+        </section>
+      ) : null}
 
       <section className="flex flex-col gap-4" aria-label="Application fields">
         {draft.template_snapshot.fields.map((field) => {
@@ -376,6 +492,24 @@ export function DraftDetail({ draftId }: { draftId: string }) {
           </p>
         ))}
       </div>
+
+      {draft.validation.length === 0 ? (
+        <section className="flex flex-col gap-2 rounded border border-green-300 bg-green-50 p-4">
+          <p data-testid="draft-ready" className="text-sm">
+            This draft is complete. Finish it to move a frozen copy of the
+            packet into your locker.
+          </p>
+          <button
+            type="button"
+            data-testid="complete-draft"
+            onClick={() => void handleComplete()}
+            disabled={busy}
+            className="self-start rounded border border-green-600 px-3 py-1 text-green-800"
+          >
+            Finish and start tracking
+          </button>
+        </section>
+      ) : null}
 
       {error ? <p data-testid="draft-error">{error}</p> : null}
 

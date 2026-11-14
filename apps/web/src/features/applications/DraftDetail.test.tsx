@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { caseRecord } from "@/features/locker/caseFixtures";
+
 import { DraftDetail } from "./DraftDetail";
 import { draftRecord } from "./draftFixtures";
 
@@ -30,6 +32,7 @@ function mockApi(
 describe("DraftDetail", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    window.sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -112,5 +115,101 @@ describe("DraftDetail", () => {
     fireEvent.click(await screen.findByRole("checkbox"));
 
     await waitFor(() => expect(screen.getByRole("checkbox")).toBeChecked());
+  });
+
+  it("shows the finish button when the draft has no issues", async () => {
+    mockApi([
+      ["/api/v1/applications/drafts/draft-1", () => jsonResponse(draftRecord())],
+      ["/api/v1/vault/documents", () => jsonResponse([])],
+    ]);
+
+    render(<DraftDetail draftId="draft-1" />);
+
+    expect(await screen.findByTestId("complete-draft")).toBeInTheDocument();
+  });
+
+  it("hides the finish button when issues remain", async () => {
+    const draft = draftRecord({
+      validation: [
+        {
+          code: "field_required",
+          field_id: "purpose",
+          group_id: null,
+          document_id: null,
+          message: "This field is required.",
+        },
+      ],
+    });
+    mockApi([
+      ["/api/v1/applications/drafts/draft-1", () => jsonResponse(draft)],
+      ["/api/v1/vault/documents", () => jsonResponse([])],
+    ]);
+
+    render(<DraftDetail draftId="draft-1" />);
+
+    await screen.findByText("This field is required.");
+    expect(screen.queryByTestId("complete-draft")).not.toBeInTheDocument();
+  });
+
+  it("completes the draft and opens the locker case", async () => {
+    mockApi([
+      ["/api/v1/applications/drafts/draft-1", () => jsonResponse(draftRecord())],
+      ["/api/v1/vault/documents", () => jsonResponse([])],
+      [
+        "/api/v1/applications/drafts/draft-1/complete",
+        () => jsonResponse(caseRecord()),
+      ],
+    ]);
+
+    render(<DraftDetail draftId="draft-1" />);
+
+    fireEvent.click(await screen.findByTestId("complete-draft"));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/locker/case-1"));
+  });
+
+  it("shows and attaches suggested evidence from a previous application", async () => {
+    window.sessionStorage.setItem(
+      "rinavi:suggested-links:draft-1",
+      JSON.stringify([{ document_id: "doc-1", group_id: "income_evidence" }]),
+    );
+    mockApi([
+      ["/api/v1/applications/drafts/draft-1", () => jsonResponse(draftRecord())],
+      [
+        "/api/v1/vault/documents",
+        () =>
+          jsonResponse([
+            {
+              id: "doc-1",
+              original_filename: "income.txt",
+              content_type: "text/plain",
+              size_bytes: 10,
+              status: "processed",
+              classification: "income",
+              note: null,
+              created_at: "2026-11-13T00:00:00",
+              processed_at: "2026-11-13T00:00:00",
+            },
+          ]),
+      ],
+      [
+        "/api/v1/applications/drafts/draft-1/documents/doc-1",
+        () =>
+          jsonResponse(draftRecord({ document_links: { income_evidence: ["doc-1"] } })),
+      ],
+    ]);
+
+    render(<DraftDetail draftId="draft-1" />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Attach income.txt" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("suggested-evidence")).not.toBeInTheDocument(),
+    );
+    expect(
+      window.sessionStorage.getItem("rinavi:suggested-links:draft-1"),
+    ).toBeNull();
   });
 });
