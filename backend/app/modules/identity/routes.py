@@ -75,7 +75,14 @@ async def delete_account(
 
 
 @router.get("/export", response_model=schemas.AccountExport)
-async def export_account(user: CurrentUser, db: DbSession) -> schemas.AccountExport:
+async def export_account(
+    user: CurrentUser, db: DbSession, response: Response
+) -> schemas.AccountExport:
+    response.headers["Cache-Control"] = "no-store, private"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Content-Disposition"] = (
+        'attachment; filename="rinavi-account-export.json"'
+    )
     records = await consent_service.list_own_grants(db, user)
     return schemas.AccountExport(
         user=schemas.UserOut.model_validate(user),

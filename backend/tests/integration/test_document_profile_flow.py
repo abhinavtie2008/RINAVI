@@ -130,6 +130,45 @@ async def test_cross_user_delete_is_404_and_file_survives() -> None:
         ).status_code == 200
 
 
+async def test_document_content_sets_security_headers() -> None:
+    async with make_client() as client:
+        await sign_in(client)
+        await allow(client, "documents.processing")
+        document_id = await upload_income_document(client)
+
+        response = await client.get(f"{API}/vault/documents/{document_id}/content")
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store, private"
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert response.headers["content-disposition"] == (
+            'attachment; filename="income.txt"'
+        )
+
+
+async def test_document_content_disposition_sanitizes_filename() -> None:
+    async with make_client() as client:
+        await sign_in(client)
+        await allow(client, "documents.processing")
+        upload = await client.post(
+            f"{API}/vault/documents",
+            files={
+                "file": (
+                    'quote"name.txt',
+                    INCOME_TEXT.encode(),
+                    "text/plain",
+                )
+            },
+        )
+        assert upload.status_code == 201
+        document_id = upload.json()["id"]
+
+        response = await client.get(f"{API}/vault/documents/{document_id}/content")
+        disposition = response.headers["content-disposition"]
+        assert disposition.startswith("attachment; filename=")
+        assert disposition.count('"') == 2
+        assert "\r" not in disposition and "\n" not in disposition
+
+
 async def test_delete_works_after_consent_withdrawal() -> None:
     async with make_client() as client:
         await sign_in(client)
