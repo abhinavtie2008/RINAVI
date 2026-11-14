@@ -40,6 +40,7 @@ async def test_register_begin_returns_webauthn_options() -> None:
         assert options["rp"]["id"] == "localhost"
         assert options["rp"]["name"] == "RINAVI"
         assert options["user"]["name"] == "citizen@example.com"
+        assert options["authenticatorSelection"]["residentKey"] == "required"
         assert "challenge" in options
 
 
