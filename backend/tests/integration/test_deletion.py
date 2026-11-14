@@ -1,3 +1,4 @@
+import pytest
 from httpx import ASGITransport, AsyncClient, Cookies
 from sqlalchemy import func, select
 
@@ -115,3 +116,28 @@ async def test_export_requires_auth() -> None:
     async with make_client() as client:
         response = await client.get("/api/v1/auth/export")
         assert response.status_code == 401
+
+
+class FailingStorage:
+    def purge_user(self, _user_id: object) -> None:
+        raise OSError("storage unavailable")
+
+
+async def test_delete_account_keeps_account_when_storage_purge_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import app.modules.identity.routes as identity_routes
+
+    monkeypatch.setattr(identity_routes, "get_storage", lambda: FailingStorage())
+
+    async with make_client() as client:
+        await client.post(
+            "/api/v1/auth/dev-signin", json={"email": "citizen@example.com"}
+        )
+        response = await client.delete("/api/v1/auth/account")
+        assert response.status_code == 503
+        me = await client.get("/api/v1/auth/me")
+        assert me.status_code == 200
+
+    async with async_session_factory() as db:
+        assert await count(db, User) == 1
