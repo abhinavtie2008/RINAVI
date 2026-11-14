@@ -81,9 +81,17 @@ async def delete_document(
         resource_id=str(document.id),
         details={"classification": document.classification},
     )
+    # Erase the file before dropping the only handle to it. If the unlink
+    # fails, keep the record so the citizen can retry the deletion.
+    try:
+        get_storage().delete(user.id, document.id)
+    except OSError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Document could not be erased; try again",
+        ) from exc
     await db.delete(document)
     await db.commit()
-    get_storage().delete(user.id, document.id)
 
 
 @router.get(

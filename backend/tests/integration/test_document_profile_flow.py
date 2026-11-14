@@ -156,6 +156,47 @@ async def test_delete_requires_session() -> None:
         assert response.status_code == 401
 
 
+class DeleteFailingStorage:
+    def __init__(self) -> None:
+        self._real = get_storage()
+
+    def save(
+        self, user_id: uuid.UUID, document_id: uuid.UUID, data: bytes
+    ) -> None:
+        self._real.save(user_id, document_id, data)
+
+    def read(self, user_id: uuid.UUID, document_id: uuid.UUID) -> bytes:
+        return self._real.read(user_id, document_id)
+
+    def delete(self, user_id: uuid.UUID, document_id: uuid.UUID) -> None:
+        raise OSError("storage unavailable")
+
+
+async def test_delete_document_keeps_record_when_unlink_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import app.modules.vault.routes as vault_routes
+
+    storage = DeleteFailingStorage()
+    monkeypatch.setattr(vault_routes, "get_storage", lambda: storage)
+
+    async with make_client() as client:
+        user_id = await sign_in(client)
+        await allow(client, "documents.processing")
+        document_id = await upload_income_document(client)
+
+        response = await client.delete(f"{API}/vault/documents/{document_id}")
+        assert response.status_code == 503
+
+        assert (
+            await client.get(f"{API}/vault/documents/{document_id}")
+        ).status_code == 200
+        assert (
+            storage.read(uuid.UUID(user_id), uuid.UUID(document_id))
+            == INCOME_TEXT.encode()
+        )
+
+
 async def test_audit_details_never_contain_document_content() -> None:
     async with make_client() as client:
         await sign_in(client)
