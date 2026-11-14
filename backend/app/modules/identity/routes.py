@@ -60,9 +60,17 @@ async def delete_account(
     db: DbSession,
 ) -> None:
     settings = get_settings()
+    # Erase stored files before dropping the only handle to them. If this
+    # fails, keep the account so the citizen can retry the deletion.
+    try:
+        get_storage().purge_user(user.id)
+    except OSError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Account data could not be erased; try again",
+        ) from exc
     await service.delete_user(db, user)
     await db.commit()
-    get_storage().purge_user(user.id)
     response.delete_cookie(settings.cookie_name)
 
 

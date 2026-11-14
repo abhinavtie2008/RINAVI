@@ -37,7 +37,10 @@ class LocalDiskStorage:
         self._path(user_id, document_id).unlink(missing_ok=True)
 
     def purge_user(self, user_id: uuid.UUID) -> None:
-        shutil.rmtree(self._root / str(user_id), ignore_errors=True)
+        path = self._root / str(user_id)
+        if not path.exists():
+            return
+        shutil.rmtree(path)
 
 
 @lru_cache
