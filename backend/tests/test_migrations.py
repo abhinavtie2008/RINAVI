@@ -31,6 +31,9 @@ def test_alembic_upgrade_head_on_clean_database(tmp_path: Path) -> None:
             "documents",
             "extracted_fields",
             "profile_values",
+            "application_drafts",
+            "application_cases",
+            "case_events",
         } <= tables
         document_columns = {
             row[1] for row in conn.execute("PRAGMA table_info(documents)")
@@ -75,5 +78,29 @@ def test_alembic_upgrade_head_on_clean_database(tmp_path: Path) -> None:
         assert {"id", "email", "display_name", "created_at"} <= user_columns
         session_columns = {row[1] for row in conn.execute("PRAGMA table_info(sessions)")}
         assert {"id", "user_id", "token_hash", "expires_at", "revoked_at"} <= session_columns
+        case_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(application_cases)")
+        }
+        assert {
+            "id",
+            "user_id",
+            "draft_id",
+            "service_slug",
+            "service_name",
+            "pack_version",
+            "packet_snapshot",
+            "packet_text",
+            "status",
+            "reference_number",
+            "acknowledgement_number",
+            "deadline_at",
+            "outcome_notes",
+            "created_at",
+            "updated_at",
+        } <= case_columns
+        event_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(case_events)")
+        }
+        assert {"id", "case_id", "type", "payload", "created_at"} <= event_columns
     finally:
         conn.close()

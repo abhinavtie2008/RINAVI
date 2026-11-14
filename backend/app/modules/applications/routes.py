@@ -11,6 +11,8 @@ from app.modules.applications.validator import validate_draft
 from app.modules.audit.service import emit_audit
 from app.modules.catalog.loader import CatalogError
 from app.modules.identity.models import User
+from app.modules.locker import schemas as locker_schemas
+from app.modules.locker import service as locker_service
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 CONSENT = ConsentRequired("applications.preparation")
@@ -25,35 +27,6 @@ async def _get_draft_or_404(
             status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found"
         )
     return draft
-
-
-async def _draft_out(
-    db: AsyncSession, user: User, draft: ApplicationDraft
-) -> schemas.DraftOut:
-    profile, states = await service.collect_validation_inputs(db, user, draft)
-    return schemas.DraftOut(
-        id=draft.id,
-        service_slug=draft.service_slug,
-        service_name=draft.service_name,
-        pack_version=draft.pack_version,
-        template_snapshot=draft.template_snapshot,
-        values=draft.values,
-        document_links=draft.document_links,
-        declaration_confirmed=draft.declaration_confirmed,
-        validation=[
-            schemas.ValidationIssueOut(**issue)
-            for issue in validate_draft(
-                draft.template_snapshot,
-                draft.values,
-                draft.declaration_confirmed,
-                draft.document_links,
-                states,
-                profile,
-            )
-        ],
-        created_at=draft.created_at,
-        updated_at=draft.updated_at,
-    )
 
 
 def _raise_draft_error(error: DraftError) -> None:
@@ -89,7 +62,7 @@ async def create_draft(
         details={"service_slug": draft.service_slug},
     )
     await db.commit()
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.get(
@@ -97,7 +70,7 @@ async def create_draft(
 )
 async def list_drafts(user: CurrentUser, db: DbSession) -> list[schemas.DraftOut]:
     drafts = await service.list_drafts(db, user)
-    return [await _draft_out(db, user, draft) for draft in drafts]
+    return [await service.draft_out(db, user, draft) for draft in drafts]
 
 
 @router.get(
@@ -107,7 +80,7 @@ async def get_draft(
     draft_id: uuid.UUID, user: CurrentUser, db: DbSession
 ) -> schemas.DraftOut:
     draft = await _get_draft_or_404(db, user, draft_id)
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.put(
@@ -136,7 +109,7 @@ async def update_field(
         details={"field_id": field_id},
     )
     await db.commit()
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.post(
@@ -158,7 +131,7 @@ async def refresh_draft(
         details={"service_slug": draft.service_slug},
     )
     await db.commit()
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.put(
@@ -187,7 +160,7 @@ async def link_document(
         details={"group_id": payload.group_id, "document_id": str(document_id)},
     )
     await db.commit()
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.delete(
@@ -212,7 +185,7 @@ async def unlink_document(
         details={"document_id": str(document_id)},
     )
     await db.commit()
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.put(
@@ -237,7 +210,7 @@ async def update_declaration(
         details={"confirmed": payload.confirmed},
     )
     await db.commit()
-    return await _draft_out(db, user, draft)
+    return await service.draft_out(db, user, draft)
 
 
 @router.get(
@@ -274,6 +247,46 @@ async def export_draft(
     )
     await db.commit()
     return schemas.ExportOut(text=text)
+
+
+@router.post(
+    "/drafts/{draft_id}/complete",
+    response_model=locker_schemas.CaseOut,
+    dependencies=[CONSENT],
+)
+async def complete_draft(
+    draft_id: uuid.UUID, user: CurrentUser, db: DbSession
+) -> locker_schemas.CaseOut:
+    draft = await _get_draft_or_404(db, user, draft_id)
+    existing = await locker_service.get_case_by_draft(db, user, draft_id)
+    if existing is not None:
+        return await locker_service.case_out(db, existing)
+    profile, states = await service.collect_validation_inputs(db, user, draft)
+    issues = validate_draft(
+        draft.template_snapshot,
+        draft.values,
+        draft.declaration_confirmed,
+        draft.document_links,
+        states,
+        profile,
+    )
+    if issues:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Draft has unresolved issues",
+        )
+    snapshot, text = await service.build_packet(db, user, draft)
+    case = await locker_service.create_case(db, user, draft, snapshot, text)
+    await emit_audit(
+        db,
+        actor_user_id=user.id,
+        action="application.case_created",
+        resource_type="application_case",
+        resource_id=str(case.id),
+        details={"service_slug": draft.service_slug},
+    )
+    await db.commit()
+    return await locker_service.case_out(db, case)
 
 
 @router.delete(

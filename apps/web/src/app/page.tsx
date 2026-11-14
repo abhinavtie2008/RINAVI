@@ -15,6 +15,9 @@ export default function Home() {
         <Link href="/applications" className="underline">
           Applications
         </Link>
+        <Link href="/locker" className="underline">
+          Locker
+        </Link>
         <Link href="/vault" className="underline">
           Document vault
         </Link>

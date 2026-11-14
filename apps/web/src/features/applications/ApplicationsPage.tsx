@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { SiteNav } from "@/components/SiteNav";
 import { ApiError } from "@/lib/api";
 import {
   APPLICATIONS_PURPOSE,
@@ -94,29 +95,33 @@ export function ApplicationsPage() {
 
   if (!consentGranted) {
     return (
-      <section
-        data-testid="consent-gate"
-        className="flex w-full max-w-md flex-col gap-3 rounded border border-neutral-200 px-4 py-6"
-      >
-        <p className="text-sm">
-          RINAVI prepares application drafts only after you allow it. You
-          control every value, document, declaration, and final submission.
-        </p>
-        <button
-          type="button"
-          onClick={() => void handleGrant()}
-          disabled={busy}
-          className="rounded border border-neutral-300 px-3 py-1"
+      <div className="flex w-full max-w-2xl flex-col gap-4">
+        <SiteNav />
+        <section
+          data-testid="consent-gate"
+          className="flex w-full max-w-md flex-col gap-3 rounded border border-neutral-200 px-4 py-6"
         >
-          Allow application preparation
-        </button>
-        {error ? <p data-testid="applications-error">{error}</p> : null}
-      </section>
+          <p className="text-sm">
+            RINAVI prepares application drafts only after you allow it. You
+            control every value, document, declaration, and final submission.
+          </p>
+          <button
+            type="button"
+            onClick={() => void handleGrant()}
+            disabled={busy}
+            className="rounded border border-neutral-300 px-3 py-1"
+          >
+            Allow application preparation
+          </button>
+          {error ? <p data-testid="applications-error">{error}</p> : null}
+        </section>
+      </div>
     );
   }
 
   return (
     <div className="flex w-full max-w-2xl flex-col gap-6">
+      <SiteNav />
       <div className="flex items-end gap-2">
         <label htmlFor="service-picker" className="text-sm">
           Service

@@ -19,6 +19,7 @@ behalf.
 - **Profile review** — promote values from a document, review, correct, confirm — values always carry their source, and deleting the source marks them stale
 - **Service catalog** — a versioned Delhi e-District income-certificate pack with official sources, guidance, evidence checklist, and form template
 - **Application drafts** — confirmed profile values seed source-linked drafts; deterministic preflight leaves missing evidence unresolved, and export is a copy-ready Assist packet, never a submission
+- **Application locker** — freeze a completed packet, track its journey with your own notes and reference numbers, and re-apply with your previous evidence
 - **Erasure that always works** — deleting a document or your account works even after consent is withdrawn, and purges stored files
 - **Redacted audit trail** — account activity is logged, but document contents and PII never reach the audit log
 
