@@ -15,13 +15,13 @@
 
 import { execSync } from 'node:child_process'
 
-const token = process.env.GITHUB_PERSONAL_ACCESS_TOKEN || process.env.GITHUB_TOKEN
-if (!token) {
-  console.error('team: set GITHUB_PERSONAL_ACCESS_TOKEN (or GITHUB_TOKEN) first')
-  process.exit(1)
-}
-
 const API = 'https://api.github.com'
+
+function token() {
+  const value = process.env.GITHUB_PERSONAL_ACCESS_TOKEN || process.env.GITHUB_TOKEN
+  if (!value) throw new Error('team: set GITHUB_PERSONAL_ACCESS_TOKEN (or GITHUB_TOKEN) first')
+  return value
+}
 
 function repoSlug() {
   if (process.env.GITHUB_REPOSITORY) return process.env.GITHUB_REPOSITORY
@@ -31,13 +31,11 @@ function repoSlug() {
   return `${match[1]}/${match[2]}`
 }
 
-const repo = repoSlug()
-
 async function api(path, init = {}) {
-  const response = await fetch(`${API}/repos/${repo}${path}`, {
+  const response = await fetch(`${API}/repos/${repoSlug()}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token()}`,
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
       'User-Agent': 'rinavi-team',
@@ -98,7 +96,7 @@ async function board() {
   for (const pull of pulls) {
     console.log(
       `  #${pad(pull.number, 4)} ${pad(status(pull), 16)} ${pad(pull.head.ref, 28)} ` +
-        `${pull.draft ? 'draft' : 'ready'} ${pull.mergeable_state || '?'}  ${pull.title}`,
+        `${pull.draft ? 'draft' : 'ready'}  ${pull.title}`,
     )
   }
 }
@@ -136,6 +134,7 @@ async function next(agent) {
 async function claim(number, agent) {
   if (!number || !agent) throw new Error('team: claim needs <number> --agent <name>')
   const issue = await api(`/issues/${number}`)
+  if (!issue) throw new Error(`team: no issue #${number} in ${repoSlug()}`)
   const owner = label(issue, 'agent')
   if (owner !== '-' && owner !== agent && status(issue) === 'in-progress') {
     throw new Error(`team: #${number} is already claimed by ${owner}`)
@@ -149,6 +148,7 @@ async function claim(number, agent) {
 async function handoff(number, to, note) {
   if (!number || !to) throw new Error('team: handoff needs <number> --to <agent> [--note "..."]')
   const issue = await api(`/issues/${number}`)
+  if (!issue) throw new Error(`team: no issue #${number} in ${repoSlug()}`)
   await addLabels(number, ['status:queued', `agent:${to}`])
   if (status(issue) === 'in-progress') await removeLabel(number, 'status:in-progress')
   await comment(
@@ -160,7 +160,7 @@ async function handoff(number, to, note) {
 
 async function review() {
   const pulls = await openPulls()
-  const candidates = pulls.filter((p) => status(p) === 'review' || p.mergeable_state === 'clean')
+  const candidates = pulls.filter((p) => status(p) === 'review')
   if (!candidates.length) {
     console.log('No pull request is waiting for review.')
     return
@@ -170,7 +170,7 @@ async function review() {
     const ai = (comments || []).find((c) => (c.body || '').includes('<!-- rinavi-ai-review -->'))
     const verdict = ai ? ((ai.body.match(/### Overall assessment\s*\n+([^\n]+)/) || [])[1] || 'posted') : 'not posted yet'
     console.log(
-      `#${pull.number} ${pull.title}\n  branch ${pull.head.ref} · ${pull.mergeable_state || '?'} · ` +
+      `#${pull.number} ${pull.title}\n  branch ${pull.head.ref} · ${pull.draft ? 'draft' : 'ready'} · ` +
         `AI review: ${verdict}\n  ${pull.html_url}`,
     )
   }

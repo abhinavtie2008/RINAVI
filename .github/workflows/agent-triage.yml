@@ -54,7 +54,7 @@ jobs:
           set -euo pipefail
           gh pr edit "$PR_NUMBER" --add-label status:review
 
-          if [ "${{ github.event.action }}" = "opened" ] && ! grep -q 'Closes #' <<< "${PR_BODY:-}"; then
+          if [ "${{ github.event.action }}" = "opened" ] && ! grep -iqE '(closes|fixes|resolves) #[0-9]+' <<< "${PR_BODY:-}"; then
             gh pr comment "$PR_NUMBER" --body "$(printf '%s\n' \
               '### Handoff checklist' \
               '' \
