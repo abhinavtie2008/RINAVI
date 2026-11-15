@@ -173,3 +173,45 @@ async def test_collect_validation_inputs_marks_missing_documents_unavailable() -
 
         assert profile == {}
         assert states == {str(ghost): "unavailable"}
+
+
+async def test_collect_validation_inputs_tolerates_unparseable_document_id() -> None:
+    # document_links is a JSON column, so a malformed value must degrade to
+    # "unavailable" instead of raising on every read of the draft.
+    async with async_session_factory() as db:
+        user = await make_user(db)
+        draft = await service.create_draft(db, user, SLUG)
+        draft.document_links = {"income_evidence": ["not-a-uuid"]}
+        await db.flush()
+
+        profile, states = await service.collect_validation_inputs(db, user, draft)
+
+        assert profile == {}
+        assert states == {"not-a-uuid": "unavailable"}
+
+
+async def test_build_export_tolerates_unparseable_document_id() -> None:
+    async with async_session_factory() as db:
+        user = await make_user(db)
+        draft = await service.create_draft(db, user, SLUG)
+        draft.document_links = {"income_evidence": ["not-a-uuid"]}
+        await db.flush()
+
+        text = await service.build_export(db, user, draft)
+
+        assert "not-a-uuid" in text
+
+
+async def test_build_packet_tolerates_unparseable_document_id() -> None:
+    async with async_session_factory() as db:
+        user = await make_user(db)
+        draft = await service.create_draft(db, user, SLUG)
+        draft.document_links = {"income_evidence": ["not-a-uuid"]}
+        await db.flush()
+
+        snapshot, _text = await service.build_packet(db, user, draft)
+
+        evidence = {e["group_id"]: e for e in snapshot["evidence"]}
+        assert evidence["income_evidence"]["documents"] == [
+            {"document_id": "not-a-uuid", "filename": "not-a-uuid"}
+        ]

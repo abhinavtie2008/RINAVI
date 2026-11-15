@@ -51,5 +51,23 @@ def test_unconfigured_settings_are_rejected(
         if key.startswith("RINAVI_"):
             monkeypatch.delenv(key, raising=False)
     monkeypatch.chdir(tmp_path)
-    with pytest.raises(ValidationError, match="dev sign-in"):
+    with pytest.raises(ValidationError, match="RINAVI_ENVIRONMENT"):
         Settings()
+
+
+def test_omitted_environment_is_rejected_even_when_other_values_are_safe(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # Without RINAVI_ENVIRONMENT the model silently falls back to production,
+    # so a deployment that forgot it used to trip a secondary check and report
+    # "dev sign-in must be disabled outside development" — which names the
+    # wrong cause. Omission itself must be the reported problem.
+    for key in list(os.environ):
+        if key.startswith("RINAVI_"):
+            monkeypatch.delenv(key, raising=False)
+    monkeypatch.chdir(tmp_path)
+    safe_without_environment = {
+        key: value for key, value in _SAFE_PRODUCTION.items() if key != "environment"
+    }
+    with pytest.raises(ValidationError, match="RINAVI_ENVIRONMENT"):
+        Settings(**safe_without_environment)
