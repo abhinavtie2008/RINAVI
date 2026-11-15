@@ -19,7 +19,12 @@ dependencies = [
     "pydantic-settings>=2.6",
     "python-multipart>=0.0.20",
     "pypdf>=5.1",
-    "slowapi>=0.1.9",
+    # The global budget middleware calls slowapi internals
+    # (slowapi.middleware.sync_check_limits and Limiter._inject_headers), so a
+    # breaking release would stop every request rather than degrade. 0.1.10 is
+    # the version the suite runs against; cap before 0.2 and re-verify these
+    # two APIs before widening the range.
+    "slowapi>=0.1.9,<0.2",
 ]
 
 [project.optional-dependencies]
