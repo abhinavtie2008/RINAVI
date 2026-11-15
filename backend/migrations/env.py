@@ -20,12 +20,17 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+# Every model module must be imported here. Alembic only sees the metadata of
+# modules this process imports, so a missing import makes `--autogenerate`
+# propose dropping that model's table. `tests/test_migrations.py` guards this.
 from app.modules.identity.models import Credential, Session, User  # noqa: F401
 from app.modules.consent.models import ConsentRecord  # noqa: F401
 from app.modules.audit.models import AuditEvent  # noqa: F401
 from app.modules.vault.models import Document  # noqa: F401
 from app.modules.documents.models import ExtractedField  # noqa: F401
 from app.modules.profile.models import ProfileValue  # noqa: F401
+from app.modules.applications.models import ApplicationDraft  # noqa: F401
+from app.modules.locker.models import ApplicationCase, CaseEvent  # noqa: F401
 
 
 def run_migrations_offline() -> None:

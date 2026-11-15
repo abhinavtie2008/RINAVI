@@ -1,3 +1,5 @@
+import copy
+
 from app.modules.applications.service import _snapshot
 from app.modules.applications.validator import _FORMAT_PATTERNS, validate_draft
 from app.modules.catalog.loader import get_latest_pack
@@ -45,6 +47,23 @@ def test_format_patterns_cover_vocabulary() -> None:
     assert _FORMAT_PATTERNS["aadhaar"].fullmatch("123456789012")
     assert not _FORMAT_PATTERNS["aadhaar"].fullmatch("1234 5678 9012")
     assert _FORMAT_PATTERNS["text"].fullmatch("Scholarship application")
+
+
+def test_unknown_field_format_is_reported_not_raised() -> None:
+    # A pack that uses a format this validator does not know must degrade to an
+    # issue. Raising KeyError turned every validate/export/complete request for
+    # that service into a 500.
+    snapshot = copy.deepcopy(SNAPSHOT)
+    field = next(f for f in snapshot["fields"] if f["id"] == "applicant_name")
+    field["format"] = "email"
+    values = {"applicant_name": {"value": "asha@example.com", "origin": "citizen"}}
+
+    issues = validate_draft(snapshot, values, True, {}, {}, {})
+
+    assert any(
+        i["code"] == "unknown_format" and i["field_id"] == "applicant_name"
+        for i in issues
+    )
 
 
 def test_citizen_value_on_bound_field_is_flagged() -> None:
