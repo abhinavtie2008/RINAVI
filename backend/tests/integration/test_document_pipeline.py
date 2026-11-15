@@ -1,3 +1,7 @@
+import os
+from pathlib import Path
+
+import pytest
 from httpx import ASGITransport, AsyncClient, Cookies
 from sqlalchemy import select
 
@@ -169,6 +173,84 @@ async def test_fields_are_scoped_to_the_owner() -> None:
             assert (
                 await bob.get(f"{API}/vault/documents/{document_id}/fields")
             ).status_code == 404
+
+
+def _storage_root() -> Path:
+    return Path(os.environ["RINAVI_STORAGE_DIR"])
+
+
+def _stored_blobs(document_id: str) -> list[Path]:
+    return list(_storage_root().rglob(f"{document_id}.bin"))
+
+
+def _all_blobs() -> list[Path]:
+    return list(_storage_root().rglob("*.bin"))
+
+
+async def test_missing_blob_is_reported_not_crashed() -> None:
+    # An interrupted delete or a lost volume leaves the row without its bytes.
+    # Reading it unconditionally used to answer 500 for a document the citizen
+    # can still see in the vault.
+    async with make_client() as client:
+        await sign_in(client)
+        await allow_documents(client)
+        uploaded = await upload(
+            client, name="income.txt", content=INCOME_TEXT.encode(), content_type="text/plain"
+        )
+        document_id = uploaded.json()["id"]
+        for blob in _stored_blobs(document_id):
+            blob.unlink()
+
+        retried = await client.post(f"{API}/vault/documents/{document_id}/retry")
+
+        assert retried.status_code == 200
+        assert retried.json()["status"] == "needs_attention"
+        assert retried.json()["note"] == "content_unavailable"
+
+
+async def test_failed_upload_leaves_no_orphaned_blob(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def explode(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("processing exploded")
+
+    monkeypatch.setattr("app.modules.vault.routes.process_document", explode)
+
+    async with make_client() as client:
+        await sign_in(client)
+        await allow_documents(client)
+        with pytest.raises(RuntimeError):
+            await upload(
+                client,
+                name="income.txt",
+                content=INCOME_TEXT.encode(),
+                content_type="text/plain",
+            )
+
+    # The row is rolled back with the session; the bytes would have stayed on
+    # disk with nothing left to reach or erase them.
+    assert _all_blobs() == []
+
+
+async def test_extractor_crash_is_reported_as_needs_attention(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def explode(text: str) -> None:
+        raise ValueError("unparseable text")
+
+    monkeypatch.setattr("app.modules.documents.pipeline.extract_candidates", explode)
+
+    async with make_client() as client:
+        await sign_in(client)
+        await allow_documents(client)
+
+        response = await upload(
+            client, name="income.txt", content=INCOME_TEXT.encode(), content_type="text/plain"
+        )
+
+        assert response.status_code == 201
+        assert response.json()["status"] == "needs_attention"
+        assert response.json()["note"] == "extraction_failed: ValueError"
 
 
 async def test_processed_event_is_audited() -> None:

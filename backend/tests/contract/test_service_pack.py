@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.modules.documents.extraction import FIELD_KEYS
+from app.modules.documents.extraction import CLASSIFICATIONS, FIELD_KEYS
 
 CATALOG_ROOT = Path(__file__).resolve().parents[3] / "catalog" / "services"
 SERVICE_DIR = CATALOG_ROOT / "edistrict" / "income-certificate"
@@ -66,6 +66,8 @@ def test_pack_checklist_groups_are_valid() -> None:
         assert group["label"]
         assert group["requirement"] in {"at_least_one", "optional"}
         assert isinstance(group["accepted_classifications"], list)
+        unknown = set(group["accepted_classifications"]) - set(CLASSIFICATIONS)
+        assert not unknown, f"{group['id']} accepts unknown classifications {unknown}"
     assert any(group["requirement"] == "at_least_one" for group in groups)
 
 
