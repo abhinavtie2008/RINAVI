@@ -1,8 +1,11 @@
 # RINAVI
 
 [![CI](https://github.com/abhinavtie2008/RINAVI/actions/workflows/ci.yml/badge.svg)](https://github.com/abhinavtie2008/RINAVI/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Not another government portal. Your companion across all of them.
+
+**RINAVI is independent and not affiliated with, endorsed by, or acting for any government body, department, or authority.**
 
 RINAVI is an independent, privacy-first companion that helps citizens prepare
 and manage applications across Indian government services. The citizen stays
