@@ -7,9 +7,11 @@ This repository uses multiple AI coding agents (**Freebuff** as primary coordina
 ## 1. Workspace & Branch Isolation
 - **Never commit or push directly to `main`.** All changes go through Pull Requests.
 - **Work only in your assigned `git worktree`:**
-  - `rinavi-freebuff/` — Freebuff (Coordinator + implementation)
+  - `rinavi/` — Freebuff (coordinator + implementation)
   - `rinavi-qoder/` — Qoder (implementation / review)
-  - `rinavi/` — OpenCode (implementation / review)
+  - `rinavi-opencode/` — OpenCode (implementation / review)
+- Each worktree sits on its own `agent/<name>` branch that tracks `origin/main`;
+  refresh it with `git fetch origin && git merge --ff-only origin/main` before starting.
 - **One Issue = One Branch = One PR:**
   - Always branch from up-to-date `origin/main` (`git fetch origin && git checkout -b <type>/<short-name> origin/main`).
   - Use prefixes `feat/`, `fix/`, `chore/`, or `docs/`.
@@ -109,7 +111,7 @@ The queue is asynchronous on purpose: no desktop app can be woken by a GitHub
 event, so an agent only acts when somebody starts it. What that means in practice:
 
 - **Freebuff** can drive the queue and dispatch **OpenCode** non-interactively
-  (`opencode run --dir rinavi/ "<prompt>"`).
+  (`opencode run --dir rinavi-opencode "<prompt>"`).
 - **Qoder** is desktop-only — it reads the same queue when you open it.
 - An issue labelled `agent:qoder` is a message that waits until Qoder is started,
   not a notification that wakes it.
