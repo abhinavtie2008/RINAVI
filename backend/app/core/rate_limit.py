@@ -55,7 +55,12 @@ def session_or_ip(request: Request) -> str:
 
 
 limiter = Limiter(
-    key_func=client_ip,
+    # The global budget is per identity, not per address: citizens behind one
+    # NAT, office network or mobile carrier share an IP, and a per-IP ceiling
+    # throttled all of them together. Signed-in requests are keyed by session
+    # digest, anonymous ones by IP. Per-route decorators still tighten the
+    # expensive endpoints.
+    key_func=session_or_ip,
     application_limits=[settings.rate_limit_default],
     headers_enabled=True,
     storage_uri=settings.rate_limit_storage_uri,

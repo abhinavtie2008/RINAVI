@@ -30,7 +30,10 @@ class Settings(BaseSettings):
 
     # slowapi/limits syntax. The global budget covers every request; the
     # per-route values are applied by the endpoint decorators.
-    rate_limit_default: str = "200/hour"
+    # 600/hour is 10/minute sustained for one session: enough for a browser
+    # session that reloads pages and polls, while the per-route limits below
+    # still bound the expensive endpoints.
+    rate_limit_default: str = "600/hour"
     rate_limit_dev_signin: str = "5/minute"
     rate_limit_passkey_begin: str = "10/minute"
     rate_limit_passkey_finish: str = "20/minute"

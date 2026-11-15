@@ -4,9 +4,14 @@ import logging
 import pytest
 from httpx import ASGITransport, AsyncClient, Cookies, Response
 
+from app.core.config import get_settings
 from app.main import app
 
 API = "/api/v1"
+
+
+def global_budget() -> int:
+    return int(get_settings().rate_limit_default.split("/", 1)[0])
 
 INCOME_TEXT = (
     "Applicant Name: Asha Devi\n"
@@ -100,14 +105,30 @@ async def test_account_export_is_rate_limited_per_session() -> None:
         assert_rate_limited(response)
 
 
-async def test_global_default_limit_applies() -> None:
+async def test_global_default_limit_applies_per_session() -> None:
+    limit = global_budget()
     async with make_client() as client:
         await sign_in(client)
-        # The sign-in consumed 1 request; 199 more fill the 200/hour budget.
-        for _ in range(199):
+        # The sign-in itself is keyed by IP (no session yet), so the session's
+        # own budget starts empty.
+        for _ in range(limit):
             assert (await client.get(f"{API}/auth/me")).status_code == 200
-        response = await client.get(f"{API}/auth/me")
-        assert_rate_limited(response)
+        assert_rate_limited(await client.get(f"{API}/auth/me"))
+
+
+async def test_global_budget_is_per_session_not_per_ip() -> None:
+    # Two citizens behind one NAT share an address but not a session: one
+    # exhausting their budget must not throttle the other.
+    limit = global_budget()
+    async with make_client() as first, make_client() as second:
+        await sign_in(first, email="first@example.com")
+        await sign_in(second, email="second@example.com")
+
+        for _ in range(limit):
+            assert (await first.get(f"{API}/auth/me")).status_code == 200
+        assert_rate_limited(await first.get(f"{API}/auth/me"))
+
+        assert (await second.get(f"{API}/auth/me")).status_code == 200
 
 
 async def test_health_probes_are_not_rate_limited() -> None:

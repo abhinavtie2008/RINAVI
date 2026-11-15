@@ -11,6 +11,7 @@ from app.core.rate_limit import (
     EXPORT_LIMIT,
     PASSKEY_BEGIN_LIMIT,
     PASSKEY_FINISH_LIMIT,
+    client_ip,
     limiter,
     session_or_ip,
 )
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/auth", tags=["identity"])
 
 
 @router.post("/dev-signin", response_model=schemas.UserOut)
-@limiter.limit(DEV_SIGNIN_LIMIT)
+@limiter.limit(DEV_SIGNIN_LIMIT, key_func=client_ip)
 async def dev_signin(
     request: Request,
     payload: schemas.DevSigninRequest,
@@ -104,7 +105,7 @@ async def export_account(
 
 
 @router.post("/passkey/register/begin")
-@limiter.limit(PASSKEY_BEGIN_LIMIT)
+@limiter.limit(PASSKEY_BEGIN_LIMIT, key_func=client_ip)
 async def passkey_register_begin(
     request: Request, response: Response, user: CurrentUser, db: DbSession
 ) -> dict:
@@ -143,14 +144,14 @@ async def passkey_register_finish(
 
 
 @router.post("/passkey/login/begin")
-@limiter.limit(PASSKEY_BEGIN_LIMIT)
+@limiter.limit(PASSKEY_BEGIN_LIMIT, key_func=client_ip)
 async def passkey_login_begin(request: Request, response: Response) -> dict:
     challenge_id, options_json = webauthn.authentication_options()
     return {"challenge_id": challenge_id, "options": json.loads(options_json)}
 
 
 @router.post("/passkey/login/finish", response_model=schemas.UserOut)
-@limiter.limit(PASSKEY_FINISH_LIMIT)
+@limiter.limit(PASSKEY_FINISH_LIMIT, key_func=client_ip)
 async def passkey_login_finish(
     request: Request,
     payload: schemas.PasskeyFinishRequest,
