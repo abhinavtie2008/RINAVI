@@ -1,3 +1,4 @@
+import logging
 import uuid
 from urllib.parse import quote
 
@@ -17,7 +18,22 @@ from app.modules.vault import schemas, service, validation
 from app.modules.vault.models import DocumentStatus
 from app.modules.vault.storage import get_storage
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/vault", tags=["vault"])
+
+
+def _discard_blob(user_id: uuid.UUID, document_id: uuid.UUID) -> None:
+    # Best effort: the caller is already failing, and an orphan is worse than
+    # a missing file because nothing can reach it, erase it or count it.
+    try:
+        get_storage().delete(user_id, document_id)
+    except OSError as exc:
+        logger.warning(
+            "Could not discard blob for %s: %s",
+            document_id,
+            exc.__class__.__name__,
+        )
 
 
 def _ascii_name_part(value: str) -> str:
@@ -81,25 +97,30 @@ async def upload_document(
         content_type=content_type,
         data=data,
     )
-    await process_document(db, get_storage(), document)
-    await emit_audit(
-        db,
-        actor_user_id=user.id,
-        action="document.uploaded",
-        resource_type="document",
-        resource_id=str(document.id),
-        details={"content_type": content_type, "size_bytes": len(data)},
-    )
-    if document.status == DocumentStatus.PROCESSED:
+    try:
+        await process_document(db, get_storage(), document)
         await emit_audit(
             db,
             actor_user_id=user.id,
-            action="document.processed",
+            action="document.uploaded",
             resource_type="document",
             resource_id=str(document.id),
-            details={"classification": document.classification},
+            details={"content_type": content_type, "size_bytes": len(data)},
         )
-    await db.commit()
+        if document.status == DocumentStatus.PROCESSED:
+            await emit_audit(
+                db,
+                actor_user_id=user.id,
+                action="document.processed",
+                resource_type="document",
+                resource_id=str(document.id),
+                details={"classification": document.classification},
+            )
+        await db.commit()
+    except Exception:
+        # The session rollback removes the only reference to the stored bytes.
+        _discard_blob(user.id, document.id)
+        raise
     return schemas.DocumentOut.model_validate(document)
 
 

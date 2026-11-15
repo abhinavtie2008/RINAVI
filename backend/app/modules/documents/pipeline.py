@@ -24,7 +24,20 @@ async def process_document(
     db: AsyncSession, storage: StorageBackend, document: Document
 ) -> None:
     document.status = DocumentStatus.PROCESSING
-    data = storage.read(document.user_id, document.id)
+    try:
+        data = storage.read(document.user_id, document.id)
+    except OSError as exc:
+        # A record can outlive its bytes (an interrupted delete, a lost
+        # volume). Report that state rather than failing the whole request.
+        logger.error(
+            "Document content unreadable for %s: %s",
+            document.id,
+            exc.__class__.__name__,
+        )
+        document.status = DocumentStatus.NEEDS_ATTENTION
+        document.note = "content_unavailable"
+        await db.flush()
+        return
 
     if document.content_type in _IMAGE_TYPES:
         document.status = DocumentStatus.NEEDS_ATTENTION
@@ -37,6 +50,12 @@ async def process_document(
             text = extract_text_from_pdf(data)
         else:
             text = extract_text_from_txt(data)
+        if not text.strip():
+            document.status = DocumentStatus.NEEDS_ATTENTION
+            document.note = "no_text_layer"
+            await db.flush()
+            return
+        candidates = extract_candidates(text)
     except Exception as exc:
         # Log the class only: parser exception messages can embed untrusted
         # document text, which must not reach application logs.
@@ -50,13 +69,6 @@ async def process_document(
         await db.flush()
         return
 
-    if not text.strip():
-        document.status = DocumentStatus.NEEDS_ATTENTION
-        document.note = "no_text_layer"
-        await db.flush()
-        return
-
-    candidates = extract_candidates(text)
     if not candidates:
         document.status = DocumentStatus.NEEDS_ATTENTION
         document.note = "no_fields_detected"
