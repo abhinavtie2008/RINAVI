@@ -31,6 +31,19 @@ def test_redact_text_preserves_uuids_with_numeric_tails() -> None:
     )
 
 
+def test_redact_text_preserves_sha256_digests() -> None:
+    # Session rate-limit keys are "session:<sha256 hex>". A digest containing a
+    # 12-digit run used to be partially redacted, which broke the correlation
+    # key and made test_session_token_is_not_logged fail intermittently.
+    digest = "012345678901" + "a" * 52
+    assert len(digest) == 64
+    assert redact_text(f"session:{digest}") == f"session:{digest}"
+    assert (
+        redact_text(f"session:{digest} aadhaar 123456789012")
+        == f"session:{digest} aadhaar [REDACTED]"
+    )
+
+
 def test_redact_text_scrubs_multi_label_email_domains() -> None:
     assert (
         redact_text("mail citizen@mail.example.com now")

@@ -18,6 +18,13 @@ UUID_PATTERN = re.compile(
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
     r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 )
+# SHA-256 digests are 64 hex characters (session rate-limit keys, token
+# hashes). A 12-digit run inside one is indistinguishable from an Aadhaar
+# number, so redacting it corrupts the correlation key — and made the
+# "session key reaches the logs intact" assertion fail intermittently.
+DIGEST_PATTERN = re.compile(r"(?<![0-9a-fA-F])[0-9a-fA-F]{64}(?![0-9a-fA-F])")
+# Identifiers that are safe to keep verbatim: canonical UUIDs and digests.
+SAFE_ID_PATTERN = re.compile(f"{UUID_PATTERN.pattern}|{DIGEST_PATTERN.pattern}")
 
 
 def _redact_emails(value: str) -> str:
@@ -51,7 +58,7 @@ def redact_text(value: str) -> str:
     value = _redact_emails(value)
     parts: list[str] = []
     start = 0
-    for match in UUID_PATTERN.finditer(value):
+    for match in SAFE_ID_PATTERN.finditer(value):
         parts.append(_redact_digit_runs(value[start : match.start()]))
         parts.append(match.group(0))
         start = match.end()
