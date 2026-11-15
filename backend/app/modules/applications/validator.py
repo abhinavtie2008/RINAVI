@@ -47,7 +47,22 @@ def validate_draft(
                     )
                 )
             continue
-        if not _FORMAT_PATTERNS[field["format"]].fullmatch(entry["value"].strip()):
+        pattern = _FORMAT_PATTERNS.get(field["format"])
+        if pattern is None:
+            # A pack can declare a format this validator does not implement.
+            # Report it as an issue rather than raising: a KeyError here turned
+            # every validate/export/complete request for that service into a
+            # 500, and the value cannot be checked either way.
+            issues.append(
+                _issue(
+                    "unknown_format",
+                    "This field cannot be checked automatically. "
+                    "Report it to support.",
+                    field_id=field["id"],
+                )
+            )
+            continue
+        if not pattern.fullmatch(entry["value"].strip()):
             issues.append(
                 _issue(
                     "field_format_invalid",

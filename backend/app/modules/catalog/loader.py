@@ -1,10 +1,15 @@
 import json
+import re
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 from typing import Any
 
 CATALOG_ROOT = Path(__file__).resolve().parents[4] / "catalog" / "services"
+
+# A catalog version is a plain identifier such as "1.0.0". Anything with a
+# separator or a parent reference must never be joined into a path.
+_VERSION_PATTERN = re.compile(r"[0-9A-Za-z][0-9A-Za-z._-]*")
 
 
 class CatalogError(ValueError):
@@ -137,7 +142,15 @@ def get_pack(slug: str, version: str) -> ServicePack | None:
     directory = _find_service_dir(slug)
     if directory is None:
         return None
-    path = directory / "versions" / version / "service_pack.json"
+    # `version` comes from stored drafts and packet snapshots, so treat it as
+    # untrusted: without this check a value containing "../" reads a sibling
+    # service's pack (or any file named service_pack.json on disk).
+    if not _VERSION_PATTERN.fullmatch(version):
+        return None
+    versions = (directory / "versions").resolve()
+    path = (versions / version / "service_pack.json").resolve()
+    if versions not in path.parents:
+        return None
     if not path.exists():
         return None
     return _pack(_read_json(path))

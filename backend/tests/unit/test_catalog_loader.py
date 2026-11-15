@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -53,3 +54,42 @@ def test_corrupt_pack_raises_catalog_error(
     loader.get_pack.cache_clear()
     with pytest.raises(CatalogError):
         loader.get_pack("delhi-income-certificate", "1.0.0")
+
+
+def _write_service(root: Path, slug: str) -> Path:
+    service_dir = root / "edistrict" / slug
+    version_dir = service_dir / "versions" / "1.0.0"
+    version_dir.mkdir(parents=True)
+    (service_dir / "service.json").write_text(
+        json.dumps({"slug": slug, "latest_version": "1.0.0"}), encoding="utf-8"
+    )
+    (version_dir / "service_pack.json").write_text(
+        json.dumps(
+            {
+                "pack_version": "1.0.0",
+                "service_slug": slug,
+                "guidance": {},
+                "checklist_groups": [],
+                "form_template": {"fields": [], "declaration": {}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    return service_dir
+
+
+def test_version_cannot_read_another_services_pack(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # `version` is stored in drafts and packet snapshots, so it is untrusted.
+    # Joined straight into a path, a separator walks out of this service's
+    # directory and reads a sibling service's pack.
+    _write_service(tmp_path, "own-service")
+    _write_service(tmp_path, "other-service")
+    monkeypatch.setattr(loader, "CATALOG_ROOT", tmp_path)
+    loader.list_services.cache_clear()
+    loader.get_pack.cache_clear()
+
+    escaped = loader.get_pack("own-service", "../../other-service/versions/1.0.0")
+
+    assert escaped is None
