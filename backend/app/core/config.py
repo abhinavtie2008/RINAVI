@@ -47,6 +47,17 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _reject_unsafe_production(self) -> "Settings":
+        # An omitted RINAVI_ENVIRONMENT falls back to "production", which then
+        # trips one of the checks below. Those messages name a secondary
+        # problem (for example "dev sign-in must be disabled outside
+        # development") and send whoever is deploying to the wrong variable.
+        # Name the actual cause first.
+        if "environment" not in self.model_fields_set:
+            raise ValueError(
+                "RINAVI_ENVIRONMENT is not set. Set it explicitly to "
+                "development, test or production; it no longer defaults to "
+                "development."
+            )
         if self.environment in {"development", "test"}:
             return self
         if self.dev_signin_enabled:
