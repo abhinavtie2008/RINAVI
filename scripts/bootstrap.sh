@@ -4,9 +4,17 @@ cd "$(dirname "$0")/.."
 
 echo "== backend =="
 cd backend
-python -m venv .venv
-source .venv/Scripts/activate
-python -m pip install --upgrade pip
+# macOS and some Linux distributions ship only python3.
+if command -v python >/dev/null 2>&1; then
+  PYTHON=python
+else
+  PYTHON=python3
+fi
+"$PYTHON" -m venv .venv
+# shellcheck source=scripts/venv.sh
+source ../scripts/venv.sh
+activate_backend_venv .venv
+"$PYTHON" -m pip install --upgrade pip
 # Windows Application Control on this machine blocks SQLAlchemy's C extensions;
 # force pure-Python mode so the editable install never re-breaks imports.
 export DISABLE_SQLALCHEMY_CEXT=1
