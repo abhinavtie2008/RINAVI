@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from datetime import date
 from io import BytesIO
 
 from pypdf import PdfReader
@@ -33,6 +34,13 @@ _PATTERNS: dict[str, re.Pattern[str]] = {
     ),
 }
 
+# A rupee amount: optional Indian or western grouping, optional paise.
+_AMOUNT = re.compile(r"\d[\d,]*(?:\.\d+)?")
+# "1.20 lakh" is not rupees; scaling it by hand is safer than guessing.
+_SCALE_WORD = re.compile(r"\b(?:lakhs?|lacs?|crores?|million|billion)\b", re.IGNORECASE)
+_ISO_DATE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
+_DAY_FIRST_DATE = re.compile(r"(\d{2})[/-](\d{2})[/-](\d{4})")
+
 
 @dataclass(frozen=True)
 class Candidate:
@@ -42,14 +50,27 @@ class Candidate:
     locator: str
 
 
+def _iso_date_or_raw(
+    value: str, year: str, month: str, day: str
+) -> tuple[str, str]:
+    # Shapes like 2000-02-31 parse as digits but not as a real day, so the
+    # calendar itself decides: an impossible date stays raw and low confidence.
+    try:
+        parsed = date(int(year), int(month), int(day))
+    except ValueError:
+        return value, CONFIDENCE_LOW
+    return parsed.isoformat(), CONFIDENCE_HIGH
+
+
 def _normalize_date(raw: str) -> tuple[str, str]:
     value = raw.strip()
-    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
-        return value, CONFIDENCE_HIGH
-    match = re.fullmatch(r"(\d{2})[/-](\d{2})[/-](\d{4})", value)
-    if match:
-        day, month, year = match.groups()
-        return f"{year}-{month}-{day}", CONFIDENCE_HIGH
+    iso = _ISO_DATE.fullmatch(value)
+    if iso is not None:
+        return _iso_date_or_raw(value, *iso.groups())
+    day_first = _DAY_FIRST_DATE.fullmatch(value)
+    if day_first is not None:
+        day, month, year = day_first.groups()
+        return _iso_date_or_raw(value, year, month, day)
     return value, CONFIDENCE_LOW
 
 
@@ -61,10 +82,16 @@ def _normalize_gender(raw: str) -> tuple[str, str]:
 
 
 def _normalize_income(raw: str) -> tuple[str, str]:
-    digits = re.sub(r"\D", "", raw)
-    if digits:
-        return str(int(digits)), CONFIDENCE_HIGH
-    return raw.strip(), CONFIDENCE_LOW
+    value = raw.strip()
+    if _SCALE_WORD.search(value):
+        return value, CONFIDENCE_LOW
+    amount = _AMOUNT.search(value)
+    if amount is None:
+        return value, CONFIDENCE_LOW
+    # Keep rupees and drop paise: deleting every non-digit instead merged the
+    # paise into the rupees ("120,000.00" became 12000000).
+    rupees = amount.group().split(".", 1)[0].replace(",", "")
+    return str(int(rupees)), CONFIDENCE_HIGH
 
 
 def _normalize_aadhaar(raw: str) -> tuple[str, str]:

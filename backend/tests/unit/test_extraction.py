@@ -88,3 +88,41 @@ def test_pdf_text_layer_is_extracted() -> None:
 
 def test_txt_text_is_decoded_as_utf8() -> None:
     assert extract_text_from_txt(b"Name: Asha Devi\n") == "Name: Asha Devi\n"
+
+
+def test_income_with_paise_keeps_rupees_only() -> None:
+    # Stripping every non-digit turned "120,000.00" into twelve million rupees.
+    candidates = extract_candidates("Annual Income: Rs 120,000.00\n")
+
+    assert [(c.value, c.confidence) for c in candidates] == [("120000", "high")]
+
+
+def test_income_with_indian_grouping_keeps_rupees_only() -> None:
+    candidates = extract_candidates("Annual Income: Rs. 1,20,000.75\n")
+
+    assert [(c.value, c.confidence) for c in candidates] == [("120000", "high")]
+
+
+def test_income_with_a_scale_word_stays_raw_and_low_confidence() -> None:
+    # A lakh amount must never pass as a bare rupee figure.
+    candidates = extract_candidates("Annual Income: Rs. 1.20 lakh\n")
+
+    assert [(c.value, c.confidence) for c in candidates] == [("Rs. 1.20 lakh", "low")]
+
+
+def test_impossible_calendar_dates_are_low_confidence() -> None:
+    for raw in ("31/02/2000", "2023-02-30", "12/13/2024", "00/01/2000", "2000-00-10"):
+        candidates = extract_candidates(f"Date of Birth: {raw}\n")
+
+        assert [(c.value, c.confidence) for c in candidates] == [(raw, "low")], raw
+
+
+def test_valid_dates_stay_high_confidence() -> None:
+    for raw, expected in (
+        ("29/02/2024", "2024-02-29"),
+        ("1994-03-12", "1994-03-12"),
+        ("31/12/1999", "1999-12-31"),
+    ):
+        candidates = extract_candidates(f"Date of Birth: {raw}\n")
+
+        assert [(c.value, c.confidence) for c in candidates] == [(expected, "high")], raw
