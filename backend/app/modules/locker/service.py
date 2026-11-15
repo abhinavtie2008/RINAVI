@@ -125,6 +125,20 @@ async def record_event(
     return event
 
 
+def _matching_groups(
+    groups: list[dict[str, Any]], classification: str
+) -> list[dict[str, Any]]:
+    # Groups that name this classification first, groups that accept anything
+    # last. Pack order alone let a wildcard group claim a specific document.
+    specific = [
+        group
+        for group in groups
+        if classification in group["accepted_classifications"]
+    ]
+    generic = [group for group in groups if not group["accepted_classifications"]]
+    return specific + generic
+
+
 def suggest_links(
     snapshot: dict[str, Any],
     template: dict[str, Any],
@@ -143,10 +157,7 @@ def suggest_links(
             if document is None or document.status != DocumentStatus.PROCESSED:
                 continue
             classification = document.classification or ""
-            for group in groups:
-                accepted = group["accepted_classifications"]
-                if accepted and classification not in accepted:
-                    continue
+            for group in _matching_groups(groups, classification):
                 seen.add(document_id)
                 suggestions.append(
                     {"document_id": document_id, "group_id": group["id"]}
