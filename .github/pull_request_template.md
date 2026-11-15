@@ -2,8 +2,6 @@
 
 <!-- What does this PR do and why? One or two sentences. -->
 
-**Model:** <!-- the agent and model that produced this diff, e.g. `freebuff / gemini-3.6-flash` -->
-
 ## Type of change
 
 - [ ] Bug fix
