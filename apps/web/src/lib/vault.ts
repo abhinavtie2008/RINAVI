@@ -54,6 +54,13 @@ export function grantConsent(purpose: string): Promise<ConsentRecord> {
   });
 }
 
+export function withdrawConsent(consentId: string): Promise<ConsentRecord> {
+  return apiFetch<ConsentRecord>(
+    `/api/v1/consent/grants/${consentId}/withdraw`,
+    { method: "POST" }
+  );
+}
+
 export function hasActiveGrant(
   grants: ConsentRecord[],
   purpose: string
