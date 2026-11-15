@@ -132,7 +132,8 @@ The queue is asynchronous on purpose: no desktop app can be woken by a GitHub
 event, so an agent only acts when somebody starts it. What that means in practice:
 
 - **Freebuff** can drive the queue and dispatch **OpenCode** non-interactively
-  (`opencode run --dir rinavi-opencode "<prompt>"`).
+  (`node scripts/team.mjs dispatch <issue> --agent opencode --run`, which runs
+  `opencode run` with that agent's worktree as the working directory).
 - **Qoder** is desktop-only — it reads the same queue when you open it.
 - An issue labelled `agent:qoder` is a message that waits until Qoder is started,
   not a notification that wakes it.
