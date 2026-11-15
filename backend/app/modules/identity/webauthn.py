@@ -124,6 +124,7 @@ def verify_registration(challenge_id: str, credential_json: str) -> Any:
             expected_challenge=challenge,
             expected_origin=settings.webauthn_origin,
             expected_rp_id=settings.webauthn_rp_id,
+            require_user_verification=True,
         )
     except Exception as exc:
         raise PasskeyVerificationError(str(exc)) from exc

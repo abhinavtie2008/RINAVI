@@ -37,11 +37,12 @@ async def process_document(
         else:
             text = extract_text_from_txt(data)
     except Exception as exc:
+        # Log the class only: parser exception messages can embed untrusted
+        # document text, which must not reach application logs.
         logger.error(
-            "Document processing failed for %s: %s: %s",
+            "Document processing failed for %s: %s",
             document.id,
             exc.__class__.__name__,
-            exc,
         )
         document.status = DocumentStatus.NEEDS_ATTENTION
         document.note = f"extraction_failed: {exc.__class__.__name__}"[:200]

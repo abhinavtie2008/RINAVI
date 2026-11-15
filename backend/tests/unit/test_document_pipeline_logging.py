@@ -50,10 +50,14 @@ async def test_extraction_failure_logs_reason_and_marks_document(
         assert document.status == DocumentStatus.NEEDS_ATTENTION
         assert document.note == "extraction_failed: ValueError"
 
+    messages = [
+        r.getMessage() for r in caplog.records if r.levelno >= logging.ERROR
+    ]
     assert any(
-        "Document processing failed" in r.getMessage()
-        and document_id in r.getMessage()
-        and "ValueError" in r.getMessage()
-        for r in caplog.records
-        if r.levelno >= logging.ERROR
+        "Document processing failed" in message
+        and document_id in message
+        and "ValueError" in message
+        for message in messages
     )
+    # Parser messages can contain untrusted document text.
+    assert not any("pdf parse failed" in message for message in messages)

@@ -1,8 +1,15 @@
 import uuid
+from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, status
 
 from app.api.deps import ConsentRequired, CurrentUser, DbSession
+from app.core.rate_limit import (
+    DOCUMENT_CONTENT_LIMIT,
+    UPLOAD_LIMIT,
+    limiter,
+    session_or_ip,
+)
 from app.modules.audit.service import emit_audit
 from app.modules.documents.pipeline import process_document
 from app.modules.profile import service as profile_service
@@ -13,11 +20,32 @@ from app.modules.vault.storage import get_storage
 router = APIRouter(prefix="/vault", tags=["vault"])
 
 
+def _ascii_name_part(value: str) -> str:
+    return "".join(
+        ch for ch in value if ch.isascii() and (ch.isalnum() or ch in " ._-")
+    ).strip(" ._-")
+
+
 def _safe_download_name(filename: str) -> str:
-    # Citizen-supplied; the charset filter keeps quotes and newlines out of
-    # the Content-Disposition header.
-    safe = "".join(ch for ch in filename if ch.isalnum() or ch in " ._-")
-    return safe or "document"
+    # Citizen-supplied. Starlette encodes header values as latin-1, so the
+    # ASCII fallback must contain no non-ASCII characters (Devanagari names
+    # used to raise UnicodeEncodeError). Quotes, CR/LF, and separators are
+    # dropped so no caller-controlled bytes reach the header.
+    stem, dot, suffix = filename.rpartition(".")
+    if not dot:
+        stem, suffix = filename, ""
+    safe_stem = _ascii_name_part(stem) or "document"
+    safe_suffix = _ascii_name_part(suffix)
+    return f"{safe_stem}.{safe_suffix}" if safe_suffix else safe_stem
+
+
+def _content_disposition(filename: str) -> str:
+    fallback = _safe_download_name(filename)
+    try:
+        encoded = quote(filename, safe="")
+    except UnicodeEncodeError:
+        return f'attachment; filename="{fallback}"'
+    return f"attachment; filename=\"{fallback}\"; filename*=UTF-8''{encoded}"
 
 
 @router.post(
@@ -26,8 +54,13 @@ def _safe_download_name(filename: str) -> str:
     status_code=status.HTTP_201_CREATED,
     dependencies=[ConsentRequired("documents.processing")],
 )
+@limiter.limit(UPLOAD_LIMIT, key_func=session_or_ip)
 async def upload_document(
-    file: UploadFile, user: CurrentUser, db: DbSession
+    request: Request,
+    response: Response,
+    file: UploadFile,
+    user: CurrentUser,
+    db: DbSession,
 ) -> schemas.DocumentOut:
     data = await file.read(validation.MAX_UPLOAD_BYTES + 1)
     if len(data) > validation.MAX_UPLOAD_BYTES:
@@ -131,8 +164,9 @@ async def get_document(
     "/documents/{document_id}/content",
     dependencies=[ConsentRequired("documents.processing")],
 )
+@limiter.limit(DOCUMENT_CONTENT_LIMIT, key_func=session_or_ip)
 async def document_content(
-    document_id: uuid.UUID, user: CurrentUser, db: DbSession
+    request: Request, document_id: uuid.UUID, user: CurrentUser, db: DbSession
 ) -> Response:
     document = await service.get_own_document(db, user, document_id)
     if document is None:
@@ -144,8 +178,8 @@ async def document_content(
         headers={
             "Cache-Control": "no-store, private",
             "X-Content-Type-Options": "nosniff",
-            "Content-Disposition": (
-                f'attachment; filename="{_safe_download_name(document.original_filename)}"'
+            "Content-Disposition": _content_disposition(
+                document.original_filename
             ),
         },
     )

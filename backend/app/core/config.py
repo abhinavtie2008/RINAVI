@@ -28,6 +28,23 @@ class Settings(BaseSettings):
     webauthn_origin: str = "http://localhost:3000"
     webauthn_rp_name: str = "RINAVI"
 
+    # slowapi/limits syntax. The global budget covers every request; the
+    # per-route values are applied by the endpoint decorators.
+    rate_limit_default: str = "200/hour"
+    rate_limit_dev_signin: str = "5/minute"
+    rate_limit_passkey_begin: str = "10/minute"
+    rate_limit_passkey_finish: str = "20/minute"
+    rate_limit_upload: str = "30/hour"
+    rate_limit_document_content: str = "100/hour"
+    rate_limit_export: str = "20/hour"
+    # memory:// is per-process. Set a shared backend (for example
+    # redis://localhost:6379/0 after installing the `redis` extra) when
+    # running more than one worker or instance.
+    rate_limit_storage_uri: str = "memory://"
+    # Only enable behind a trusted reverse proxy that overwrites
+    # X-Forwarded-For; otherwise clients can spoof their rate-limit key.
+    trust_proxy_headers: bool = False
+
     @model_validator(mode="after")
     def _reject_unsafe_production(self) -> "Settings":
         if self.environment in {"development", "test"}:

@@ -140,9 +140,9 @@ async def test_document_content_sets_security_headers() -> None:
         assert response.status_code == 200
         assert response.headers["cache-control"] == "no-store, private"
         assert response.headers["x-content-type-options"] == "nosniff"
-        assert response.headers["content-disposition"] == (
-            'attachment; filename="income.txt"'
-        )
+        disposition = response.headers["content-disposition"]
+        assert disposition.startswith('attachment; filename="income.txt"')
+        assert "filename*=UTF-8''income.txt" in disposition
 
 
 async def test_document_content_disposition_sanitizes_filename() -> None:

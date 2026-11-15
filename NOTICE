@@ -1,0 +1,15 @@
+RINAVI
+Copyright 2026 Abhinav Sharma
+
+This product includes software developed at abhinavtie2008/RINAVI.
+
+RINAVI is independent and not affiliated with, endorsed by, or acting for
+any government body, department, or authority.
+
+Third-party dependencies and their licenses are listed in:
+- backend/pyproject.toml
+- apps/web/package.json
+
+For a complete list of third-party software and licenses, see the
+dependency manifests above or generate an SBOM using the GitHub dependency
+graph export feature.
