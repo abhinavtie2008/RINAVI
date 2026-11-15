@@ -68,9 +68,9 @@ async function assignOwner(number, issue, agent) {
   const stale = issue.labels
     .map((l) => l.name)
     .filter((name) => name.startsWith('agent:') && name !== `agent:${agent}`)
-  if (stale.length) {
-    await api(`/issues/${number}/labels`, { method: 'DELETE', body: JSON.stringify({ labels: stale }) })
-  }
+  // DELETE on the collection removes every label, so each stale owner goes one
+  // at a time; status:* and model:* have to survive a reassignment.
+  for (const name of stale) await removeLabel(number, name)
   await addLabels(number, [`agent:${agent}`])
 }
 
