@@ -8,6 +8,11 @@ from pypdf import PdfReader
 CONFIDENCE_HIGH = "high"
 CONFIDENCE_LOW = "low"
 
+# Classifications a processed document can hold. A checklist group may only
+# name these: any other value matches no document at all.
+CLASSIFICATIONS = ("income", "identity", "residence")
+UNSUPPORTED = "unsupported"
+
 FIELD_KEYS = (
     "full_name",
     "father_name",
@@ -147,7 +152,9 @@ def classify(candidates: list[Candidate]) -> str:
         return "income"
     if "aadhaar_number" in keys:
         return "identity"
-    return "unsupported"
+    if "address" in keys:
+        return "residence"
+    return UNSUPPORTED
 
 
 def extract_text_from_txt(data: bytes) -> str:

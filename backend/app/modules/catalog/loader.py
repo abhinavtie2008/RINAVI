@@ -5,6 +5,8 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
+from app.modules.documents.extraction import CLASSIFICATIONS
+
 CATALOG_ROOT = Path(__file__).resolve().parents[4] / "catalog" / "services"
 
 # A catalog version is a plain identifier such as "1.0.0". Anything with a
@@ -93,6 +95,27 @@ def _metadata(data: dict[str, Any]) -> ServiceMetadata:
         raise CatalogError(f"Service metadata missing key: {exc.args[0]}") from exc
 
 
+def _checklist_group(data: dict[str, Any]) -> ChecklistGroup:
+    group = ChecklistGroup(
+        id=data["id"],
+        label=data["label"],
+        requirement=data["requirement"],
+        accepted_classifications=data["accepted_classifications"],
+    )
+    # A pack is data edited outside the type checker, so a misspelt
+    # classification must fail loudly: it either gates nothing or blocks the
+    # group forever, and both look like a citizen's mistake at the UI.
+    unknown = [
+        name for name in group.accepted_classifications if name not in CLASSIFICATIONS
+    ]
+    if unknown:
+        raise CatalogError(
+            f"Checklist group {group.id} accepts unknown classifications: "
+            f"{', '.join(map(str, unknown))}"
+        )
+    return group
+
+
 def _pack(data: dict[str, Any]) -> ServicePack:
     try:
         template = data["form_template"]
@@ -101,13 +124,7 @@ def _pack(data: dict[str, Any]) -> ServicePack:
             service_slug=data["service_slug"],
             guidance=data["guidance"],
             checklist_groups=[
-                ChecklistGroup(
-                    id=group["id"],
-                    label=group["label"],
-                    requirement=group["requirement"],
-                    accepted_classifications=group["accepted_classifications"],
-                )
-                for group in data["checklist_groups"]
+                _checklist_group(group) for group in data["checklist_groups"]
             ],
             fields=[
                 FormField(

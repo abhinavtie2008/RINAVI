@@ -117,6 +117,14 @@ def test_impossible_calendar_dates_are_low_confidence() -> None:
         assert [(c.value, c.confidence) for c in candidates] == [(raw, "low")], raw
 
 
+def test_address_only_document_is_residence() -> None:
+    # Delhi's residence-proof checklist group needs a classification to point
+    # at; without one, an address-only document fell through to unsupported.
+    candidates = extract_candidates("Address: 14, Nehru Colony, Example Nagar\n")
+
+    assert classify(candidates) == "residence"
+
+
 def test_valid_dates_stay_high_confidence() -> None:
     for raw, expected in (
         ("29/02/2024", "2024-02-29"),

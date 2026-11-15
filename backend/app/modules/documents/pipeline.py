@@ -4,6 +4,7 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.documents.extraction import (
+    UNSUPPORTED,
     classify,
     extract_candidates,
     extract_text_from_pdf,
@@ -59,7 +60,7 @@ async def process_document(
     if not candidates:
         document.status = DocumentStatus.NEEDS_ATTENTION
         document.note = "no_fields_detected"
-        document.classification = "unsupported"
+        document.classification = UNSUPPORTED
         await db.flush()
         return
 
