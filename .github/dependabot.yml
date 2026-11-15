@@ -18,3 +18,12 @@ updates:
     groups:
       weekly:
         update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      weekly:
+        update-types: ["minor", "patch"]
