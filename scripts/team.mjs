@@ -14,6 +14,8 @@
 // Needs GITHUB_PERSONAL_ACCESS_TOKEN or GITHUB_TOKEN in the environment.
 
 import { execSync, spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 
 const API = 'https://api.github.com'
 
@@ -170,7 +172,12 @@ async function dispatch(number, agent = 'opencode', run = false) {
   ].join('\n')
 
   const envModel = process.env[`RINAVI_MODEL_${(tier === '-' ? 'standard' : tier).toUpperCase()}`]
-  const args = ['run', '--dir', dir]
+  // OpenCode 2 has no --dir: the worktree is the working directory, and
+  // --standalone keeps a scripted run off the desktop app's own server.
+  const server = process.env.OPENCODE_SERVER
+  const args = ['run', server ? '--server' : '--standalone']
+  if (server) args.push(server)
+  args.push('--auto', '--archived')
   if (envModel) args.push('--model', envModel)
   args.push(prompt)
 
@@ -178,12 +185,26 @@ async function dispatch(number, agent = 'opencode', run = false) {
   console.log(`model ${envModel || `(unset: opencode's own default for ${tier})`}`)
 
   if (!run) {
-    console.log(`\nopencode ${args.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(' ')}`)
+    console.log(`\ncd ${dir} && opencode ${args.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(' ')}`)
     console.log('\nDry run. Add --run to start it.')
     return
   }
 
-  const result = spawnSync('opencode', args, { stdio: 'inherit' })
+  // The npm shim is not spawnable on Windows, so prefer the real executable.
+  const windowsBin = process.env.APPDATA
+    ? join(process.env.APPDATA, 'npm/node_modules/@opencode/cli/bin/opencode.exe')
+    : null
+  const bin = process.env.OPENCODE_BIN || (windowsBin && existsSync(windowsBin) ? windowsBin : 'opencode')
+
+  // A worktree that is behind main sends the agent down a stale path.
+  try {
+    execSync('git fetch -q origin && git merge -q --ff-only origin/main', { cwd: dir, stdio: 'ignore' })
+  } catch {
+    console.log(`warning: could not fast-forward ${dir} to origin/main`)
+  }
+
+  // stdin must be closed: without a TTY the CLI blocks forever waiting on it.
+  const result = spawnSync(bin, args, { stdio: ['ignore', 'inherit', 'inherit'], cwd: dir })
   if (result.error) throw result.error
   if (result.status !== 0) throw new Error(`team: opencode exited with ${result.status}`)
 }
