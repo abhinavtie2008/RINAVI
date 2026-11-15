@@ -252,6 +252,7 @@ async def test_apply_again_creates_draft_with_suggested_links() -> None:
     async with make_client() as client:
         user_id = await sign_in(client)
         await allow(client, "locker.tracking")
+        await allow(client, "applications.preparation")
         await allow(client, "documents.processing")
         income_id = await upload(client, INCOME_TEXT, "income.txt")
         identity_id = await upload(client, IDENTITY_TEXT, "identity.txt")
@@ -292,10 +293,31 @@ async def test_apply_again_creates_draft_with_suggested_links() -> None:
             assert audit.details["draft_id"] == body["draft"]["id"]
 
 
+async def test_apply_again_requires_preparation_consent() -> None:
+    # Apply-again builds a new draft from the citizen's profile and documents.
+    # Locker tracking consent alone does not cover that preparation.
+    async with make_client() as client:
+        user_id = await sign_in(client)
+        await allow(client, "locker.tracking")
+        case_id = await create_case_row(user_id)
+
+        response = await client.post(f"{API}/locker/cases/{case_id}/apply-again")
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == (
+            "Active consent required for applications.preparation"
+        )
+
+        async with async_session_factory() as db:
+            drafts = (await db.execute(select(AuditEvent))).scalars().all()
+            assert [event for event in drafts if event.action == "locker.apply_again"] == []
+
+
 async def test_apply_again_404s() -> None:
     async with make_client() as client:
         user_id = await sign_in(client)
         await allow(client, "locker.tracking")
+        await allow(client, "applications.preparation")
 
         unknown = await client.post(
             f"{API}/locker/cases/{uuid.uuid4()}/apply-again"

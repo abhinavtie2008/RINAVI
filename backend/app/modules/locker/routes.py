@@ -12,6 +12,9 @@ from app.modules.locker.service import CaseError
 
 router = APIRouter(prefix="/locker", tags=["locker"])
 CONSENT = ConsentRequired("locker.tracking")
+# Apply-again assembles a fresh draft out of profile data and vault documents,
+# which is preparation work; tracking consent does not cover it.
+PREPARATION = ConsentRequired("applications.preparation")
 
 
 def _clean(value: str | None) -> str | None:
@@ -109,7 +112,7 @@ async def record_case_event(
     "/cases/{case_id}/apply-again",
     response_model=schemas.ApplyAgainOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[CONSENT],
+    dependencies=[CONSENT, PREPARATION],
 )
 async def apply_again(
     case_id: uuid.UUID, user: CurrentUser, db: DbSession
