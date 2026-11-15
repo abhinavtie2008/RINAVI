@@ -1,0 +1,75 @@
+name: Agent triage
+
+# Keeps the label state machine honest so an agent starting a session can trust
+# the queue: every open issue has a status and a model tier, every open pull
+# request says which issue it closes and carries status:review.
+#
+# Uses the runner's preinstalled gh CLI, so there is no action version to pin.
+
+on:
+  issues:
+    types: [opened, edited]
+  pull_request:
+    types: [opened, ready_for_review, closed]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_BODY: ${{ github.event.pull_request.body }}
+      PR_MERGED: ${{ github.event.pull_request.merged }}
+    steps:
+      - name: Route an issue into the queue
+        if: github.event_name == 'issues'
+        run: |
+          set -euo pipefail
+          labels="$(gh issue view "$ISSUE_NUMBER" --json labels --jq '.labels[].name')"
+
+          if ! grep -q '^status:' <<< "$labels"; then
+            gh issue edit "$ISSUE_NUMBER" --add-label status:queued
+          fi
+
+          if [ "${{ github.event.action }}" = "opened" ] && ! grep -q '^model:' <<< "$labels"; then
+            gh issue comment "$ISSUE_NUMBER" --body "$(printf '%s\n' \
+              '### Routing' \
+              '' \
+              'This issue has no model tier yet, so an agent cannot tell how much reasoning it needs.' \
+              '' \
+              '- add one of `model:fast`, `model:standard`, `model:deep`' \
+              '- optionally add `agent:freebuff`, `agent:qoder` or `agent:opencode` to pin the owner' \
+              '- claim it with `node scripts/team.mjs claim <number> --agent <name>` before branching')"
+          fi
+
+      - name: Mark a pull request for review
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        run: |
+          set -euo pipefail
+          gh pr edit "$PR_NUMBER" --add-label status:review
+
+          if [ "${{ github.event.action }}" = "opened" ] && ! grep -iqE '(closes|fixes|resolves) #[0-9]+' <<< "${PR_BODY:-}"; then
+            gh pr comment "$PR_NUMBER" --body "$(printf '%s\n' \
+              '### Handoff checklist' \
+              '' \
+              '- add `Closes #<issue>` so the issue closes when this merges' \
+              '- state the `scripts/check.sh` result in the body' \
+              '- cross-review must come from a different agent or model family than the author')"
+          fi
+
+      - name: Record the merge
+        if: github.event_name == 'pull_request' && github.event.action == 'closed'
+        run: |
+          set -euo pipefail
+          if [ "${PR_MERGED:-}" = "true" ]; then
+            gh pr edit "$PR_NUMBER" --add-label status:merged
+          else
+            gh pr edit "$PR_NUMBER" --add-label status:abandoned
+          fi
+          gh pr edit "$PR_NUMBER" --remove-label status:review || true
