@@ -4,11 +4,9 @@ cd "$(dirname "$0")/.."
 
 echo "== backend =="
 cd backend
-if [ ! -d .venv ]; then
-  echo "missing backend/.venv — run scripts/bootstrap.sh"
-  exit 1
-fi
-source .venv/Scripts/activate
+# shellcheck source=scripts/venv.sh
+source ../scripts/venv.sh
+activate_backend_venv .venv
 ruff check app tests
 python -m pyright
 python -m pytest -q
