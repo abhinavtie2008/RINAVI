@@ -9,6 +9,9 @@ export function SiteNav() {
       <Link href="/locker" className="underline">
         Locker
       </Link>
+      <Link href="/consent" className="underline">
+        Consent
+      </Link>
     </nav>
   );
 }
