@@ -252,3 +252,29 @@ async def test_apply_again_raises_catalog_error_when_service_left_catalog() -> N
 
         with pytest.raises(CatalogError):
             await apply_again(db, user, case)
+
+
+async def test_apply_again_tolerates_unparseable_evidence_document_id() -> None:
+    # The packet snapshot is stored JSON; a malformed document id in an older
+    # case must not make "apply again" fail with a ValueError.
+    async with async_session_factory() as db:
+        user = await make_user(db)
+        case = await make_case(db, user)
+        case.packet_snapshot = {
+            **SNAPSHOT,
+            "evidence": [
+                {
+                    "group_id": "income_evidence",
+                    "group_label": "Income evidence",
+                    "documents": [
+                        {"document_id": "not-a-uuid", "filename": "income.txt"}
+                    ],
+                }
+            ],
+        }
+        await db.flush()
+
+        draft, suggestions = await apply_again(db, user, case)
+
+        assert draft.service_slug == "delhi-income-certificate"
+        assert suggestions == []
