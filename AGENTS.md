@@ -63,3 +63,53 @@ Every PR description must include:
 ## 7. Human Merge Gate
 - Agents **never** merge PRs into `main`.
 - After CI (`ci.yml`) is green and review comments are resolved, stop and let the repository owner inspect `Files changed` and merge.
+
+---
+
+## 8. Task queue and handoff protocol
+
+Agents do not message each other directly. **GitHub is the bus**: an issue is a
+unit of work, labels are its state, and a pull request is the handoff.
+
+| Label | Meaning |
+|---|---|
+| `status:queued` | ready for any agent matching the owner label to pick up |
+| `status:in-progress` | exactly one agent is on it; added by `claim` |
+| `status:review` | a PR is open and waiting for a cross-reviewer |
+| `status:merged` / `status:abandoned` | set by `.github/workflows/agent-triage.yml` |
+| `agent:freebuff` / `agent:qoder` / `agent:opencode` | intended owner; omit it to leave the issue open to anyone |
+| `model:fast` / `model:standard` / `model:deep` | reasoning tier, per section 4 |
+
+**The loop for every task:**
+
+1. Start your session with `node scripts/team.mjs board` to see what exists.
+2. Take the top of your queue: `node scripts/team.mjs next --agent <you>`.
+3. Claim before branching: `node scripts/team.mjs claim <issue> --agent <you>`.
+   A claim is a promise — do not work on an issue another agent holds.
+4. Branch from `origin/main`, commit in small checkpoints, push early.
+5. Open one PR containing `Closes #<issue>`. The triage workflow labels it
+   `status:review` and reminds you if the body is missing the checklist.
+6. If the work needs a different agent (a UI pass after a backend contract, a
+   security review of `vault/`), hand it over instead of doing it badly:
+   `node scripts/team.mjs handoff <issue> --to qoder --note "what is left"`.
+7. A different agent or model family reviews. `node scripts/team.mjs review`
+   lists what is waiting and whether the AI reviewer has posted.
+8. Stop at the human merge gate (section 7).
+
+**If two agents want the same issue,** the first `claim` wins; the second picks
+another one. **If an agent dies mid-task,** its issue stays `status:in-progress`
+and its branch stays pushed — say so in a comment on the issue rather than
+starting over silently.
+
+---
+
+## 9. What still needs a human
+
+The queue is asynchronous on purpose: no desktop app can be woken by a GitHub
+event, so an agent only acts when somebody starts it. What that means in practice:
+
+- **Freebuff** can drive the queue and dispatch **OpenCode** non-interactively
+  (`opencode run --dir rinavi/ "<prompt>"`).
+- **Qoder** is desktop-only — it reads the same queue when you open it.
+- An issue labelled `agent:qoder` is a message that waits until Qoder is started,
+  not a notification that wakes it.
