@@ -19,6 +19,18 @@ def test_redact_text_scrubs_email_and_digit_runs() -> None:
     assert redact_text("aadhaar id123456789012 end") == "aadhaar id[REDACTED] end"
 
 
+def test_redact_text_preserves_uuids_with_numeric_tails() -> None:
+    # The final UUID group is 12 hex characters and can be all digits. Treating
+    # it as an Aadhaar number made locker audit assertions flaky (~1 in 140).
+    draft_id = "f978259c-642a-4a92-8011-053591020139"
+    assert redact_text(f"draft {draft_id} saved") == f"draft {draft_id} saved"
+    assert redact({"draft_id": draft_id}) == {"draft_id": draft_id}
+    assert (
+        redact_text(f"{draft_id} aadhaar 123456789012")
+        == f"{draft_id} aadhaar [REDACTED]"
+    )
+
+
 def test_redact_text_scrubs_multi_label_email_domains() -> None:
     assert (
         redact_text("mail citizen@mail.example.com now")

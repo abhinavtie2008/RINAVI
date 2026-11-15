@@ -10,6 +10,14 @@ _DOMAIN_PATTERN = re.compile(
 )
 DIGITS_12_PATTERN = re.compile(r"\d{12}")
 DIGITS_10_PATTERN = re.compile(r"\d{10}")
+# Resource identifiers (case/audit IDs) are canonical UUIDs. Their final
+# group can be all digits, which must not be mistaken for an Aadhaar or phone
+# number: redacting it breaks correlation between API responses, audit rows,
+# and logs. UUIDs carry no PII, so preserve them verbatim.
+UUID_PATTERN = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
 
 
 def _redact_emails(value: str) -> str:
@@ -34,11 +42,21 @@ def _redact_emails(value: str) -> str:
     return "".join(out)
 
 
+def _redact_digit_runs(value: str) -> str:
+    value = DIGITS_12_PATTERN.sub(REDACTED, value)
+    return DIGITS_10_PATTERN.sub(REDACTED, value)
+
+
 def redact_text(value: str) -> str:
     value = _redact_emails(value)
-    value = DIGITS_12_PATTERN.sub(REDACTED, value)
-    value = DIGITS_10_PATTERN.sub(REDACTED, value)
-    return value
+    parts: list[str] = []
+    start = 0
+    for match in UUID_PATTERN.finditer(value):
+        parts.append(_redact_digit_runs(value[start : match.start()]))
+        parts.append(match.group(0))
+        start = match.end()
+    parts.append(_redact_digit_runs(value[start:]))
+    return "".join(parts)
 
 
 def redact(value: object) -> object:
