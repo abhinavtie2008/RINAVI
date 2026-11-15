@@ -30,7 +30,13 @@ class Settings(BaseSettings):
 
     # slowapi/limits syntax. The global budget covers every request; the
     # per-route values are applied by the endpoint decorators.
-    rate_limit_default: str = "200/hour"
+    #
+    # rate_limit_default is a per-IP ceiling, so it has to fit everybody who
+    # shares one connection (a household, an office, a CSC counter).
+    # rate_limit_session is the per-citizen budget: without a separate cap one
+    # person's session could spend the whole IP allowance.
+    rate_limit_default: str = "1200/hour"
+    rate_limit_session: str = "200/hour"
     rate_limit_dev_signin: str = "5/minute"
     rate_limit_passkey_begin: str = "10/minute"
     rate_limit_passkey_finish: str = "20/minute"

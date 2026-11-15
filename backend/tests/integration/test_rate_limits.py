@@ -100,14 +100,25 @@ async def test_account_export_is_rate_limited_per_session() -> None:
         assert_rate_limited(response)
 
 
-async def test_global_default_limit_applies() -> None:
+async def test_one_session_cannot_exhaust_the_shared_ip_budget() -> None:
+    # One citizen on an office or CSC connection used to spend the whole
+    # per-IP allowance and throttle everybody else behind that address.
+    async with make_client() as heavy:
+        await sign_in(heavy, email="heavy@example.com")
+        for _ in range(200):
+            assert (await heavy.get(f"{API}/auth/me")).status_code == 200
+        assert_rate_limited(await heavy.get(f"{API}/auth/me"))
+
+        async with make_client() as neighbour:
+            await sign_in(neighbour, email="neighbour@example.com")
+            assert (await neighbour.get(f"{API}/auth/me")).status_code == 200
+
+
+async def test_ip_ceiling_applies_to_anonymous_traffic() -> None:
     async with make_client() as client:
-        await sign_in(client)
-        # The sign-in consumed 1 request; 199 more fill the 200/hour budget.
-        for _ in range(199):
-            assert (await client.get(f"{API}/auth/me")).status_code == 200
-        response = await client.get(f"{API}/auth/me")
-        assert_rate_limited(response)
+        for _ in range(1200):
+            assert (await client.get(f"{API}/auth/me")).status_code == 401
+        assert_rate_limited(await client.get(f"{API}/auth/me"))
 
 
 async def test_health_probes_are_not_rate_limited() -> None:

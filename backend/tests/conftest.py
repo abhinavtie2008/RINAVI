@@ -27,6 +27,7 @@ async def _reset_schema() -> AsyncIterator[None]:
 
 @pytest.fixture(autouse=True)
 def _reset_limiter() -> None:
-    from app.core.rate_limit import limiter
+    from app.core.rate_limit import limiter, session_limiter
 
     limiter.reset()
+    session_limiter.reset()
