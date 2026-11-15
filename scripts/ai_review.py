@@ -21,7 +21,6 @@ from typing import Any
 GEMINI_BASE = "https://generativelanguage.googleapis.com"
 GEMINI_API_VERSIONS = ("v1beta", "v1")
 GITHUB_API = "https://api.github.com"
-PREFERRED_MODELS = ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash")
 MAX_DIFF_CHARS = 40_000
 MAX_MODEL_ATTEMPTS = 4
 REQUEST_TIMEOUT_SECONDS = 30
@@ -64,8 +63,10 @@ def list_models(api_key: str) -> list[str]:
 
 
 def _version_key(name: str) -> tuple[int, int]:
-    match = re.search(r"gemini-(\d+)\.(\d+)", name)
-    return (int(match.group(1)), int(match.group(2))) if match else (0, 0)
+    match = re.search(r"gemini-(\d+)(?:\.(\d+))?", name)
+    if match is None:
+        return (0, 0)
+    return int(match.group(1)), int(match.group(2) or 0)
 
 
 def pick_models(models: list[str]) -> list[str]:
@@ -76,14 +77,19 @@ def pick_models(models: list[str]) -> list[str]:
         if "flash" in name
         and not any(word in name for word in ("thinking", "image", "audio", "tts", "live"))
     ]
-    ordered = [name for name in PREFERRED_MODELS if name in usable]
+    stable = [
+        name for name in usable if "preview" not in name and "-exp" not in name
+    ]
+    ordered = sorted(stable, key=_version_key, reverse=True)
     ordered.extend(
         sorted((name for name in usable if name not in ordered), key=_version_key, reverse=True)
     )
     return ordered or sorted(models, key=_version_key, reverse=True)
 
 
-def generate_review(api_key: str, models: list[str], prompt: str) -> tuple[str, str]:
+def generate_review_native(
+    api_key: str, models: list[str], prompt: str
+) -> tuple[str, str]:
     errors: list[str] = []
     for model in models[:MAX_MODEL_ATTEMPTS]:
         for api_version in GEMINI_API_VERSIONS:
@@ -103,12 +109,11 @@ def generate_review(api_key: str, models: list[str], prompt: str) -> tuple[str, 
     raise RuntimeError(" | ".join(errors[:4]) or "no model attempts were made")
 
 
-def generate_review_openai_compatible(
-    api_key: str, models: list[str], prompt: str
-) -> tuple[str, str]:
+def generate_review(api_key: str, models: list[str], prompt: str) -> tuple[str, str]:
+    """Prefer the OpenAI-compatible endpoint, then fall back to native."""
     errors: list[str] = []
     headers = {"Authorization": f"Bearer {api_key}"}
-    for model in models[:2]:
+    for model in models[:3]:
         try:
             payload = request_json(
                 f"{GEMINI_BASE}/v1beta/openai/chat/completions",
@@ -122,7 +127,8 @@ def generate_review_openai_compatible(
         except (RuntimeError, KeyError, IndexError, OSError) as exc:
             errors.append(f"{model} (openai-compatible): {exc}")
             print(f"OpenAI-compatible attempt failed: {errors[-1]}", file=sys.stderr)
-    raise RuntimeError(" | ".join(errors) or "no OpenAI-compatible attempt was made")
+    print("OpenAI-compatible endpoint failed; trying native Gemini endpoints.", file=sys.stderr)
+    return generate_review_native(api_key, models, prompt)
 
 
 def git_diff(base_sha: str, head_sha: str) -> str:
@@ -196,7 +202,9 @@ def upsert_comment(repo: str, pr_number: str, token: str, body: str) -> None:
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
-    comments_url = f"{GITHUB_API}/repos/{repo}/issues/{pr_number}/comments"
+    comments_url = (
+        f"{GITHUB_API}/repos/{repo}/issues/{pr_number}/comments?per_page=100"
+    )
     comments = request_json(comments_url, headers=headers)
     existing = next(
         (
@@ -215,7 +223,11 @@ def upsert_comment(repo: str, pr_number: str, token: str, body: str) -> None:
         )
         print(f"Updated AI review comment on PR #{pr_number}")
     else:
-        request_json(comments_url, data={"body": body}, headers=headers)
+        request_json(
+            f"{GITHUB_API}/repos/{repo}/issues/{pr_number}/comments",
+            data={"body": body},
+            headers=headers,
+        )
         print(f"Posted AI review comment on PR #{pr_number}")
 
 
@@ -247,11 +259,7 @@ def main() -> int:
         return 1
 
     prompt = build_prompt(diff)
-    try:
-        review, model = generate_review(api_key, models, prompt)
-    except RuntimeError as native_error:
-        print(f"Native Gemini endpoints failed: {native_error}", file=sys.stderr)
-        review, model = generate_review_openai_compatible(api_key, models, prompt)
+    review, model = generate_review(api_key, models, prompt)
     body = (
         f"{COMMENT_MARKER}\n"
         f"### 🤖 AI code review (Gemini: `{model}`)\n\n"
