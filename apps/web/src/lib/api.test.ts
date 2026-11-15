@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiFetch } from "./api";
+import { apiFetch, apiUpload } from "./api";
 
 function abortableFetchMock() {
   return vi.fn(
@@ -51,5 +51,31 @@ describe("apiFetch", () => {
     caller.abort();
 
     await expect(request).rejects.toMatchObject({ name: "AbortError" });
+  });
+});
+
+describe("apiUpload", () => {
+  it("aborts the upload after 120 seconds", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", abortableFetchMock());
+
+    const request = apiUpload("/vault/documents", new FormData());
+    const rejection = expect(request).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    await vi.advanceTimersByTimeAsync(120_000);
+    await rejection;
+  });
+
+  it("clears the upload timeout timer once the request settles", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("{}", { status: 200 })),
+    );
+
+    await apiUpload("/vault/documents", new FormData());
+
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

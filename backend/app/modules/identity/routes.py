@@ -6,6 +6,14 @@ from webauthn.helpers import bytes_to_base64url, parse_authentication_credential
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import get_settings
+from app.core.rate_limit import (
+    DEV_SIGNIN_LIMIT,
+    EXPORT_LIMIT,
+    PASSKEY_BEGIN_LIMIT,
+    PASSKEY_FINISH_LIMIT,
+    limiter,
+    session_or_ip,
+)
 from app.modules.consent import schemas as consent_schemas
 from app.modules.consent import service as consent_service
 from app.modules.identity import schemas, service, webauthn
@@ -16,7 +24,9 @@ router = APIRouter(prefix="/auth", tags=["identity"])
 
 
 @router.post("/dev-signin", response_model=schemas.UserOut)
+@limiter.limit(DEV_SIGNIN_LIMIT)
 async def dev_signin(
+    request: Request,
     payload: schemas.DevSigninRequest,
     response: Response,
     db: DbSession,
@@ -75,8 +85,9 @@ async def delete_account(
 
 
 @router.get("/export", response_model=schemas.AccountExport)
+@limiter.limit(EXPORT_LIMIT, key_func=session_or_ip)
 async def export_account(
-    user: CurrentUser, db: DbSession, response: Response
+    request: Request, user: CurrentUser, db: DbSession, response: Response
 ) -> schemas.AccountExport:
     response.headers["Cache-Control"] = "no-store, private"
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -93,7 +104,10 @@ async def export_account(
 
 
 @router.post("/passkey/register/begin")
-async def passkey_register_begin(user: CurrentUser, db: DbSession) -> dict:
+@limiter.limit(PASSKEY_BEGIN_LIMIT)
+async def passkey_register_begin(
+    request: Request, response: Response, user: CurrentUser, db: DbSession
+) -> dict:
     result = await db.execute(select(Credential).where(Credential.user_id == user.id))
     existing_ids = [c.credential_id for c in result.scalars()]
     challenge_id, options_json = webauthn.registration_options(user, existing_ids)
@@ -101,8 +115,13 @@ async def passkey_register_begin(user: CurrentUser, db: DbSession) -> dict:
 
 
 @router.post("/passkey/register/finish", status_code=status.HTTP_201_CREATED)
+@limiter.limit(PASSKEY_FINISH_LIMIT, key_func=session_or_ip)
 async def passkey_register_finish(
-    payload: schemas.PasskeyFinishRequest, user: CurrentUser, db: DbSession
+    request: Request,
+    response: Response,
+    payload: schemas.PasskeyFinishRequest,
+    user: CurrentUser,
+    db: DbSession,
 ) -> dict:
     try:
         verification = webauthn.verify_registration(payload.challenge_id, payload.credential)
@@ -124,14 +143,19 @@ async def passkey_register_finish(
 
 
 @router.post("/passkey/login/begin")
-async def passkey_login_begin() -> dict:
+@limiter.limit(PASSKEY_BEGIN_LIMIT)
+async def passkey_login_begin(request: Request, response: Response) -> dict:
     challenge_id, options_json = webauthn.authentication_options()
     return {"challenge_id": challenge_id, "options": json.loads(options_json)}
 
 
 @router.post("/passkey/login/finish", response_model=schemas.UserOut)
+@limiter.limit(PASSKEY_FINISH_LIMIT)
 async def passkey_login_finish(
-    payload: schemas.PasskeyFinishRequest, response: Response, db: DbSession
+    request: Request,
+    payload: schemas.PasskeyFinishRequest,
+    response: Response,
+    db: DbSession,
 ) -> schemas.UserOut:
     settings = get_settings()
     try:

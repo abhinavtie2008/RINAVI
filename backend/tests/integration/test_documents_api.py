@@ -75,6 +75,27 @@ async def test_upload_stores_document_and_returns_metadata() -> None:
         assert fetched.content == content
 
 
+async def test_download_handles_non_ascii_filename() -> None:
+    async with make_client() as client:
+        await sign_in(client)
+        await allow_documents(client)
+
+        created = await upload(
+            client, name="आय प्रमाण.txt", content=b"Name: Asha Devi\n"
+        )
+        assert created.status_code == 201
+
+        fetched = await client.get(
+            f"{API}/vault/documents/{created.json()['id']}/content"
+        )
+
+        assert fetched.status_code == 200
+        disposition = fetched.headers["content-disposition"]
+        assert disposition.startswith('attachment; filename="document.txt"')
+        assert "filename*=UTF-8''" in disposition
+        assert disposition.isascii()
+
+
 async def test_unsupported_content_is_rejected() -> None:
     async with make_client() as client:
         await sign_in(client)

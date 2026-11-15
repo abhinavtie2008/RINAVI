@@ -23,3 +23,10 @@ async def _reset_schema() -> AsyncIterator[None]:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
+
+
+@pytest.fixture(autouse=True)
+def _reset_limiter() -> None:
+    from app.core.rate_limit import limiter
+
+    limiter.reset()

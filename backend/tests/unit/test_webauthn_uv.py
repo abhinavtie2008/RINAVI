@@ -9,6 +9,7 @@ from app.modules.identity.webauthn import (
     authentication_options,
     registration_options,
     verify_authentication,
+    verify_registration,
 )
 
 
@@ -34,6 +35,45 @@ def test_authentication_options_require_user_verification() -> None:
     _challenge_id, options_json = authentication_options()
     options = json.loads(options_json)
     assert options["userVerification"] == "required"
+
+
+def test_verify_registration_enforces_user_verification(
+    monkeypatch: Any,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    class _Verification:
+        credential_id = b"cred-1"
+        credential_public_key = b"\x04" + b"\x00" * 64
+        sign_count = 0
+
+    def spy_verify_registration_response(**kwargs: Any) -> _Verification:
+        captured.update(kwargs)
+        return _Verification()
+
+    monkeypatch.setattr(
+        webauthn_module,
+        "verify_registration_response",
+        spy_verify_registration_response,
+    )
+
+    challenge_id, _options = registration_options(_user(), [])
+    credential_id = b64url(b"cred-1")
+    credential_json = json.dumps(
+        {
+            "id": credential_id,
+            "rawId": credential_id,
+            "type": "public-key",
+            "response": {
+                "clientDataJSON": b64url(b'{"type":"webauthn.create"}'),
+                "attestationObject": b64url(b"\x00" * 16),
+            },
+        }
+    )
+
+    verify_registration(challenge_id, credential_json)
+
+    assert captured["require_user_verification"] is True
 
 
 def test_verify_authentication_enforces_user_verification(

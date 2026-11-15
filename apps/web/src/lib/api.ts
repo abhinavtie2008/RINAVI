@@ -1,5 +1,8 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const REQUEST_TIMEOUT_MS = 30_000;
+// Uploads can legitimately take longer than JSON requests (10 MB body plus
+// server-side extraction), but must still be bounded.
+const UPLOAD_TIMEOUT_MS = 120_000;
 
 export class ApiError extends Error {
   status: number;
@@ -21,20 +24,22 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+function withTimeout(timeoutMs: number, callerSignal?: AbortSignal | null) {
   const timeoutController = new AbortController();
-  const timer = setTimeout(
-    () => timeoutController.abort(),
-    REQUEST_TIMEOUT_MS,
-  );
+  const timer = setTimeout(() => timeoutController.abort(), timeoutMs);
+  const signal = callerSignal
+    ? AbortSignal.any([callerSignal, timeoutController.signal])
+    : timeoutController.signal;
+  return { signal, clear: () => clearTimeout(timer) };
+}
+
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const timeout = withTimeout(REQUEST_TIMEOUT_MS, init?.signal);
   try {
-    const signal = init?.signal
-      ? AbortSignal.any([init.signal, timeoutController.signal])
-      : timeoutController.signal;
     const response = await fetch(`${API_URL}${path}`, {
       ...init,
       credentials: "include",
-      signal,
+      signal: timeout.signal,
       headers: {
         "Content-Type": "application/json",
         ...init?.headers,
@@ -42,16 +47,22 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     });
     return await parseResponse<T>(response);
   } finally {
-    clearTimeout(timer);
+    timeout.clear();
   }
 }
 
 export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
-  // No explicit Content-Type: the browser sets the multipart boundary.
-  const response = await fetch(`${API_URL}${path}`, {
-    method: "POST",
-    credentials: "include",
-    body: formData,
-  });
-  return parseResponse<T>(response);
+  const timeout = withTimeout(UPLOAD_TIMEOUT_MS);
+  try {
+    // No explicit Content-Type: the browser sets the multipart boundary.
+    const response = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+      signal: timeout.signal,
+    });
+    return await parseResponse<T>(response);
+  } finally {
+    timeout.clear();
+  }
 }
