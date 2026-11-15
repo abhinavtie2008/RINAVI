@@ -18,10 +18,13 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
+GEMINI_BASE = "https://generativelanguage.googleapis.com"
+GEMINI_API_VERSIONS = ("v1beta", "v1")
 GITHUB_API = "https://api.github.com"
 PREFERRED_MODELS = ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash")
 MAX_DIFF_CHARS = 40_000
+MAX_MODEL_ATTEMPTS = 4
+REQUEST_TIMEOUT_SECONDS = 30
 COMMENT_MARKER = "<!-- rinavi-ai-review -->"
 
 
@@ -38,12 +41,21 @@ def request_json(
     )
     if body is not None:
         request.add_header("Content-Type", "application/json")
-    with urllib.request.urlopen(request, timeout=90) as response:
-        return json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(
+            request, timeout=REQUEST_TIMEOUT_SECONDS
+        ) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", "replace")
+        safe_url = url.split("?", 1)[0]
+        raise RuntimeError(
+            f"HTTP {error.code} for {safe_url}: {detail[:600]}"
+        ) from error
 
 
 def list_models(api_key: str) -> list[str]:
-    payload = request_json(f"{GEMINI_BASE}/models?key={api_key}")
+    payload = request_json(f"{GEMINI_BASE}/v1beta/models?key={api_key}")
     return [
         model["name"].removeprefix("models/")
         for model in payload.get("models", [])
@@ -72,19 +84,45 @@ def pick_models(models: list[str]) -> list[str]:
 
 
 def generate_review(api_key: str, models: list[str], prompt: str) -> tuple[str, str]:
-    last_error: Exception | None = None
-    for model in models[:3]:
-        url = f"{GEMINI_BASE}/models/{model}:generateContent?key={api_key}"
+    errors: list[str] = []
+    for model in models[:MAX_MODEL_ATTEMPTS]:
+        for api_version in GEMINI_API_VERSIONS:
+            url = (
+                f"{GEMINI_BASE}/{api_version}/models/{model}"
+                f":generateContent?key={api_key}"
+            )
+            try:
+                payload = request_json(
+                    url, data={"contents": [{"parts": [{"text": prompt}]}]}
+                )
+                text = payload["candidates"][0]["content"]["parts"][0]["text"]
+                return text, model
+            except (RuntimeError, KeyError, IndexError, OSError) as exc:
+                errors.append(f"{model} ({api_version}): {exc}")
+                print(f"Model attempt failed: {errors[-1]}", file=sys.stderr)
+    raise RuntimeError(" | ".join(errors[:4]) or "no model attempts were made")
+
+
+def generate_review_openai_compatible(
+    api_key: str, models: list[str], prompt: str
+) -> tuple[str, str]:
+    errors: list[str] = []
+    headers = {"Authorization": f"Bearer {api_key}"}
+    for model in models[:2]:
         try:
             payload = request_json(
-                url, data={"contents": [{"parts": [{"text": prompt}]}]}
+                f"{GEMINI_BASE}/v1beta/openai/chat/completions",
+                data={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                headers=headers,
             )
-            text = payload["candidates"][0]["content"]["parts"][0]["text"]
-            return text, model
-        except (urllib.error.URLError, KeyError, IndexError) as exc:
-            print(f"Model {model} failed: {exc}", file=sys.stderr)
-            last_error = exc
-    raise RuntimeError(f"Every Gemini model failed; last error: {last_error}")
+            return payload["choices"][0]["message"]["content"], model
+        except (RuntimeError, KeyError, IndexError, OSError) as exc:
+            errors.append(f"{model} (openai-compatible): {exc}")
+            print(f"OpenAI-compatible attempt failed: {errors[-1]}", file=sys.stderr)
+    raise RuntimeError(" | ".join(errors) or "no OpenAI-compatible attempt was made")
 
 
 def git_diff(base_sha: str, head_sha: str) -> str:
@@ -196,12 +234,24 @@ def main() -> int:
         print("Empty diff; nothing to review.")
         return 0
 
-    models = pick_models(list_models(api_key))
+    models: list[str] = []
+    try:
+        models = pick_models(list_models(api_key))
+    except (RuntimeError, OSError) as exc:
+        print(f"Could not list Gemini models: {exc}", file=sys.stderr)
+    override = os.environ.get("GEMINI_MODEL", "").strip()
+    if override:
+        models = [override, *(name for name in models if name != override)]
     if not models:
         print("No Gemini text models are available for this API key.", file=sys.stderr)
         return 1
 
-    review, model = generate_review(api_key, models, build_prompt(diff))
+    prompt = build_prompt(diff)
+    try:
+        review, model = generate_review(api_key, models, prompt)
+    except RuntimeError as native_error:
+        print(f"Native Gemini endpoints failed: {native_error}", file=sys.stderr)
+        review, model = generate_review_openai_compatible(api_key, models, prompt)
     body = (
         f"{COMMENT_MARKER}\n"
         f"### 🤖 AI code review (Gemini: `{model}`)\n\n"
