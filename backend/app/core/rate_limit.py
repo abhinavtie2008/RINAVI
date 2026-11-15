@@ -61,6 +61,16 @@ limiter = Limiter(
     storage_uri=settings.rate_limit_storage_uri,
 )
 
+# A second, smaller budget keyed on the session. The IP ceiling alone let one
+# citizen exhaust the allowance that everyone behind the same address needs,
+# so the per-citizen cap is what actually bounds a single account.
+session_limiter = Limiter(
+    key_func=session_or_ip,
+    application_limits=[settings.rate_limit_session],
+    headers_enabled=True,
+    storage_uri=settings.rate_limit_storage_uri,
+)
+
 
 def rate_limit_exceeded_handler(request: Request, exc: Exception) -> Response:
     response = JSONResponse(
@@ -79,7 +89,8 @@ def rate_limit_exceeded_handler(request: Request, exc: Exception) -> Response:
 class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
     """Apply the global per-IP budget to every request, including routes that
     carry their own per-route decorator (slowapi's stock middleware skips
-    decorated routes, which would leave them outside the global budget).
+    decorated routes, which would leave them outside the global budget), and
+    the per-session budget to requests that carry a session cookie.
     The endpoint is not resolved here: with an empty default-limit set the
     middleware-mode check evaluates only the global application limits, so
     no route lookup is needed (FastAPI's lazy router wrappers expose no
@@ -96,9 +107,16 @@ class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
         )
         if error_response is not None:
             return error_response
+        # Captured before the session budget runs, so the response headers
+        # keep describing the ceiling that applied to this request either way.
+        ip_limit = request.state.view_rate_limit
+        if request.cookies.get(settings.cookie_name):
+            session_error, _ = sync_check_limits(
+                session_limiter, request, None, app
+            )
+            if session_error is not None:
+                return session_error
         response = await call_next(request)
         if should_inject_headers:
-            response = limiter._inject_headers(
-                response, request.state.view_rate_limit
-            )
+            response = limiter._inject_headers(response, ip_limit)
         return response
