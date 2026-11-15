@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ids import parse_uuid, parse_uuids
 from app.modules.applications.models import ApplicationDraft
 from app.modules.applications.schemas import DraftOut, ValidationIssueOut
 from app.modules.applications.validator import validate_draft
@@ -188,22 +189,24 @@ async def collect_validation_inputs(
         doc_id for ids in draft.document_links.values() for doc_id in ids
     }
     states: dict[str, str] = {}
-    if linked_ids:
+    stored_ids = parse_uuids(linked_ids)
+    found: dict[uuid.UUID, Document] = {}
+    if stored_ids:
         result = await db.execute(
             select(Document).where(
                 Document.user_id == user.id,
-                Document.id.in_([uuid.UUID(doc_id) for doc_id in linked_ids]),
+                Document.id.in_(stored_ids),
             )
         )
-        found = {str(document.id): document for document in result.scalars()}
-        for doc_id in linked_ids:
-            document = found.get(doc_id)
-            states[doc_id] = (
-                "available"
-                if document is not None
-                and document.status == DocumentStatus.PROCESSED
-                else "unavailable"
-            )
+        found = {document.id: document for document in result.scalars()}
+    for doc_id in linked_ids:
+        parsed_id = parse_uuid(doc_id)
+        document = found.get(parsed_id) if parsed_id is not None else None
+        states[doc_id] = (
+            "available"
+            if document is not None and document.status == DocumentStatus.PROCESSED
+            else "unavailable"
+        )
     return profile, states
 
 
@@ -214,11 +217,12 @@ async def build_export(
         doc_id for ids in draft.document_links.values() for doc_id in ids
     }
     names: dict[str, str] = {}
-    if linked_ids:
+    stored_ids = parse_uuids(linked_ids)
+    if stored_ids:
         result = await db.execute(
             select(Document).where(
                 Document.user_id == user.id,
-                Document.id.in_([uuid.UUID(doc_id) for doc_id in linked_ids]),
+                Document.id.in_(stored_ids),
             )
         )
         names = {
@@ -285,11 +289,12 @@ async def build_packet(
         doc_id for ids in draft.document_links.values() for doc_id in ids
     }
     names: dict[str, str] = {}
-    if linked_ids:
+    stored_ids = parse_uuids(linked_ids)
+    if stored_ids:
         result = await db.execute(
             select(Document).where(
                 Document.user_id == user.id,
-                Document.id.in_([uuid.UUID(doc_id) for doc_id in linked_ids]),
+                Document.id.in_(stored_ids),
             )
         )
         names = {
