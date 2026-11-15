@@ -1,26 +1,68 @@
+import os
 import sqlite3
+import subprocess
+import sys
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
 
+_BACKEND_DIR = Path(__file__).resolve().parents[1]
 
-def test_alembic_upgrade_head_on_clean_database(tmp_path: Path) -> None:
+
+def _alembic_config(db_path: Path) -> Config:
     cfg = Config("alembic.ini")
     cfg.set_main_option("script_location", str(Path("migrations")))
-    cfg.set_main_option("sqlalchemy.url", f"sqlite+aiosqlite:///{tmp_path / 'migrate.db'}")
+    cfg.set_main_option("sqlalchemy.url", f"sqlite+aiosqlite:///{db_path}")
+    return cfg
 
-    command.upgrade(cfg, "head")
 
+def _table_names(db_path: Path) -> set[str]:
+    conn = sqlite3.connect(db_path)
+    try:
+        return {
+            row[0]
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    finally:
+        conn.close()
+
+
+def test_alembic_check_reports_no_schema_drift(tmp_path: Path) -> None:
+    """`alembic check` compares the metadata the migration environment loads with
+    the migrated database. Because it runs in a fresh process, it fails when a
+    model module is missing from `migrations/env.py` — otherwise the next
+    `--autogenerate` would emit DROP TABLE for that model's table."""
+    db_path = tmp_path / "check.db"
+    command.upgrade(_alembic_config(db_path), "head")
+
+    env = os.environ.copy()
+    env["RINAVI_DATABASE_URL"] = f"sqlite+aiosqlite:///{db_path.as_posix()}"
+    env.setdefault("RINAVI_ENVIRONMENT", "test")
+    result = subprocess.run(
+        [sys.executable, "-m", "alembic", "check"],
+        cwd=_BACKEND_DIR,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, (
+        "alembic detected schema drift; a model module is missing from "
+        f"migrations/env.py:\n{result.stdout}\n{result.stderr}"
+    )
+
+
+def test_alembic_upgrade_head_on_clean_database(tmp_path: Path) -> None:
     db_path = tmp_path / "migrate.db"
+    command.upgrade(_alembic_config(db_path), "head")
+
     assert db_path.exists()
 
     conn = sqlite3.connect(db_path)
     try:
-        tables = {
-            row[0]
-            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        }
+        tables = _table_names(db_path)
         assert {
             "alembic_version",
             "users",
