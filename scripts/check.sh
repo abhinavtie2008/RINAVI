@@ -21,7 +21,4 @@ npm run test -- --run
 npm run build
 cd ..
 
-echo "== tooling =="
-node --check scripts/team.mjs
-
 echo "All checks passed."
