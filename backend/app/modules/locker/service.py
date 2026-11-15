@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ids import parse_uuids
 from app.modules.applications import service as applications_service
 from app.modules.applications.models import ApplicationDraft
 from app.modules.identity.models import User, utcnow
@@ -164,11 +165,12 @@ async def apply_again(
         for entry in evidence["documents"]
     }
     documents: list[Document] = []
-    if document_ids:
+    stored_ids = parse_uuids(document_ids)
+    if stored_ids:
         result = await db.execute(
             select(Document).where(
                 Document.user_id == user.id,
-                Document.id.in_([uuid.UUID(doc_id) for doc_id in document_ids]),
+                Document.id.in_(stored_ids),
             )
         )
         documents = list(result.scalars())
