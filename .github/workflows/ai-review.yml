@@ -1,0 +1,115 @@
+name: AI PR Reviewer
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Gemini PR Reviewer
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REPO_FULL_NAME: ${{ github.repository }}
+        run: |
+          python -c "
+          import os, json, urllib.request, subprocess
+
+          api_key = os.environ.get('GEMINI_API_KEY', '').strip()
+          if not api_key:
+              print('GEMINI_API_KEY secret not found; skipping AI review.')
+              exit(0)
+
+          pr_number = os.environ['PR_NUMBER']
+          repo = os.environ['REPO_FULL_NAME']
+          base_sha = os.environ['BASE_SHA']
+          head_sha = os.environ['HEAD_SHA']
+          github_token = os.environ['GITHUB_TOKEN']
+
+          diff_cmd = subprocess.run(['git', 'diff', f'{base_sha}..{head_sha}'], capture_output=True, text=True)
+          diff_text = diff_cmd.stdout
+
+          if not diff_text.strip():
+              print('Empty diff; nothing to review.')
+              exit(0)
+
+          if len(diff_text) > 40000:
+              diff_text = diff_text[:40000] + '\n\n[Diff truncated for length]'
+
+          agents_md = ''
+          if os.path.exists('AGENTS.md'):
+              with open('AGENTS.md', encoding='utf-8') as f:
+                  agents_md = f.read()
+
+          prompt = f'''You are an expert AI PR Reviewer inspecting a pull request for the RINAVI project.
+
+          PROJECT RULES & POLICIES (AGENTS.md):
+          {agents_md}
+
+          INSTRUCTIONS FOR YOUR REVIEW:
+          1. Verify strict compliance with project policies (especially strict A1 Aadhaar policy: NO Aadhaar numbers extracted, stored, or displayed).
+          2. Check for bugs, edge cases, missing test coverage, or unhandled errors.
+          3. Provide a clear, constructive review formatted in Markdown:
+             - **Overall Assessment:** (Approved / Needs Attention / Revisions Requested)
+             - **Policy & Security Compliance:** (Pass / Attention Needed)
+             - **Detailed Feedback:** (Specific items, line numbers, or potential risks)
+             - **Suggested Next Steps:**
+
+          PULL REQUEST DIFF:
+          \`\`\`diff
+          {diff_text}
+          \`\`\`
+          '''
+
+          gemini_url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}'
+          payload = {
+              'contents': [{'parts': [{'text': prompt}]}]
+          }
+
+          req = urllib.request.Request(gemini_url, data=json.dumps(payload).encode('utf-8'), headers={'Content-Type': 'application/json'})
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  result = json.loads(resp.read().decode('utf-8'))
+                  review_text = result['candidates'][0]['content']['parts'][0]['text']
+          except Exception as e:
+              print(f'Error calling Gemini API: {e}')
+              exit(0)
+
+          comment_body = f'### 🤖 AI Code Review (Gemini)\n\n{review_text}\n\n---\n*Automated review powered by Google Gemini API*'
+
+          comment_url = f'https://api.github.com/repos/{repo}/issues/{pr_number}/comments'
+          comment_req = urllib.request.Request(
+              comment_url,
+              data=json.dumps({'body': comment_body}).encode('utf-8'),
+              headers={
+                  'Authorization': f'Bearer {github_token}',
+                  'Accept': 'application/vnd.github+json',
+                  'Content-Type': 'application/json'
+              }
+          )
+          try:
+              with urllib.request.urlopen(comment_req) as resp:
+                  print(f'Successfully posted AI review on PR #{pr_number}')
+          except Exception as e:
+              print(f'Error posting PR comment: {e}')
+          "
