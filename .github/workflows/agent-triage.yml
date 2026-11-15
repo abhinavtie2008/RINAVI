@@ -54,11 +54,12 @@ jobs:
           set -euo pipefail
           gh pr edit "$PR_NUMBER" --add-label status:review
 
-          if [ "${{ github.event.action }}" = "opened" ] && ! grep -iqE '(closes|fixes|resolves) #[0-9]+' <<< "${PR_BODY:-}"; then
+          if [ "${{ github.event.action }}" = "opened" ] && { ! grep -iqE '(closes|fixes|resolves) #[0-9]+' <<< "${PR_BODY:-}" || ! grep -iq 'model:' <<< "${PR_BODY:-}"; }; then
             gh pr comment "$PR_NUMBER" --body "$(printf '%s\n' \
               '### Handoff checklist' \
               '' \
               '- add `Closes #<issue>` so the issue closes when this merges' \
+              '- add a `Model:` line naming the agent and model that wrote this' \
               '- state the `scripts/check.sh` result in the body' \
               '- cross-review must come from a different agent or model family than the author')"
           fi

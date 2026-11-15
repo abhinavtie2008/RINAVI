@@ -13,7 +13,7 @@
 //
 // Needs GITHUB_PERSONAL_ACCESS_TOKEN or GITHUB_TOKEN in the environment.
 
-import { execSync } from 'node:child_process'
+import { execSync, spawnSync } from 'node:child_process'
 
 const API = 'https://api.github.com'
 
@@ -134,13 +134,58 @@ async function next(agent) {
   console.log(`tier: ${label(issue, 'model')}   labels: ${issue.labels.map((l) => l.name).join(', ')}`)
   console.log(`owner: ${label(issue, 'agent')}`)
   console.log(`\n${(issue.body || '(no body)').trim().slice(0, 1200)}`)
+  const type = (/^(feat|fix|chore|docs|refactor|test|ci)(\(|:|!)/.exec(issue.title) || [])[1] || 'fix'
   const slug = issue.title
     .toLowerCase()
+    .replace(/^[a-z]+(\([^)]*\))?!?:\s*/, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 40)
   console.log(`\nclaim it:   node scripts/team.mjs claim ${issue.number} --agent ${agent}`)
-  console.log(`branch:     git fetch origin && git checkout -b fix/${slug} origin/main`)
+  console.log(`branch:     git fetch origin && git checkout -b ${type}/${slug} origin/main`)
+  console.log(`delegate:   node scripts/team.mjs dispatch ${issue.number} --agent opencode`)
+}
+
+// Each agent works in its own checkout; the tier decides the model when an
+// override exists, otherwise the agent's configured default stands.
+const WORKTREES = { freebuff: '.', qoder: '../rinavi-qoder', opencode: '../rinavi-opencode' }
+
+async function dispatch(number, agent = 'opencode', run = false) {
+  if (!number) throw new Error('team: dispatch needs <number> [--agent opencode] [--run]')
+  const issue = await api(`/issues/${number}`)
+  if (!issue) throw new Error(`team: no issue #${number} in ${repoSlug()}`)
+
+  const tier = label(issue, 'model')
+  const dir = WORKTREES[agent]
+  if (!dir) throw new Error(`team: unknown agent ${agent}; expected ${Object.keys(WORKTREES).join(', ')}`)
+
+  const prompt = [
+    `You are ${agent} working the RINAVI task queue. Read AGENTS.md first.`,
+    '',
+    `Issue #${number}: ${issue.title}`,
+    '',
+    (issue.body || '(no body)').trim(),
+    '',
+    `Before you start: claim this issue with \`node scripts/team.mjs claim ${number} --agent ${agent}\` unless it is already yours. Branch from origin/main, commit in small checkpoints, and open one pull request that says \`Closes #${number}\` and carries a \`Model:\` line naming the model you ran. Run scripts/check.sh before opening it. Hand the issue back with \`node scripts/team.mjs handoff\` if it needs a different agent.`,
+  ].join('\n')
+
+  const envModel = process.env[`RINAVI_MODEL_${(tier === '-' ? 'standard' : tier).toUpperCase()}`]
+  const args = ['run', '--dir', dir]
+  if (envModel) args.push('--model', envModel)
+  args.push(prompt)
+
+  console.log(`tier ${tier} · agent ${agent} · worktree ${dir}`)
+  console.log(`model ${envModel || `(unset: opencode's own default for ${tier})`}`)
+
+  if (!run) {
+    console.log(`\nopencode ${args.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(' ')}`)
+    console.log('\nDry run. Add --run to start it.')
+    return
+  }
+
+  const result = spawnSync('opencode', args, { stdio: 'inherit' })
+  if (result.error) throw result.error
+  if (result.status !== 0) throw new Error(`team: opencode exited with ${result.status}`)
 }
 
 async function claim(number, agent) {
@@ -183,9 +228,10 @@ async function review() {
     const comments = await api(`/issues/${pull.number}/comments?per_page=100`)
     const ai = (comments || []).find((c) => (c.body || '').includes('<!-- rinavi-ai-review -->'))
     const verdict = ai ? ((ai.body.match(/### Overall assessment\s*\n+([^\n]+)/) || [])[1] || 'posted') : 'not posted yet'
+    const model = ((pull.body || '').match(/\*\*Model:\*\*\s*`?([^`\n]+)`?/) || [])[1] || 'not stated'
     console.log(
       `#${pull.number} ${pull.title}\n  branch ${pull.head.ref} · ${pull.draft ? 'draft' : 'ready'} · ` +
-        `AI review: ${verdict}\n  ${pull.html_url}`,
+        `model: ${model.trim()}\n  AI review: ${verdict}\n  ${pull.html_url}`,
     )
   }
 }
@@ -214,8 +260,11 @@ try {
     case 'review':
       await review()
       break
+    case 'dispatch':
+      await dispatch(Number(rest[0]), flag(rest, 'agent') || 'opencode', rest.includes('--run'))
+      break
     default:
-      console.log('usage: node scripts/team.mjs <board|next|claim|handoff|review> [args]')
+      console.log('usage: node scripts/team.mjs <board|next|claim|handoff|review|dispatch> [args]')
       process.exit(command ? 1 : 0)
   }
 } catch (error) {
