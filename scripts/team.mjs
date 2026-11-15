@@ -62,6 +62,18 @@ async function removeLabel(number, name) {
   await api(`/issues/${number}/labels/${encodeURIComponent(name)}`, { method: 'DELETE' })
 }
 
+// The labels POST endpoint appends, so an issue handed from qoder to freebuff
+// would keep both owner labels and `label()` could report the stale one.
+async function assignOwner(number, issue, agent) {
+  const stale = issue.labels
+    .map((l) => l.name)
+    .filter((name) => name.startsWith('agent:') && name !== `agent:${agent}`)
+  if (stale.length) {
+    await api(`/issues/${number}/labels`, { method: 'DELETE', body: JSON.stringify({ labels: stale }) })
+  }
+  await addLabels(number, [`agent:${agent}`])
+}
+
 async function comment(number, body) {
   await api(`/issues/${number}/comments`, { method: 'POST', body: JSON.stringify({ body }) })
 }
@@ -82,7 +94,7 @@ function pad(value, width) {
 async function board() {
   const [issues, pulls] = await Promise.all([openIssues(), openPulls()])
 
-  console.log(`Issues (${issues.length})`)
+  console.log(`Issues (${issues.length}${issues.length === 100 ? ', page limit reached' : ''})`)
   if (!issues.length) console.log('  none queued')
   for (const issue of issues) {
     console.log(
@@ -139,7 +151,8 @@ async function claim(number, agent) {
   if (owner !== '-' && owner !== agent && status(issue) === 'in-progress') {
     throw new Error(`team: #${number} is already claimed by ${owner}`)
   }
-  await addLabels(number, ['status:in-progress', `agent:${agent}`])
+  await assignOwner(number, issue, agent)
+  await addLabels(number, ['status:in-progress'])
   if (status(issue) === 'queued') await removeLabel(number, 'status:queued')
   await comment(number, `Claimed by **${agent}**. Branch from \`origin/main\`; comment here if it turns out to need a different owner.`)
   console.log(`claimed #${number} as ${agent}`)
@@ -149,7 +162,8 @@ async function handoff(number, to, note) {
   if (!number || !to) throw new Error('team: handoff needs <number> --to <agent> [--note "..."]')
   const issue = await api(`/issues/${number}`)
   if (!issue) throw new Error(`team: no issue #${number} in ${repoSlug()}`)
-  await addLabels(number, ['status:queued', `agent:${to}`])
+  await assignOwner(number, issue, to)
+  await addLabels(number, ['status:queued'])
   if (status(issue) === 'in-progress') await removeLabel(number, 'status:in-progress')
   await comment(
     number,
