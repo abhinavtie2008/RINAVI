@@ -42,6 +42,26 @@ When **Freebuff** creates or triages GitHub Issues, tag each Issue with one mode
 
 **Cross-review rule:** A PR must be reviewed by a **different agent or model family** than the one that authored it (e.g., via `.github/workflows/ai-review.yml` or a second agent).
 
+**The label names the task, not the vendor.** One issue can pass through
+three agents running three different models, so a model name in a label would
+be stale the moment work is handed off. The tier says what capability the task
+needs; each agent picks the model that meets it.
+
+| Tier | Use it for | Model the agent must be running |
+|---|---|---|
+| `model:fast` | docs, copy, formatting, dependency bumps, straightforward tests | any capable model |
+| `model:standard` | routine features, endpoints, bug fixes | a general coding model |
+| `model:deep` | `auth/`, `vault/`, `applications/`, migrations, architecture, and all reviews | the strongest model available |
+
+- **Escalate, never downgrade.** If a task turns out riskier than its label, say
+  so on the issue and treat it as `model:deep` rather than pushing on.
+- **`node scripts/team.mjs dispatch <number>`** translates the tier into
+  `opencode run --model …` when `RINAVI_MODEL_FAST`, `RINAVI_MODEL_STANDARD` or
+  `RINAVI_MODEL_DEEP` is set in the environment. With none set it prints the
+  command without a `--model` flag and the agent's own default applies.
+- **Every PR states what wrote it** in a `Model:` line, so a reviewer can tell a
+  cheap-model diff from an expensive one.
+
 ---
 
 ## 5. Project Security & Policy Invariants
@@ -56,7 +76,8 @@ Every change must preserve these non-negotiable rules (also see `SECURITY.md`):
 ## 6. PR Handoff Format
 Every PR description must include:
 1. **Linked Issue:** `Closes #<number>`
-2. **Summary:** Concise list of what changed and why.
+2. **Model:** the agent and model that produced the diff
+3. **Summary:** Concise list of what changed and why.
 3. **Verification:** Exact `scripts/check.sh` pass status (backend tests, ruff, pyright, web lint/typecheck/tests/build).
 4. **Risks / Blockers:** Any edge cases, migration notes, or open questions for the human reviewer.
 
