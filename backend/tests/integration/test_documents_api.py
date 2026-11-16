@@ -75,6 +75,31 @@ async def test_upload_stores_document_and_returns_metadata() -> None:
         assert fetched.content == content
 
 
+async def test_content_returns_404_when_blob_is_missing() -> None:
+    import uuid as uuidlib
+
+    from app.modules.identity.models import User
+    from app.modules.vault.storage import get_storage
+
+    async with make_client() as client:
+        await sign_in(client)
+        await allow_documents(client)
+
+        created = await upload(client)
+        document_id = created.json()["id"]
+
+        async with async_session_factory() as session:
+            user = (
+                await session.execute(
+                    select(User).where(User.email == "citizen@example.com")
+                )
+            ).scalar_one()
+            get_storage().delete(user.id, uuidlib.UUID(document_id))
+
+        fetched = await client.get(f"{API}/vault/documents/{document_id}/content")
+        assert fetched.status_code == 404
+
+
 async def test_download_handles_non_ascii_filename() -> None:
     async with make_client() as client:
         await sign_in(client)
