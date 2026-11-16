@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.privacy import RESTRICTED_PROFILE_FIELD_KEYS, is_restricted_field_key
 from app.modules.documents.models import ExtractedField
 from app.modules.identity.models import User, utcnow
 from app.modules.profile.models import ProfileStatus, ProfileValue
@@ -20,7 +21,10 @@ class TransitionError(ValueError):
 async def list_values(db: AsyncSession, user: User) -> list[ProfileValue]:
     result = await db.execute(
         select(ProfileValue)
-        .where(ProfileValue.user_id == user.id)
+        .where(
+            ProfileValue.user_id == user.id,
+            ProfileValue.field_key.not_in(RESTRICTED_PROFILE_FIELD_KEYS),
+        )
         .order_by(ProfileValue.field_key)
     )
     return list(result.scalars())
@@ -31,7 +35,9 @@ async def get_own_value(
 ) -> ProfileValue | None:
     result = await db.execute(
         select(ProfileValue).where(
-            ProfileValue.id == value_id, ProfileValue.user_id == user.id
+            ProfileValue.id == value_id,
+            ProfileValue.user_id == user.id,
+            ProfileValue.field_key.not_in(RESTRICTED_PROFILE_FIELD_KEYS),
         )
     )
     return result.scalar_one_or_none()
@@ -56,6 +62,8 @@ async def promote_document(
     by_key = {value.field_key: value for value in existing_result.scalars()}
 
     for field in fields:
+        if is_restricted_field_key(field.field_key):
+            continue
         current = by_key.get(field.field_key)
         if current is not None and current.status == ProfileStatus.CONFIRMED:
             continue
@@ -74,7 +82,11 @@ async def promote_document(
         current.updated_at = utcnow()
 
     await db.flush()
-    return sorted(by_key.values(), key=lambda value: value.field_key)
+    return [
+        value
+        for value in sorted(by_key.values(), key=lambda item: item.field_key)
+        if not is_restricted_field_key(value.field_key)
+    ]
 
 
 async def confirm_value(db: AsyncSession, value: ProfileValue) -> None:

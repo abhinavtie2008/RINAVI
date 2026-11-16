@@ -81,8 +81,8 @@ async def test_txt_document_is_processed_with_fields() -> None:
             "gender",
             "address",
             "annual_income",
-            "aadhaar_number",
         }
+        assert "aadhaar_number" not in by_key
         assert by_key["full_name"]["value"] == "Asha Devi"
         assert by_key["full_name"]["confidence"] == "high"
         assert by_key["full_name"]["locator"] == "line 1"
@@ -154,7 +154,7 @@ async def test_retry_replaces_fields_without_duplicates() -> None:
         assert retried.status_code == 200
         assert retried.json()["status"] == "processed"
         fields = await client.get(f"{API}/vault/documents/{document_id}/fields")
-        assert len(fields.json()) == 7
+        assert len(fields.json()) == 6
 
 
 async def test_fields_are_scoped_to_the_owner() -> None:
