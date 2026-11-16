@@ -6,7 +6,9 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 
 
 class ConsentGrantRequest(BaseModel):
-    purpose: Annotated[str, StringConstraints(max_length=80)]
+    purpose: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)
+    ]
 
 
 class ConsentRecordOut(BaseModel):

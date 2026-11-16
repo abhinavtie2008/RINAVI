@@ -79,6 +79,16 @@ async def test_cross_user_cannot_see_or_withdraw() -> None:
             assert taken.status_code == 404
 
 
+async def test_grant_rejects_blank_purpose() -> None:
+    async with make_client() as client:
+        await sign_in(client, "citizen@example.com")
+        for purpose in ("", "   "):
+            response = await client.post(
+                "/api/v1/consent/grants", json={"purpose": purpose}
+            )
+            assert response.status_code == 422
+
+
 async def test_unauthenticated_gets_401() -> None:
     async with make_client() as client:
         assert (await client.get("/api/v1/consent/grants")).status_code == 401
