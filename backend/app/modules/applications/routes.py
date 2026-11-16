@@ -7,7 +7,6 @@ from app.api.deps import ConsentRequired, CurrentUser, DbSession
 from app.modules.applications import schemas, service
 from app.modules.applications.models import ApplicationDraft
 from app.modules.applications.service import DraftError
-from app.modules.applications.validator import validate_draft
 from app.modules.audit.service import emit_audit
 from app.modules.catalog.loader import CatalogError
 from app.modules.identity.models import User
@@ -222,15 +221,7 @@ async def export_draft(
     draft_id: uuid.UUID, user: CurrentUser, db: DbSession
 ) -> schemas.ExportOut:
     draft = await _get_draft_or_404(db, user, draft_id)
-    profile, states = await service.collect_validation_inputs(db, user, draft)
-    issues = validate_draft(
-        draft.template_snapshot,
-        draft.values,
-        draft.declaration_confirmed,
-        draft.document_links,
-        states,
-        profile,
-    )
+    issues = await service.validation_issues(db, user, draft)
     if issues:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -261,15 +252,7 @@ async def complete_draft(
     existing = await locker_service.get_case_by_draft(db, user, draft_id)
     if existing is not None:
         return await locker_service.case_out(db, existing)
-    profile, states = await service.collect_validation_inputs(db, user, draft)
-    issues = validate_draft(
-        draft.template_snapshot,
-        draft.values,
-        draft.declaration_confirmed,
-        draft.document_links,
-        states,
-        profile,
-    )
+    issues = await service.validation_issues(db, user, draft)
     if issues:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

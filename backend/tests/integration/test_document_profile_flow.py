@@ -87,7 +87,7 @@ async def test_citizen_document_profile_flow() -> None:
             get_storage().read(uuid.UUID(user_id), uuid.UUID(document_id))
 
         remaining = (await client.get(f"{API}/profile/values")).json()
-        assert len(remaining) == 7
+        assert len(remaining) == 6
         assert {v["status"] for v in remaining} == {"stale"}
         assert {v["stale_reason"] for v in remaining} == {
             "source_document_deleted"

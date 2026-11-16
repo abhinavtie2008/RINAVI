@@ -5,6 +5,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ids import parse_uuid, parse_uuids
+from app.core.privacy import (
+    RESTRICTED_PROFILE_FIELD_KEYS,
+    is_restricted_binding,
+)
 from app.modules.applications.models import ApplicationDraft
 from app.modules.applications.schemas import DraftOut, ValidationIssueOut
 from app.modules.applications.validator import validate_draft
@@ -33,6 +37,7 @@ def _snapshot(pack: ServicePack) -> dict[str, Any]:
                 "format": field.format,
             }
             for field in pack.fields
+            if not is_restricted_binding(field.binding)
         ],
         "declaration": pack.declaration,
         "checklist_groups": [
@@ -55,9 +60,37 @@ async def _confirmed_profile_values(
         select(ProfileValue).where(
             ProfileValue.user_id == user.id,
             ProfileValue.status == ProfileStatus.CONFIRMED,
+            ProfileValue.field_key.not_in(RESTRICTED_PROFILE_FIELD_KEYS),
         )
     )
     return {value.field_key: value.value for value in result.scalars()}
+
+
+def _public_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Drop fields whose value belongs only at the official portal.
+
+    New drafts are snapshotted without restricted bindings. Older drafts may
+    still carry one, so every response path filters again.
+    """
+    fields = [
+        field
+        for field in snapshot["fields"]
+        if not is_restricted_binding(field.get("binding"))
+    ]
+    if len(fields) == len(snapshot["fields"]):
+        return snapshot
+    return {**snapshot, "fields": fields}
+
+
+def _public_values(
+    snapshot: dict[str, Any], values: dict[str, Any]
+) -> dict[str, Any]:
+    field_ids = {field["id"] for field in snapshot["fields"]}
+    return {
+        field_id: entry
+        for field_id, entry in values.items()
+        if field_id in field_ids
+    }
 
 
 async def create_draft(
@@ -110,9 +143,15 @@ async def get_own_draft(
 
 
 def set_field_value(draft: ApplicationDraft, field_id: str, value: str) -> None:
-    field_ids = {field["id"] for field in draft.template_snapshot["fields"]}
-    if field_id not in field_ids:
+    fields = {field["id"]: field for field in draft.template_snapshot["fields"]}
+    field = fields.get(field_id)
+    if field is None:
         raise DraftError("unknown_field", f"Unknown field: {field_id}")
+    if is_restricted_binding(field.get("binding")):
+        raise DraftError(
+            "restricted_field",
+            f"Field is collected only at the official portal: {field_id}",
+        )
     values = dict(draft.values)
     if value == "":
         values.pop(field_id, None)
@@ -129,7 +168,11 @@ async def refresh_draft(
     values = dict(draft.values)
     for field in draft.template_snapshot["fields"]:
         binding = field["binding"]
-        if binding is None or binding not in profile:
+        if (
+            binding is None
+            or is_restricted_binding(binding)
+            or binding not in profile
+        ):
             continue
         current = values.get(field["id"])
         if current is None or current["origin"] == "profile":
@@ -210,6 +253,22 @@ async def collect_validation_inputs(
     return profile, states
 
 
+async def validation_issues(
+    db: AsyncSession, user: User, draft: ApplicationDraft
+) -> list[dict[str, Any]]:
+    snapshot = _public_snapshot(draft.template_snapshot)
+    values = _public_values(snapshot, draft.values)
+    profile, states = await collect_validation_inputs(db, user, draft)
+    return validate_draft(
+        snapshot,
+        values,
+        draft.declaration_confirmed,
+        draft.document_links,
+        states,
+        profile,
+    )
+
+
 async def build_export(
     db: AsyncSession, user: User, draft: ApplicationDraft
 ) -> str:
@@ -236,7 +295,7 @@ async def build_export(
         "",
         "Fields",
     ]
-    for field in draft.template_snapshot["fields"]:
+    for field in _public_snapshot(draft.template_snapshot)["fields"]:
         entry = draft.values.get(field["id"])
         if entry is None:
             continue
@@ -311,7 +370,7 @@ async def build_packet(
                 "value": draft.values[field["id"]]["value"],
                 "origin": draft.values[field["id"]]["origin"],
             }
-            for field in draft.template_snapshot["fields"]
+            for field in _public_snapshot(draft.template_snapshot)["fields"]
             if field["id"] in draft.values
         ],
         "evidence": [
@@ -340,27 +399,18 @@ async def build_packet(
 async def draft_out(
     db: AsyncSession, user: User, draft: ApplicationDraft
 ) -> DraftOut:
-    profile, states = await collect_validation_inputs(db, user, draft)
+    snapshot = _public_snapshot(draft.template_snapshot)
+    issues = await validation_issues(db, user, draft)
     return DraftOut(
         id=draft.id,
         service_slug=draft.service_slug,
         service_name=draft.service_name,
         pack_version=draft.pack_version,
-        template_snapshot=draft.template_snapshot,
-        values=draft.values,
+        template_snapshot=snapshot,
+        values=_public_values(snapshot, draft.values),
         document_links=draft.document_links,
         declaration_confirmed=draft.declaration_confirmed,
-        validation=[
-            ValidationIssueOut(**issue)
-            for issue in validate_draft(
-                draft.template_snapshot,
-                draft.values,
-                draft.declaration_confirmed,
-                draft.document_links,
-                states,
-                profile,
-            )
-        ],
+        validation=[ValidationIssueOut(**issue) for issue in issues],
         created_at=draft.created_at,
         updated_at=draft.updated_at,
     )

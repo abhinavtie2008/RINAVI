@@ -26,7 +26,6 @@ const FIELD_LABELS: Record<string, string> = {
   gender: "Gender",
   address: "Address",
   annual_income: "Annual income",
-  aadhaar_number: "Aadhaar number",
 };
 
 function fieldLabel(fieldKey: string): string {

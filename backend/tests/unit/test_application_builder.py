@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import async_session_factory
 from app.modules.applications import service
+from app.modules.applications.models import ApplicationDraft
 from app.modules.applications.service import DraftError
 from app.modules.catalog.loader import CatalogError
 from app.modules.identity.models import User
@@ -13,6 +14,47 @@ from app.modules.profile.models import ProfileStatus, ProfileValue
 from app.modules.vault.models import Document, DocumentStatus
 
 SLUG = "delhi-income-certificate"
+
+RESTRICTED_TEMPLATE = {
+    "fields": [
+        {
+            "id": "applicant_name",
+            "label": "Applicant name",
+            "binding": "full_name",
+            "required": True,
+            "format": "text",
+        },
+        {
+            "id": "aadhaar_number",
+            "label": "Aadhaar number",
+            "binding": "aadhaar_number",
+            "required": True,
+            "format": "aadhaar",
+        },
+    ],
+    "declaration": {"required": True, "text": "I declare."},
+    "checklist_groups": [],
+    "guidance": {
+        "official_channel_steps": ["Register on the portal."],
+        "not_a_submission_notice": "Review only.",
+    },
+}
+
+
+def restricted_draft(user: User) -> ApplicationDraft:
+    return ApplicationDraft(
+        user_id=user.id,
+        service_slug=SLUG,
+        service_name="Income Certificate (Delhi)",
+        pack_version="1.0.0",
+        template_snapshot=RESTRICTED_TEMPLATE,
+        values={
+            "applicant_name": {"value": "Asha Devi", "origin": "citizen"},
+            "aadhaar_number": {"value": "123456789012", "origin": "citizen"},
+        },
+        document_links={},
+        declaration_confirmed=True,
+    )
 
 
 async def make_user(db: AsyncSession) -> User:
@@ -215,3 +257,72 @@ async def test_build_packet_tolerates_unparseable_document_id() -> None:
         assert evidence["income_evidence"]["documents"] == [
             {"document_id": "not-a-uuid", "filename": "not-a-uuid"}
         ]
+
+
+def test_public_snapshot_and_values_hide_restricted_bindings() -> None:
+    snapshot = service._public_snapshot(RESTRICTED_TEMPLATE)
+
+    assert [field["id"] for field in snapshot["fields"]] == ["applicant_name"]
+    values = service._public_values(
+        snapshot,
+        {
+            "applicant_name": {"value": "Asha Devi", "origin": "citizen"},
+            "aadhaar_number": {"value": "123456789012", "origin": "citizen"},
+        },
+    )
+    assert values == {
+        "applicant_name": {"value": "Asha Devi", "origin": "citizen"}
+    }
+    assert RESTRICTED_TEMPLATE["fields"][1]["id"] == "aadhaar_number"
+
+
+def test_set_field_value_rejects_restricted_binding() -> None:
+    draft = ApplicationDraft(
+        user_id=uuid.uuid4(),
+        service_slug=SLUG,
+        service_name="Income Certificate (Delhi)",
+        pack_version="1.0.0",
+        template_snapshot=RESTRICTED_TEMPLATE,
+        values={},
+        document_links={},
+        declaration_confirmed=False,
+    )
+
+    with pytest.raises(DraftError) as exc_info:
+        service.set_field_value(draft, "aadhaar_number", "123456789012")
+
+    assert exc_info.value.code == "restricted_field"
+    assert draft.values == {}
+
+
+async def test_draft_out_hides_restricted_fields_values_and_issues() -> None:
+    async with async_session_factory() as db:
+        user = await make_user(db)
+        draft = restricted_draft(user)
+        db.add(draft)
+        await db.flush()
+
+        out = await service.draft_out(db, user, draft)
+
+        assert [field["id"] for field in out.template_snapshot["fields"]] == [
+            "applicant_name"
+        ]
+        assert set(out.values) == {"applicant_name"}
+        assert out.values["applicant_name"].value == "Asha Devi"
+        assert out.validation == []
+
+
+async def test_export_and_packet_hide_restricted_fields() -> None:
+    async with async_session_factory() as db:
+        user = await make_user(db)
+        draft = restricted_draft(user)
+        db.add(draft)
+        await db.flush()
+
+        text = await service.build_export(db, user, draft)
+        snapshot, packet_text = await service.build_packet(db, user, draft)
+
+        assert "Aadhaar" not in text
+        assert "123456789012" not in text
+        assert [field["id"] for field in snapshot["fields"]] == ["applicant_name"]
+        assert "123456789012" not in packet_text

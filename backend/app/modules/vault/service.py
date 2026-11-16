@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.privacy import RESTRICTED_PROFILE_FIELD_KEYS
 from app.modules.documents.models import ExtractedField
 from app.modules.identity.models import User
 from app.modules.vault.models import Document, DocumentStatus
@@ -54,7 +55,10 @@ async def get_own_document(
 async def list_fields(db: AsyncSession, document: Document) -> list[ExtractedField]:
     result = await db.execute(
         select(ExtractedField)
-        .where(ExtractedField.document_id == document.id)
+        .where(
+            ExtractedField.document_id == document.id,
+            ExtractedField.field_key.not_in(RESTRICTED_PROFILE_FIELD_KEYS),
+        )
         .order_by(ExtractedField.field_key)
     )
     return list(result.scalars())
