@@ -89,6 +89,40 @@ async def test_grant_rejects_blank_purpose() -> None:
             assert response.status_code == 422
 
 
+async def test_grant_and_withdraw_emit_audit_events() -> None:
+    from sqlalchemy import select
+
+    from app.core.db import async_session_factory
+    from app.modules.audit.models import AuditEvent
+
+    async with make_client() as client:
+        sign_in_response = await client.post(
+            "/api/v1/auth/dev-signin", json={"email": "citizen@example.com"}
+        )
+        user_id = sign_in_response.json()["id"]
+
+        granted = await client.post(
+            "/api/v1/consent/grants", json={"purpose": "documents.processing"}
+        )
+        consent_id = granted.json()["id"]
+        await client.post(f"/api/v1/consent/grants/{consent_id}/withdraw")
+
+    async with async_session_factory() as db:
+        events = (await db.execute(select(AuditEvent))).scalars().all()
+        granted_events = [e for e in events if e.action == "consent.granted"]
+        withdrawn_events = [e for e in events if e.action == "consent.withdrawn"]
+
+        assert len(granted_events) == 1
+        assert str(granted_events[0].actor_user_id) == user_id
+        assert granted_events[0].resource_type == "consent_record"
+        assert granted_events[0].resource_id == consent_id
+        assert granted_events[0].details == {"purpose": "documents.processing"}
+
+        assert len(withdrawn_events) == 1
+        assert str(withdrawn_events[0].actor_user_id) == user_id
+        assert withdrawn_events[0].resource_id == consent_id
+
+
 async def test_unauthenticated_gets_401() -> None:
     async with make_client() as client:
         assert (await client.get("/api/v1/consent/grants")).status_code == 401

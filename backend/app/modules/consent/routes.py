@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession
+from app.modules.audit.service import emit_audit
 from app.modules.consent import schemas, service
 
 router = APIRouter(prefix="/consent", tags=["consent"])
@@ -25,6 +26,14 @@ async def grant(
     payload: schemas.ConsentGrantRequest, user: CurrentUser, db: DbSession
 ) -> schemas.ConsentRecordOut:
     record = await service.grant_consent(db, user, payload.purpose)
+    await emit_audit(
+        db,
+        actor_user_id=user.id,
+        action="consent.granted",
+        resource_type="consent_record",
+        resource_id=str(record.id),
+        details={"purpose": record.purpose},
+    )
     await db.commit()
     return schemas.ConsentRecordOut.model_validate(record)
 
@@ -39,5 +48,13 @@ async def withdraw_grant(
             status_code=status.HTTP_404_NOT_FOUND, detail="Consent record not found"
         )
     await service.withdraw_record(db, record)
+    await emit_audit(
+        db,
+        actor_user_id=user.id,
+        action="consent.withdrawn",
+        resource_type="consent_record",
+        resource_id=str(record.id),
+        details={"purpose": record.purpose},
+    )
     await db.commit()
     return schemas.ConsentRecordOut.model_validate(record)

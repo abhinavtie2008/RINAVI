@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+import uuid
 from datetime import timedelta
 
 from sqlalchemy import select
@@ -59,7 +60,7 @@ async def get_user_for_token(db: AsyncSession, token: str) -> User | None:
     return await db.get(User, session.user_id)
 
 
-async def revoke_session(db: AsyncSession, token: str) -> None:
+async def revoke_session(db: AsyncSession, token: str) -> uuid.UUID | None:
     result = await db.execute(
         select(Session).where(Session.token_hash == hash_token(token))
     )
@@ -67,6 +68,8 @@ async def revoke_session(db: AsyncSession, token: str) -> None:
     if session is not None:
         session.revoked_at = utcnow()
         await db.flush()
+        return session.user_id
+    return None
 
 
 async def delete_user(db: AsyncSession, user: User) -> None:
