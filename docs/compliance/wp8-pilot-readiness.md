@@ -1,8 +1,9 @@
 # WP8 pilot readiness
 
-Prepared 2026-11-15 against `main` at `ec6cb1c` (PRs #30, #31 and #33 merged,
-#34 open). This is the gate the WP5 ledger sets: every deferred item must be
-**cleared** or **explicitly accepted** before the controlled pilot.
+Prepared 2026-11-16 against `main` at `07f33a8` (consent withdrawal through the
+removal of the multi-agent workflow). This is the gate the WP5 ledger sets:
+every deferred item must be **cleared** or **explicitly accepted** before the
+controlled pilot.
 
 Every state below was checked against the code on that commit, not copied from
 the ledger. Where the ledger said "not re-verified", this pass looked.
@@ -25,13 +26,13 @@ the founder's; this document only makes the state visible.
 | Browser security headers | `nosniff`, `DENY`, `no-referrer`, `Permissions-Policy`, COOP on every response; HSTS in production | PR #25, `main.py::SECURITY_HEADERS`, `tests/security/test_security_headers.py` |
 | API docs hidden in production | `/docs`, `/redoc` and `/openapi.json` are not registered when `environment=production` | PR #25, `main.py::create_app` |
 | Consent, deny-by-default | Four purposes, checked as a dependency on the routes that need them; `apply-again` now also requires `applications.preparation` | PR #31, `api/deps.py`, `modules/locker/routes.py` |
-| Consent withdrawal | `/consent` page lists every purpose and withdraws an active grant | PR #34 (open), `features/consent/ConsentPage.tsx` |
+| Consent withdrawal | `/consent` page lists every purpose and withdraws an active grant | PR #34, `features/consent/ConsentPage.tsx` |
 | Extraction accuracy | Rupee amounts keep rupees (`Rs 120,000.00` → `120000`, not 12 million); impossible dates (`31/02/2000`) stay raw at low confidence | PR #30, `documents/extraction.py`, `tests/unit/test_extraction.py` |
 | Pack integrity | The loader refuses a checklist group that names a classification no document can hold | PR #30, `catalog/loader.py`, `tests/unit/test_catalog_loader.py` |
 | Blob lifecycle | A record whose file is gone reports `content_unavailable` instead of 500; a rolled-back upload discards its bytes | PR #30, `documents/pipeline.py`, `vault/routes.py` |
 | Audit redaction | Document contents and PII never reach the audit log; SHA-256 digests preserved | PR #17, `audit/service.py`, `tests/security/test_redaction.py` |
-| Supply chain | CodeQL on push and PR, Dependabot for pip/npm/actions, branch protection, actions pinned to `@v7` | `.github/workflows/ci.yml`, PRs #20, #27–#29 |
-| Test gate | `scripts/check.sh` covers ruff, pyright, pytest, eslint, `next typegen`, tsc, vitest and a production build; same gate in CI | `scripts/check.sh`; backend 218 tests, web 13 test files at this commit |
+| Supply chain | CodeQL on push and PR, Dependabot for pip/npm/actions, the `protect-main` ruleset requires `backend` and `web`, actions pinned to `@v7` | `.github/workflows/ci.yml`, PRs #20, #27–#29 |
+| Test gate | `scripts/check.sh` covers ruff, pyright, pytest, eslint, `next typegen`, tsc, vitest and a production build; same gate in CI | `scripts/check.sh`; backend 218 tests, web 50 tests across 13 files at this commit |
 
 ## WP5 deferred ledger — verified state
 
@@ -66,13 +67,15 @@ These are not in the WP5 ledger and are not yet on any decision log.
    `memory://`, so with more than one worker each process keeps its own counters
    and the effective budget multiplies. A multi-worker pilot must set a shared
    backend (`redis://`, `redis` extra already declared).
-5. **Aadhaar is stored and displayed unmasked.** No masking or partial display
-   exists anywhere in the app (`mask` appears in no source file). Accepted by
-   decision during this hardening pass; it stays on this list because the pilot
-   handles real people's numbers, not synthetic ones.
-6. **One moderate dependency advisory** is reported by GitHub on the default
-   branch (`https://github.com/abhinavtie2008/RINAVI/security/dependabot/1`).
-   Not reviewed in this pass.
+5. **Aadhaar is stored and displayed unmasked.** The current code still carries
+   Aadhaar values into profiles and UI. The earlier "accepted" note is superseded
+   by the A1 portal-only direction: Aadhaar-format fields must stay out of
+   profiles, drafts, packets, logs and UI. This is not implemented yet, so the
+   item remains open.
+6. **One moderate dependency advisory** is open on the default branch:
+   `minimatch` (GHSA-g3hv-75wg-m249), reached only through eslint and
+   typescript-eslint, so it is dev tooling rather than shipped code. It is
+   tracked in issue #41; no Dependabot PR exists yet.
 7. **Real documents remain out of scope** until the legal/privacy review and the
    security gate above are done. Everything in development and in the test suite
    is synthetic.
@@ -81,12 +84,12 @@ These are not in the WP5 ledger and are not yet on any decision log.
 
 | # | Decision | Why it cannot be deferred |
 |---|---|---|
-| 1 | Real or synthetic documents in the pilot | If real: items 2, 4, 5 and 7 must clear, and item 9's masking question returns. |
+| 1 | Real or synthetic documents in the pilot | If real: items 2, 4, 5 and 7 must clear, and the Aadhaar policy question in item 5 returns. |
 | 2 | Encryption at rest + object storage | A plaintext `.bin` per citizen on local disk is the single largest exposure in the current design. |
 | 3 | PostgreSQL cutover | ADR-0002 already decided it happens before WP8; SQLite in a pilot means one file, one writer. |
 | 4 | Compliance gate: build the resolver, or document Assist-only | Changes what the pilot promises a citizen. |
 | 5 | Export completeness | Without it, "take your data with you" is not true. |
-| 6 | Aadhaar checksum + display masking | A wrong-but-accepted Aadhaar number becomes a failed application at the portal. |
+| 6 | Aadhaar policy + checksum | A1 requires portal-only handling; a wrong-but-accepted Aadhaar number still becomes a failed application at the portal. |
 | 7 | Deployment topology and worker count | Determines whether item 4 above (shared rate-limit storage) is a blocker or a note. |
 | 8 | OCR scope for the pilot | If image uploads stay unsupported, say so in the pilot script rather than letting citizens discover it. |
 
@@ -96,5 +99,3 @@ These are not in the WP5 ledger and are not yet on any decision log.
 - PostgreSQL behaviour or Alembic parity against a real instance.
 - Multi-worker or multi-instance behaviour of the rate limiter.
 - Behaviour with a real document, real Aadhaar number or real portal session.
-- The contents of the Dependabot advisory.
-- Whether branch protection currently requires the checks it names.
