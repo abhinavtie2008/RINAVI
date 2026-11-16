@@ -1,9 +1,9 @@
 # WP8 pilot readiness
 
-Prepared 2026-11-16 against `main` at `07f33a8` (consent withdrawal through the
-removal of the multi-agent workflow). This is the gate the WP5 ledger sets:
-every deferred item must be **cleared** or **explicitly accepted** before the
-controlled pilot.
+Prepared 2026-11-16 against `main` at `58b6419`, with the changes in ADR-0003
+(#51) and A1 (#52) assumed merged for this gate. This is the gate the WP5
+ledger sets: every deferred item must be **cleared** or **explicitly accepted**
+before the controlled pilot.
 
 Every state below was checked against the code on that commit, not copied from
 the ledger. Where the ledger said "not re-verified", this pass looked.
@@ -11,11 +11,11 @@ the ledger. Where the ledger said "not re-verified", this pass looked.
 ## How to read this
 
 - **Cleared** — the work is in `main` and a test or command in this repo covers it.
-- **Accepted** — knowingly not done; the decision to ship without it has to be recorded.
-- **Open** — nobody has decided yet, and the pilot should not start until somebody does.
+- **Accepted** — knowingly not done; the decision to ship without it is recorded below, with the condition that reopens it.
+- **Recorded** — a scope or policy choice, not a missing implementation.
+- **Deferred** — explicitly postponed for this synthetic-only gate.
 
-Nothing here is a judgement about whether the pilot should proceed. That call is
-the founder's; this document only makes the state visible.
+No item is left undecided. Every accepted or deferred item names what reopens it.
 
 ## What is cleared
 
@@ -31,67 +31,87 @@ the founder's; this document only makes the state visible.
 | Pack integrity | The loader refuses a checklist group that names a classification no document can hold | PR #30, `catalog/loader.py`, `tests/unit/test_catalog_loader.py` |
 | Blob lifecycle | A record whose file is gone reports `content_unavailable` instead of 500; a rolled-back upload discards its bytes | PR #30, `documents/pipeline.py`, `vault/routes.py` |
 | Audit redaction | Document contents and PII never reach the audit log; SHA-256 digests preserved | PR #17, `audit/service.py`, `tests/security/test_redaction.py` |
+| Aadhaar portal-only | Aadhaar is filtered from profile reads and promotions, draft snapshots and values, validation, export, packets, and `/vault/documents/{id}/fields`; legacy profile rows are deleted; the dead UI label is gone | PR #52, `core/privacy.py`, migration `b7e4f1a2c9d3`, `tests/unit/test_application_builder.py`, `tests/integration/test_profile_api.py` |
+| Dependency advisory | `eslint` 10.15 plus a scoped `minimatch` 11 override for `typescript-estree`; `npm audit` reports 0 vulnerabilities | PR #50, `apps/web/package.json`; issue #41 closes after the merge and GitHub rescan |
 | Supply chain | CodeQL on push and PR, Dependabot for pip/npm/actions, the `protect-main` ruleset requires `backend` and `web`, actions pinned to `@v7` | `.github/workflows/ci.yml`, PRs #20, #27–#29 |
-| Test gate | `scripts/check.sh` covers ruff, pyright, pytest, eslint, `next typegen`, tsc, vitest and a production build; same gate in CI | `scripts/check.sh`; backend 218 tests, web 50 tests across 13 files at this commit |
+| Test gate | `scripts/check.sh` covers ruff, pyright, pytest, eslint, `next typegen`, tsc, vitest and a production build; same gate in CI | `scripts/check.sh`; backend 225 tests, web 50 tests across 13 files after A1 (#52) |
 
 ## WP5 deferred ledger — verified state
 
-| # | Item | State | What is actually there |
-|---|---|---|---|
-| 1 | Async processing isolation | **Open** | `process_document` still runs inline inside the upload request (`vault/routes.py`). No worker package, no Celery/Redis dependency. A 10 MB PDF is parsed while the request is held open. |
-| 2 | Encryption at rest + object storage | **Open — blocks real documents** | `LocalDiskStorage` writes plaintext bytes to `<storage_dir>/<user_id>/<document_id>.bin`. No `cryptography` dependency, no S3/MinIO client in `pyproject.toml`. `infra/compose/compose.yaml` pins `minio/minio:latest` with `rinavi`/`rinavi-dev-only` credentials, and `postgres` with `rinavi`/`rinavi` — reference only, not a hardening baseline. |
-| 3 | Image OCR | **Accepted (deliberate)** | PNG/JPEG uploads come back `needs_attention` with `note = "ocr_not_configured"`, asserted in `test_document_pipeline.py`. Consequence: image evidence is unusable, so pilot instructions must say PDF or TXT. |
-| 4 | Aadhaar Verhoeff validation | **Open** | `_normalize_aadhaar` accepts any 12 digits; no checksum. A mistyped Aadhaar number is stored as high-confidence. |
-| 5 | Export completeness | **Open** | `GET /auth/export` returns `user` and `consent_records` only (`identity/schemas.py::AccountExport`). Document metadata and profile values are missing, so a citizen cannot take their own data with them. |
-| 6 | Retention sweeps | **Open** | No scheduler or cron job exists. A document whose delete fails at `storage.delete` (503) keeps both row and file, which is recoverable by retrying; nothing sweeps files left behind by an interrupted delete. |
-| 7 | PostgreSQL migration | **Open — ADR-0002 says before WP8** | `database_url` still defaults to `sqlite+aiosqlite`; local runs and CI are SQLite only. `infra/compose/compose.yaml` offers PostgreSQL 16; parity was never run against a real instance. |
-| 8 | Extraction cost baseline | **Cleared by absence** | The pipeline is deterministic and makes no AI calls: no `openai`, `anthropic`, Tesseract or other inference dependency exists. Spend is zero, so there is nothing to meter yet. Correction counts already come from `profile.value_corrected` audit events. |
+| # | Item | State | What is actually there | Reopens when |
+|---|---|---|---|---|
+| 1 | Async processing isolation | **Accepted for the synthetic pilot** | `process_document` still runs inline inside the upload request (`vault/routes.py`). No worker package, no Celery/Redis dependency. A 10 MB PDF is parsed while the request is held open. | The pilot moves to real documents, uploads beyond the synthetic set, or overlapping users; then an async worker is required. |
+| 2 | Encryption at rest + object storage | **Accepted for synthetic only** | `LocalDiskStorage` writes plaintext bytes to `<storage_dir>/<user_id>/<document_id>.bin`. No `cryptography` dependency, no S3/MinIO client in `pyproject.toml`. `infra/compose/compose.yaml` pins `minio/minio:latest` with `rinavi`/`rinavi-dev-only` credentials, and `postgres` with `rinavi`/`rinavi` — reference only, not a hardening baseline. | The first real document is accepted, or storage leaves the founder's machine. Encryption + object storage must clear before either. |
+| 3 | Image OCR | **Accepted (deliberate)** | PNG/JPEG uploads come back `needs_attention` with `note = "ocr_not_configured"`, asserted in `test_document_pipeline.py`. Consequence: image evidence is unusable, so pilot instructions must say PDF or TXT. | Image evidence is needed for a pilot service; OCR then becomes in scope. |
+| 4 | Aadhaar Verhoeff validation | **Moot under A1** | `_normalize_aadhaar` still accepts any 12 digits, but the value is never promoted, stored in a profile, shown in a draft, exported or put in a packet. The portal is the only place an Aadhaar number is entered or validated. | Aadhaar becomes a pack input or is stored outside `extracted_fields`; then checksum validation and a policy decision are required. |
+| 5 | Export completeness | **Accepted for the synthetic pilot** | `GET /auth/export` returns `user` and `consent_records` only (`identity/schemas.py::AccountExport`). Document metadata and profile values are missing. | RINAVI promises citizens they can take their data with them, or real documents are accepted. Both require a complete export. |
+| 6 | Retention sweeps | **Accepted for the synthetic pilot** | No scheduler or cron job exists. A document whose delete fails at `storage.delete` (503) keeps both row and file, which is recoverable by retrying; nothing sweeps files left behind by an interrupted delete. | Real documents are accepted or the pilot has more than one user; then a scheduled sweep and an operator runbook are required. |
+| 7 | PostgreSQL migration | **Deferred — accepted ADR-0002 deviation** | `database_url` still defaults to `sqlite+aiosqlite`; local runs and CI are SQLite only. `infra/compose/compose.yaml` offers PostgreSQL 16; parity was never run against a real instance. This synthetic-only gate explicitly does not satisfy ADR-0002. | Real documents are accepted, more than one worker is used, or the pilot becomes a controlled pilot in ADR-0002's sense. PostgreSQL must clear before any of those. |
+| 8 | Extraction cost baseline | **Cleared by absence** | The pipeline is deterministic and makes no AI calls: no `openai`, `anthropic`, Tesseract or other inference dependency exists. Spend is zero, so there is nothing to meter yet. Correction counts already come from `profile.value_corrected` audit events. | Any inference dependency is added. |
 
 ## Found after WP7
 
-These are not in the WP5 ledger and are not yet on any decision log.
+These are not in the WP5 ledger. They are now recorded decisions rather than
+unowned gaps.
 
-1. **Compliance gate is absent.** The spec's section 6 resolver — deciding whether
-   a pack's requirements can be satisfied by what the citizen holds — has no
-   implementation. Drafts report missing evidence per group, but nothing answers
-   "can this person actually apply?". Either a minimal resolver is built or the
-   pilot documents RINAVI as Assist-only, with the portal deciding eligibility.
-2. **Module coverage is 9 of 11.** `backend/app/modules` contains applications,
-   audit, catalog, consent, documents, identity, locker, profile and vault. The
-   spec names `execution` and `integrations` as well; neither exists.
+1. **Compliance gate: Assist-only.** V1 does not decide eligibility. Drafts
+   report missing evidence per group, but the official portal decides whether
+   the citizen can apply. [ADR-0003](../architecture/decisions/0003-v1-module-scope.md)
+   records the scope. A readiness resolver is post-pilot and additive: it can
+   read pack snapshots, confirmed profile values, document links and validation
+   results without a schema change, and its output must stay advisory. This
+   reopens if a resolver is scheduled; the portal remains authoritative.
+2. **Module coverage is 9 of 11 by design.**
+   `backend/app/modules` contains applications, audit, catalog, consent,
+   documents, identity, locker, profile and vault. The spec names `execution`
+   and `integrations` as well; ADR-0003 records both as post-pilot and neither
+   is stubbed in V1. This reopens when submission automation or external portal
+   integrations enter scope.
 3. **There is no deployment target.** No `Dockerfile`, `Procfile`, `fly.toml` or
    render config; `infra/compose` is a reference for services, not an app stack.
-   `scripts/dev.sh` is Git-Bash/Windows-only (`scripts/venv.sh` solved the venv
-   half of that for bootstrap and check, not for dev).
+   `scripts/dev.sh` is Git-Bash/Windows-only. Host selection is deferred for
+   this gate, and the pilot **cannot launch** until a host is chosen and the app
+   is deployed there. This reopens at launch, not at code-complete.
 4. **Rate-limit storage is per-process.** `rate_limit_storage_uri` defaults to
    `memory://`, so with more than one worker each process keeps its own counters
-   and the effective budget multiplies. A multi-worker pilot must set a shared
-   backend (`redis://`, `redis` extra already declared).
-5. **Aadhaar is stored and displayed unmasked.** The current code still carries
-   Aadhaar values into profiles and UI. The earlier "accepted" note is superseded
-   by the A1 portal-only direction: Aadhaar-format fields must stay out of
-   profiles, drafts, packets, logs and UI. This is not implemented yet, so the
-   item remains open.
-6. **One moderate dependency advisory** is open on the default branch:
-   `minimatch` (GHSA-g3hv-75wg-m249), reached only through eslint and
-   typescript-eslint, so it is dev tooling rather than shipped code. It is
-   tracked in issue #41; no Dependabot PR exists yet.
+   and the effective budget multiplies. The gate assumes a **single worker**.
+   This reopens on multi-worker or autoscaling, which requires a shared backend
+   (`redis://`, `redis` extra already declared).
+5. **Aadhaar was stored and displayed; A1 cleared the propagation.** PR #52
+   filters every API path, omits restricted bindings from new draft snapshots,
+   rejects field updates for a restricted binding, and deletes legacy
+   `profile_values` rows with migration `b7e4f1a2c9d3`. The extraction code
+   still reads and stores Aadhaar in `extracted_fields`; the owner-only `/fields`
+   response hides it, and audit logging already redacts 12-digit values. The
+   checksum item is moot because the portal is the only entry point. This
+   reopens if extracted fields are exposed beyond `/fields`, included in an
+   export, or a pack requires Aadhaar as an input.
+6. **The minimatch advisory is cleared.** PR #50 moves `eslint` to 10.15 and
+   forces `@typescript-eslint/typescript-estree` onto `minimatch` 11 through a
+   scoped override; the override did not break lint. `npm audit` reports 0
+   vulnerabilities, and issue #41 closes when the PR lands and GitHub rescans.
+   Only the older `minimatch` 3.1.5 under `eslint-config-next` remains, and it
+   is outside the advisory range. This reopens if the override is removed or a
+   new advisory appears.
 7. **Real documents remain out of scope** until the legal/privacy review and the
    security gate above are done. Everything in development and in the test suite
-   is synthetic.
+   is synthetic. This reopens only when the review passes and encryption,
+   retention, PostgreSQL and deployment clear together.
 
-## Decisions needed before the gate
+## Decisions recorded
 
-| # | Decision | Why it cannot be deferred |
-|---|---|---|
-| 1 | Real or synthetic documents in the pilot | If real: items 2, 4, 5 and 7 must clear, and the Aadhaar policy question in item 5 returns. |
-| 2 | Encryption at rest + object storage | A plaintext `.bin` per citizen on local disk is the single largest exposure in the current design. |
-| 3 | PostgreSQL cutover | ADR-0002 already decided it happens before WP8; SQLite in a pilot means one file, one writer. |
-| 4 | Compliance gate: build the resolver, or document Assist-only | Changes what the pilot promises a citizen. |
-| 5 | Export completeness | Without it, "take your data with you" is not true. |
-| 6 | Aadhaar policy + checksum | A1 requires portal-only handling; a wrong-but-accepted Aadhaar number still becomes a failed application at the portal. |
-| 7 | Deployment topology and worker count | Determines whether item 4 above (shared rate-limit storage) is a blocker or a note. |
-| 8 | OCR scope for the pilot | If image uploads stay unsupported, say so in the pilot script rather than letting citizens discover it. |
+| # | Decision | Recorded choice | Reopens when |
+|---|---|---|---|
+| 1 | Documents in the pilot | Synthetic only for this gate. | Legal/privacy review passes and the security items below clear; then real documents become possible. |
+| 2 | Encryption at rest + object storage | Accept plaintext local disk for synthetic data only. | The first real document or a shared host; encryption and object storage must clear first. |
+| 3 | PostgreSQL cutover | Defer PostgreSQL and explicitly accept the ADR-0002 deviation for this synthetic-only gate. | Real documents, multiple workers, or a controlled pilot; PostgreSQL must clear first. |
+| 4 | Compliance resolver | Assist-only in V1; resolver is post-pilot and additive; portal decides eligibility. | A resolver is scheduled; it must stay advisory and needs a new ADR or an ADR-0003 update. |
+| 5 | Export completeness | Accept user + consent records as the pilot export. | RINAVI promises "take your data with you" or accepts real documents; then document metadata and profile values must be included. |
+| 6 | Aadhaar handling | Portal-only. A1 cleared profile, draft, packet and UI propagation; legacy profile rows are deleted; extraction remains but is hidden from the API; checksum is moot. | Aadhaar becomes a pack input or extracted rows are exposed beyond `/fields`. |
+| 7 | Deployment topology | Defer host selection; single worker. Code-complete is not launch-ready. | Pilot launch; a host must be chosen and the app deployed before launch. |
+| 8 | OCR scope | Accept PDF/TXT only; the pilot script must say image uploads are unsupported. | Image evidence is required; OCR then enters scope. |
+| 9 | Concurrent workers | Accept a single worker with `memory://` rate-limit storage. | Multi-worker or autoscaling; a shared rate-limit backend is required. |
+| 10 | Dependency advisory | Cleared by the eslint 10.15 + scoped `minimatch` 11 override; no fallback was needed. | The override is removed or a new advisory affects shipped code. |
 
 ## What this pass did not verify
 
@@ -99,3 +119,6 @@ These are not in the WP5 ledger and are not yet on any decision log.
 - PostgreSQL behaviour or Alembic parity against a real instance.
 - Multi-worker or multi-instance behaviour of the rate limiter.
 - Behaviour with a real document, real Aadhaar number or real portal session.
+- The legacy-row migration against a populated production database. It is
+  covered by a test that seeds rows at `a51cf575109b` and upgrades to head, and
+  by a manual fresh `alembic upgrade head`; both pass.
