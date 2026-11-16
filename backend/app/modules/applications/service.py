@@ -8,6 +8,7 @@ from app.core.ids import parse_uuid, parse_uuids
 from app.core.privacy import (
     RESTRICTED_PROFILE_FIELD_KEYS,
     is_restricted_binding,
+    is_restricted_format,
 )
 from app.modules.applications.models import ApplicationDraft
 from app.modules.applications.schemas import DraftOut, ValidationIssueOut
@@ -38,6 +39,7 @@ def _snapshot(pack: ServicePack) -> dict[str, Any]:
             }
             for field in pack.fields
             if not is_restricted_binding(field.binding)
+            and not is_restricted_format(field.format)
         ],
         "declaration": pack.declaration,
         "checklist_groups": [
@@ -66,6 +68,12 @@ async def _confirmed_profile_values(
     return {value.field_key: value.value for value in result.scalars()}
 
 
+def _is_restricted_snapshot_field(field: dict[str, Any]) -> bool:
+    return is_restricted_binding(field.get("binding")) or is_restricted_format(
+        field.get("format")
+    )
+
+
 def _public_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
     """Drop fields whose value belongs only at the official portal.
 
@@ -75,7 +83,7 @@ def _public_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
     fields = [
         field
         for field in snapshot["fields"]
-        if not is_restricted_binding(field.get("binding"))
+        if not _is_restricted_snapshot_field(field)
     ]
     if len(fields) == len(snapshot["fields"]):
         return snapshot
@@ -147,7 +155,7 @@ def set_field_value(draft: ApplicationDraft, field_id: str, value: str) -> None:
     field = fields.get(field_id)
     if field is None:
         raise DraftError("unknown_field", f"Unknown field: {field_id}")
-    if is_restricted_binding(field.get("binding")):
+    if _is_restricted_snapshot_field(field):
         raise DraftError(
             "restricted_field",
             f"Field is collected only at the official portal: {field_id}",

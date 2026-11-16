@@ -11,3 +11,8 @@ def is_restricted_field_key(field_key: str) -> bool:
 def is_restricted_binding(binding: str | None) -> bool:
     """Return True when a pack field binds to a portal-only identifier."""
     return binding is not None and binding in RESTRICTED_PROFILE_FIELD_KEYS
+
+
+def is_restricted_format(field_format: str | None) -> bool:
+    """Return True for an Aadhaar field even when it has no profile binding."""
+    return field_format == "aadhaar"
