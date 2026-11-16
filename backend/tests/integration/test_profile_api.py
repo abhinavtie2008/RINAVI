@@ -1,6 +1,10 @@
 from httpx import ASGITransport, AsyncClient, Cookies
+from sqlalchemy import select
 
+from app.core.db import async_session_factory
 from app.main import app
+from app.modules.identity.models import User
+from app.modules.profile.models import ProfileStatus, ProfileValue
 
 API = "/api/v1"
 
@@ -49,6 +53,22 @@ async def promote(client: AsyncClient, document_id: str):
     )
 
 
+async def seed_legacy_aadhaar(email: str = "citizen@example.com") -> str:
+    async with async_session_factory() as session:
+        user = (
+            await session.execute(select(User).where(User.email == email))
+        ).scalar_one()
+        value = ProfileValue(
+            user_id=user.id,
+            field_key="aadhaar_number",
+            value="123456789012",
+            status=ProfileStatus.CONFIRMED,
+        )
+        session.add(value)
+        await session.commit()
+        return str(value.id)
+
+
 async def test_promote_requires_profile_consent() -> None:
     async with make_client() as client:
         await sign_in(client)
@@ -71,7 +91,7 @@ async def test_promote_creates_unconfirmed_source_linked_values() -> None:
 
         assert response.status_code == 200
         values = response.json()
-        assert len(values) == 7
+        assert len(values) == 6
         assert {v["field_key"] for v in values} == {
             "full_name",
             "father_name",
@@ -79,7 +99,6 @@ async def test_promote_creates_unconfirmed_source_linked_values() -> None:
             "gender",
             "address",
             "annual_income",
-            "aadhaar_number",
         }
         assert {v["status"] for v in values} == {"unconfirmed"}
         full_name = next(v for v in values if v["field_key"] == "full_name")
@@ -90,6 +109,29 @@ async def test_promote_creates_unconfirmed_source_linked_values() -> None:
 
         listed = await client.get(f"{API}/profile/values")
         assert [v["id"] for v in listed.json()] == [v["id"] for v in values]
+
+
+async def test_legacy_aadhaar_is_hidden_from_profile_reads() -> None:
+    async with make_client() as client:
+        await sign_in(client)
+        await allow(client, "documents.processing")
+        await allow(client, "profile.storage")
+        value_id = await seed_legacy_aadhaar()
+
+        listed = (await client.get(f"{API}/profile/values")).json()
+        assert "aadhaar_number" not in {v["field_key"] for v in listed}
+
+        document_id = await upload_income_document(client)
+        promoted = (await promote(client, document_id)).json()
+        assert "aadhaar_number" not in {v["field_key"] for v in promoted}
+
+        confirm = await client.post(f"{API}/profile/values/{value_id}/confirm")
+        assert confirm.status_code == 404
+        correct = await client.post(
+            f"{API}/profile/values/{value_id}/correct",
+            json={"value": "000000000000"},
+        )
+        assert correct.status_code == 404
 
 
 async def test_correction_confirms_and_records_history() -> None:
@@ -153,7 +195,7 @@ async def test_repromote_never_overwrites_confirmed_values() -> None:
         after = next(v for v in repromoted if v["field_key"] == "full_name")
         assert after["value"] == "Asha Devi Sharma"
         assert after["status"] == "confirmed"
-        assert len(repromoted) == 7
+        assert len(repromoted) == 6
 
 
 async def test_reject_removes_unconfirmed_but_not_confirmed() -> None:
@@ -177,7 +219,6 @@ async def test_reject_removes_unconfirmed_but_not_confirmed() -> None:
             "date_of_birth",
             "address",
             "annual_income",
-            "aadhaar_number",
         }
 
         blocked = await client.post(f"{API}/profile/values/{full_name['id']}/reject")

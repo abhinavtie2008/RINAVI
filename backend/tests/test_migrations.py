@@ -2,6 +2,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 from alembic import command
@@ -52,6 +53,58 @@ def test_alembic_check_reports_no_schema_drift(tmp_path: Path) -> None:
         "alembic detected schema drift; a model module is missing from "
         f"migrations/env.py:\n{result.stdout}\n{result.stderr}"
     )
+
+
+def test_aadhaar_cleanup_migration_deletes_only_restricted_rows(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "cleanup.db"
+    cfg = _alembic_config(db_path)
+    command.upgrade(cfg, "a51cf575109b")
+
+    user_id = uuid.uuid4().hex
+    now = "2026-11-16 00:00:00"
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            "INSERT INTO users (id, email, display_name, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (user_id, "legacy@example.com", "Legacy", now),
+        )
+        for field_key, value in (
+            ("aadhaar_number", "123456789012"),
+            ("full_name", "Asha Devi"),
+        ):
+            conn.execute(
+                "INSERT INTO profile_values ("
+                "id, user_id, field_key, value, status, correction_history, "
+                "created_at, updated_at"
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    uuid.uuid4().hex,
+                    user_id,
+                    field_key,
+                    value,
+                    "confirmed",
+                    "[]",
+                    now,
+                    now,
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+    command.upgrade(cfg, "head")
+
+    conn = sqlite3.connect(db_path)
+    try:
+        rows = list(
+            conn.execute("SELECT field_key, value FROM profile_values ORDER BY field_key")
+        )
+    finally:
+        conn.close()
+    assert rows == [("full_name", "Asha Devi")]
 
 
 def test_alembic_upgrade_head_on_clean_database(tmp_path: Path) -> None:
