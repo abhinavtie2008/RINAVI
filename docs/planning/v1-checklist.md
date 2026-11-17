@@ -198,7 +198,7 @@ Standard flow (used by every PR so far):
 1. `git switch main && git pull --ff-only origin main` — always start from synced `main`.
 2. Create a branch: `chore/…`, `fix/…`, `feat/…`, `docs/…` depending on the item.
 3. **Code items:** write the failing test first and watch it fail (RED), implement the smallest fix (GREEN), then run the whole gate (REFACTOR). **Doc/config items:** no tests needed, but the gate still runs.
-4. Run `scripts/check.sh` — backend: ruff, pyright, pytest (225 on `main`, 234 once the cleanup train merges); web: eslint, typegen, tsc, vitest (50), build. Exit 0 required.
+4. Run `scripts/check.sh` — backend: ruff, pyright, pytest (234); web: eslint, typegen, tsc, vitest (50), build. Exit 0 required.
 5. For migration changes: run `alembic upgrade head` against a copy of the database and verify the result manually. Most tests build the schema from metadata, but `tests/test_migrations.py` runs Alembic `upgrade head` and `alembic check`; data migrations still need the DB-copy check.
 6. Commit per item, push, open a PR using the repo's PR template (Summary / Type / How tested / Security & privacy checklist / Screenshots), state `Closes #<issue>` where relevant, and confirm CI is green.
 7. Squash-merge in the GitHub UI (the human merges; the agent stops at a green PR), then `git pull --ff-only` locally and delete the merged branch.
