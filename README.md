@@ -55,5 +55,5 @@ Local development uses SQLite; see
 ## Quality gate
 
 `scripts/check.sh` runs the full gate — backend `ruff`, `pyright`, `pytest`
-(225 tests) and web `eslint`, `tsc`, `vitest` (50 tests), production build.
+(234 tests) and web `eslint`, `tsc`, `vitest` (50 tests), production build.
 The same gate runs in CI on every push and pull request.
