@@ -229,8 +229,13 @@ async def document_fields(
     response_model=schemas.DocumentOut,
     dependencies=[ConsentRequired("documents.processing")],
 )
+@limiter.limit(UPLOAD_LIMIT, key_func=session_or_ip)
 async def retry_document(
-    document_id: uuid.UUID, user: CurrentUser, db: DbSession
+    request: Request,
+    response: Response,
+    document_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
 ) -> schemas.DocumentOut:
     document = await service.get_own_document(db, user, document_id)
     if document is None:

@@ -7,7 +7,8 @@ cd "$(dirname "$0")/.."
   # shellcheck source=scripts/venv.sh
   source ../scripts/venv.sh
   activate_backend_venv .venv
-  RINAVI_ENVIRONMENT=development exec python -m uvicorn app.main:app --reload --port 8000
+  RINAVI_ENVIRONMENT=development RINAVI_DEV_SIGNIN_ENABLED=true \
+    exec python -m uvicorn app.main:app --reload --port 8000
 ) &
 (cd apps/web && exec npm run dev) &
 

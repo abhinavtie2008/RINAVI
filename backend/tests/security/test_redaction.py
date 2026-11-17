@@ -1,5 +1,10 @@
+import io
 import logging
+import logging.config
+import sys
 import time
+
+from uvicorn.config import LOGGING_CONFIG
 
 from app.core.db import async_session_factory
 from app.core.logging import RedactingFilter, configure_logging
@@ -116,6 +121,72 @@ def test_redacting_filter_scrubs_embedded_pii_in_message() -> None:
     assert record.msg == "user [REDACTED] uploaded"
 
 
+def test_redacting_filter_scrubs_exception_tracebacks() -> None:
+    try:
+        raise ValueError("contact citizen@example.com and 123456789012 leaked")
+    except ValueError:
+        exc_info = sys.exc_info()
+    record = logging.LogRecord(
+        name="test",
+        level=logging.ERROR,
+        pathname=__file__,
+        lineno=1,
+        msg="processing failed",
+        args=None,
+        exc_info=exc_info,
+    )
+    assert RedactingFilter().filter(record) is True
+    assert record.exc_info is None
+    assert record.exc_text is not None
+    assert "citizen@example.com" not in record.exc_text
+    assert "123456789012" not in record.exc_text
+    assert "[REDACTED]" in record.exc_text
+
+    rendered = logging.Formatter("%(message)s").format(record)
+    assert "citizen@example.com" not in rendered
+    assert "123456789012" not in rendered
+    assert "[REDACTED]" in rendered
+
+
+def test_redacting_filter_preserves_ids_in_tracebacks() -> None:
+    draft_id = "f978259c-642a-4a92-8011-053591020139"
+    digest = "012345678901" + "a" * 52
+    try:
+        raise ValueError(f"draft {draft_id} failed for session:{digest}")
+    except ValueError:
+        exc_info = sys.exc_info()
+    record = logging.LogRecord(
+        name="test",
+        level=logging.ERROR,
+        pathname=__file__,
+        lineno=1,
+        msg="processing failed",
+        args=None,
+        exc_info=exc_info,
+    )
+    assert RedactingFilter().filter(record) is True
+    assert record.exc_text is not None
+    assert draft_id in record.exc_text
+    assert f"session:{digest}" in record.exc_text
+
+
+def test_redacting_filter_scrubs_stack_info() -> None:
+    record = logging.LogRecord(
+        name="test",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg="boom",
+        args=None,
+        exc_info=None,
+        sinfo='  File "x.py", line 1, citizen@example.com leaked',
+    )
+    assert RedactingFilter().filter(record) is True
+    assert record.stack_info is not None
+    assert "citizen@example.com" not in record.stack_info
+    assert "[REDACTED]" in record.stack_info
+
+
 async def test_emit_audit_redacts_details() -> None:
     async with async_session_factory() as db:
         user = await identity_service.get_or_create_user(db, "citizen@example.com")
@@ -164,3 +235,44 @@ async def test_audit_event_survives_actor_deletion_with_null_actor() -> None:
 def test_configure_logging_applies_level() -> None:
     configure_logging("debug")
     assert logging.getLogger().level == logging.DEBUG
+
+
+def test_uvicorn_exception_tracebacks_are_redacted() -> None:
+    # Uvicorn logs unhandled exceptions through its own loggers, whose
+    # handlers do not propagate to the root handler. Without a filter on
+    # those handlers the production traceback path leaks PII.
+    logging.config.dictConfig(LOGGING_CONFIG)
+    configure_logging("INFO")
+
+    uvicorn_logger = logging.getLogger("uvicorn")
+    handler = next(
+        candidate
+        for candidate in uvicorn_logger.handlers
+        if isinstance(candidate, logging.StreamHandler)
+    )
+    capture = io.StringIO()
+    original_stream = handler.stream
+    handler.setStream(capture)
+    try:
+        raise ValueError("contact citizen@example.com and 123456789012 leaked")
+    except ValueError:
+        logging.getLogger("uvicorn.error").error(
+            "Exception in ASGI application", exc_info=True
+        )
+    finally:
+        handler.setStream(original_stream)
+
+    rendered = capture.getvalue()
+    assert "Exception in ASGI application" in rendered
+    assert "citizen@example.com" not in rendered
+    assert "123456789012" not in rendered
+    assert "[REDACTED]" in rendered
+
+
+def test_configure_logging_filters_every_uvicorn_handler() -> None:
+    logging.config.dictConfig(LOGGING_CONFIG)
+    configure_logging("INFO")
+
+    for name in ("uvicorn", "uvicorn.access"):
+        for handler in logging.getLogger(name).handlers:
+            assert any(isinstance(f, RedactingFilter) for f in handler.filters)
