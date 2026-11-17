@@ -1,3 +1,6 @@
+import pytest
+
+from app.modules.documents import extraction
 from app.modules.documents.extraction import (
     Candidate,
     classify,
@@ -5,7 +8,7 @@ from app.modules.documents.extraction import (
     extract_text_from_pdf,
     extract_text_from_txt,
 )
-from tests.factories import make_text_pdf
+from tests.factories import make_multipage_pdf, make_text_pdf
 
 INCOME_TEXT = (
     "GOVERNMENT OF EXAMPLE STATE\n"
@@ -78,12 +81,58 @@ def test_pdf_text_layer_is_extracted() -> None:
         ["Applicant Name: Asha Devi", "Annual Income: Rs. 1,20,000"]
     )
 
-    text = extract_text_from_pdf(pdf_bytes)
+    text, note = extract_text_from_pdf(pdf_bytes)
 
+    assert note is None
     assert "Asha Devi" in text
     fields = {c.field_key: c.value for c in extract_candidates(text)}
     assert fields.get("full_name") == "Asha Devi"
     assert fields.get("annual_income") == "120000"
+
+
+def test_pdf_over_page_limit_is_flagged_and_truncated() -> None:
+    pdf_bytes = make_multipage_pdf(
+        [["Page 1 line"]] * 100 + [["Applicant Name: Over the limit"]]
+    )
+
+    text, note = extract_text_from_pdf(pdf_bytes)
+
+    assert note == "page_limit_exceeded"
+    assert "Page 1 line" in text
+    assert "Over the limit" not in text
+
+
+def test_pdf_over_text_limit_is_flagged_and_truncated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The production limit is 2 MB; a small one exercises the same stopping
+    # logic without generating a 2 MB document in the test.
+    monkeypatch.setattr(extraction, "TEXT_LIMIT_CHARS", 64, raising=False)
+    pdf_bytes = make_multipage_pdf(
+        [
+            ["Page 1 line that is long enough"],
+            ["Page 2 line that is long enough"],
+            ["Page 3 line that is long enough"],
+        ]
+    )
+
+    text, note = extract_text_from_pdf(pdf_bytes)
+
+    assert note == "text_limit_exceeded"
+    assert "Page 1 line" in text
+    assert "Page 3 line" not in text
+
+
+def test_pdf_within_limits_is_fully_extracted() -> None:
+    pdf_bytes = make_multipage_pdf(
+        [["Applicant Name: Asha Devi"], ["Annual Income: Rs. 1,20,000"]]
+    )
+
+    text, note = extract_text_from_pdf(pdf_bytes)
+
+    assert note is None
+    assert "Asha Devi" in text
+    assert "1,20,000" in text
 
 
 def test_txt_text_is_decoded_as_utf8() -> None:
