@@ -19,6 +19,8 @@ activate_backend_venv .venv
 # force pure-Python mode so the editable install never re-breaks imports.
 export DISABLE_SQLALCHEMY_CEXT=1
 pip install -e ".[dev]"
+# A fresh clone has no database file; the API expects the migrated schema.
+RINAVI_ENVIRONMENT=development "$PYTHON" -m alembic upgrade head
 cd ..
 
 echo "== web =="
