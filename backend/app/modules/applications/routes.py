@@ -69,7 +69,7 @@ async def create_draft(
 )
 async def list_drafts(user: CurrentUser, db: DbSession) -> list[schemas.DraftOut]:
     drafts = await service.list_drafts(db, user)
-    return [await service.draft_out(db, user, draft) for draft in drafts]
+    return await service.drafts_out(db, user, drafts)
 
 
 @router.get(
