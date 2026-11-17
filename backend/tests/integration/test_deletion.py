@@ -47,11 +47,14 @@ async def test_delete_account_wipes_owned_data_and_keeps_audit() -> None:
         assert await count(db, ConsentRecord) == 0
 
         events = (await db.execute(select(AuditEvent))).scalars().all()
-        assert len(events) == 1
-        assert events[0].action == "account.deleted"
-        assert events[0].resource_type == "user"
-        assert events[0].actor_user_id is None
-        assert "citizen@example.com" not in events[0].details.values()
+        # Sign-in, consent grant, and deletion events are all retained; only
+        # the actor link is nulled by the FK.
+        assert len(events) == 3
+        deleted = [e for e in events if e.action == "account.deleted"]
+        assert len(deleted) == 1
+        assert deleted[0].resource_type == "user"
+        assert deleted[0].actor_user_id is None
+        assert "citizen@example.com" not in deleted[0].details.values()
 
 
 async def test_deleting_one_user_leaves_others_untouched() -> None:

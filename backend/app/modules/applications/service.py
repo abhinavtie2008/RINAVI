@@ -232,25 +232,30 @@ def set_declaration(draft: ApplicationDraft, confirmed: bool) -> None:
     draft.updated_at = utcnow()
 
 
-async def collect_validation_inputs(
-    db: AsyncSession, user: User, draft: ApplicationDraft
-) -> tuple[dict[str, str], dict[str, str]]:
-    profile = await _confirmed_profile_values(db, user)
-    linked_ids = {
-        doc_id for ids in draft.document_links.values() for doc_id in ids
-    }
-    states: dict[str, str] = {}
+def _linked_ids(draft: ApplicationDraft) -> set[str]:
+    return {doc_id for ids in draft.document_links.values() for doc_id in ids}
+
+
+async def _documents_by_id(
+    db: AsyncSession, user: User, linked_ids: set[str]
+) -> dict[uuid.UUID, Document]:
     stored_ids = parse_uuids(linked_ids)
-    found: dict[uuid.UUID, Document] = {}
-    if stored_ids:
-        result = await db.execute(
-            select(Document).where(
-                Document.user_id == user.id,
-                Document.id.in_(stored_ids),
-            )
+    if not stored_ids:
+        return {}
+    result = await db.execute(
+        select(Document).where(
+            Document.user_id == user.id,
+            Document.id.in_(stored_ids),
         )
-        found = {document.id: document for document in result.scalars()}
-    for doc_id in linked_ids:
+    )
+    return {document.id: document for document in result.scalars()}
+
+
+def _document_states(
+    draft: ApplicationDraft, found: dict[uuid.UUID, Document]
+) -> dict[str, str]:
+    states: dict[str, str] = {}
+    for doc_id in _linked_ids(draft):
         parsed_id = parse_uuid(doc_id)
         document = found.get(parsed_id) if parsed_id is not None else None
         states[doc_id] = (
@@ -258,7 +263,15 @@ async def collect_validation_inputs(
             if document is not None and document.status == DocumentStatus.PROCESSED
             else "unavailable"
         )
-    return profile, states
+    return states
+
+
+async def collect_validation_inputs(
+    db: AsyncSession, user: User, draft: ApplicationDraft
+) -> tuple[dict[str, str], dict[str, str]]:
+    profile = await _confirmed_profile_values(db, user)
+    found = await _documents_by_id(db, user, _linked_ids(draft))
+    return profile, _document_states(draft, found)
 
 
 async def validation_issues(
@@ -280,22 +293,11 @@ async def validation_issues(
 async def build_export(
     db: AsyncSession, user: User, draft: ApplicationDraft
 ) -> str:
-    linked_ids = {
-        doc_id for ids in draft.document_links.values() for doc_id in ids
+    found = await _documents_by_id(db, user, _linked_ids(draft))
+    names = {
+        str(document_id): document.original_filename
+        for document_id, document in found.items()
     }
-    names: dict[str, str] = {}
-    stored_ids = parse_uuids(linked_ids)
-    if stored_ids:
-        result = await db.execute(
-            select(Document).where(
-                Document.user_id == user.id,
-                Document.id.in_(stored_ids),
-            )
-        )
-        names = {
-            str(document.id): document.original_filename
-            for document in result.scalars()
-        }
     lines = [
         "RINAVI — application draft (NOT a submission)",
         f"Service: {draft.service_name} (pack {draft.pack_version})",
@@ -352,22 +354,11 @@ ACKNOWLEDGEMENT_GUIDANCE = (
 async def build_packet(
     db: AsyncSession, user: User, draft: ApplicationDraft
 ) -> tuple[dict[str, Any], str]:
-    linked_ids = {
-        doc_id for ids in draft.document_links.values() for doc_id in ids
+    found = await _documents_by_id(db, user, _linked_ids(draft))
+    names = {
+        str(document_id): document.original_filename
+        for document_id, document in found.items()
     }
-    names: dict[str, str] = {}
-    stored_ids = parse_uuids(linked_ids)
-    if stored_ids:
-        result = await db.execute(
-            select(Document).where(
-                Document.user_id == user.id,
-                Document.id.in_(stored_ids),
-            )
-        )
-        names = {
-            str(document.id): document.original_filename
-            for document in result.scalars()
-        }
     guidance = draft.template_snapshot["guidance"]
     service_metadata = loader.get_service(draft.service_slug)
     snapshot: dict[str, Any] = {
@@ -404,21 +395,59 @@ async def build_packet(
     return snapshot, await build_export(db, user, draft)
 
 
-async def draft_out(
-    db: AsyncSession, user: User, draft: ApplicationDraft
+def _draft_out(
+    draft: ApplicationDraft,
+    snapshot: dict[str, Any],
+    values: dict[str, Any],
+    issues: list[dict[str, Any]],
 ) -> DraftOut:
-    snapshot = _public_snapshot(draft.template_snapshot)
-    issues = await validation_issues(db, user, draft)
     return DraftOut(
         id=draft.id,
         service_slug=draft.service_slug,
         service_name=draft.service_name,
         pack_version=draft.pack_version,
         template_snapshot=snapshot,
-        values=_public_values(snapshot, draft.values),
+        values=values,
         document_links=draft.document_links,
         declaration_confirmed=draft.declaration_confirmed,
         validation=[ValidationIssueOut(**issue) for issue in issues],
         created_at=draft.created_at,
         updated_at=draft.updated_at,
     )
+
+
+async def draft_out(
+    db: AsyncSession, user: User, draft: ApplicationDraft
+) -> DraftOut:
+    snapshot = _public_snapshot(draft.template_snapshot)
+    values = _public_values(snapshot, draft.values)
+    issues = await validation_issues(db, user, draft)
+    return _draft_out(draft, snapshot, values, issues)
+
+
+async def drafts_out(
+    db: AsyncSession, user: User, drafts: list[ApplicationDraft]
+) -> list[DraftOut]:
+    """Serialize many drafts with one profile read and one document read.
+
+    Calling ``draft_out`` per row re-ran both queries for every draft.
+    """
+    if not drafts:
+        return []
+    profile = await _confirmed_profile_values(db, user)
+    linked_ids = {doc_id for draft in drafts for doc_id in _linked_ids(draft)}
+    found = await _documents_by_id(db, user, linked_ids)
+    outputs: list[DraftOut] = []
+    for draft in drafts:
+        snapshot = _public_snapshot(draft.template_snapshot)
+        values = _public_values(snapshot, draft.values)
+        issues = validate_draft(
+            snapshot,
+            values,
+            draft.declaration_confirmed,
+            draft.document_links,
+            _document_states(draft, found),
+            profile,
+        )
+        outputs.append(_draft_out(draft, snapshot, values, issues))
+    return outputs

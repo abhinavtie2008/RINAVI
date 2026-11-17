@@ -90,6 +90,9 @@ def _normalize_income(raw: str) -> tuple[str, str]:
     value = raw.strip()
     if _SCALE_WORD.search(value):
         return value, CONFIDENCE_LOW
+    if value.startswith("-") or (value.startswith("(") and value.endswith(")")):
+        # Accounting negatives are losses, never income; keep them for review.
+        return value, CONFIDENCE_LOW
     amount = _AMOUNT.search(value)
     if amount is None:
         return value, CONFIDENCE_LOW

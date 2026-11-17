@@ -114,6 +114,20 @@ async def test_one_session_cannot_exhaust_the_shared_ip_budget() -> None:
             assert (await neighbour.get(f"{API}/auth/me")).status_code == 200
 
 
+async def test_session_limit_429_reports_the_session_window_as_retry_after() -> None:
+    # The session budget is an hour, so the 429 must ask for a wait inside
+    # that window. Injecting headers with the IP limiter's storage (which
+    # never saw the session key) produced "retry immediately" instead.
+    async with make_client() as client:
+        await sign_in(client)
+        for _ in range(200):
+            assert (await client.get(f"{API}/auth/me")).status_code == 200
+        response = await client.get(f"{API}/auth/me")
+    assert_rate_limited(response)
+    retry_after = int(response.headers["retry-after"])
+    assert 0 < retry_after <= 3600
+
+
 async def test_ip_ceiling_applies_to_anonymous_traffic() -> None:
     async with make_client() as client:
         for _ in range(1200):

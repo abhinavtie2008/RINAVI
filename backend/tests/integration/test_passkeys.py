@@ -122,3 +122,104 @@ async def test_login_finish_with_unknown_valid_credential_returns_401() -> None:
             },
         )
         assert response.status_code == 401
+
+
+async def test_register_finish_emits_audit_event(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from sqlalchemy import select
+
+    from app.core.db import async_session_factory
+    from app.modules.audit.models import AuditEvent
+    from app.modules.identity import webauthn
+
+    monkeypatch.setattr(
+        webauthn,
+        "verify_registration",
+        lambda challenge_id, credential: SimpleNamespace(
+            credential_id=b"registered-credential",
+            credential_public_key=b"registered-public-key",
+            sign_count=0,
+        ),
+    )
+
+    async with make_client() as client:
+        signin = await client.post(
+            "/api/v1/auth/dev-signin", json={"email": "citizen@example.com"}
+        )
+        user_id = signin.json()["id"]
+        begin = await client.post("/api/v1/auth/passkey/register/begin")
+        challenge_id = begin.json()["challenge_id"]
+        response = await client.post(
+            "/api/v1/auth/passkey/register/finish",
+            json={"challenge_id": challenge_id, "credential": "{}"},
+        )
+        assert response.status_code == 201
+
+    async with async_session_factory() as db:
+        events = (await db.execute(select(AuditEvent))).scalars().all()
+        registered = [
+            e for e in events if e.action == "identity.passkey_registered"
+        ]
+        assert len(registered) == 1
+        assert str(registered[0].actor_user_id) == user_id
+        assert registered[0].resource_type == "credential"
+        assert registered[0].resource_id == b64url(b"registered-credential")
+
+
+async def test_login_finish_emits_audit_event(monkeypatch) -> None:
+    import uuid as uuidlib
+    from types import SimpleNamespace
+
+    from sqlalchemy import select
+
+    import app.modules.identity.routes as identity_routes
+    from app.core.db import async_session_factory
+    from app.modules.audit.models import AuditEvent
+    from app.modules.identity import webauthn
+    from app.modules.identity.models import Credential
+
+    async with make_client() as client:
+        signin = await client.post(
+            "/api/v1/auth/dev-signin", json={"email": "citizen@example.com"}
+        )
+        user_id = uuidlib.UUID(signin.json()["id"])
+
+    async with async_session_factory() as db:
+        db.add(
+            Credential(
+                user_id=user_id,
+                credential_id=b64url(b"login-credential"),
+                public_key="public-key",
+                sign_count=0,
+            )
+        )
+        await db.commit()
+
+    monkeypatch.setattr(
+        identity_routes,
+        "parse_authentication_credential_json",
+        lambda credential: SimpleNamespace(raw_id=b"login-credential"),
+    )
+    monkeypatch.setattr(
+        webauthn, "verify_authentication", lambda challenge_id, credential, stored: 1
+    )
+
+    async with make_client() as client:
+        begin = await client.post("/api/v1/auth/passkey/login/begin")
+        challenge_id = begin.json()["challenge_id"]
+        response = await client.post(
+            "/api/v1/auth/passkey/login/finish",
+            json={"challenge_id": challenge_id, "credential": "{}"},
+        )
+        assert response.status_code == 200
+
+    async with async_session_factory() as db:
+        events = (await db.execute(select(AuditEvent))).scalars().all()
+        signed_in = [e for e in events if e.action == "identity.signed_in"]
+        passkey_signins = [
+            e for e in signed_in if e.details.get("method") == "passkey"
+        ]
+        assert len(passkey_signins) == 1
+        assert str(passkey_signins[0].actor_user_id) == str(user_id)
+        assert passkey_signins[0].resource_id == str(user_id)

@@ -80,9 +80,13 @@ def rate_limit_exceeded_handler(request: Request, exc: Exception) -> Response:
     )
     current_limit = getattr(request.state, "view_rate_limit", None)
     if current_limit is not None:
-        response = request.app.state.limiter._inject_headers(
-            response, current_limit
-        )
+        # Headers are computed from the limiter's own store, so inject with
+        # the limiter whose budget tripped. Using the wrong one asks the
+        # client to retry immediately (its store has no window for the key).
+        active = getattr(request.state, "rate_limit_limiter", None)
+        if active is None:
+            active = request.app.state.limiter
+        response = active._inject_headers(response, current_limit)
     return response
 
 
@@ -102,6 +106,7 @@ class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
         app: Starlette = request.app
         if not limiter.enabled or request.url.path in EXEMPT_PATHS:
             return await call_next(request)
+        request.state.rate_limit_limiter = limiter
         error_response, should_inject_headers = sync_check_limits(
             limiter, request, None, app
         )
@@ -111,9 +116,13 @@ class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
         # keep describing the ceiling that applied to this request either way.
         ip_limit = request.state.view_rate_limit
         if request.cookies.get(settings.cookie_name):
+            request.state.rate_limit_limiter = session_limiter
             session_error, _ = sync_check_limits(
                 session_limiter, request, None, app
             )
+            # Restored so a per-route limit tripping later in the request is
+            # injected against the limiter that actually counts it.
+            request.state.rate_limit_limiter = limiter
             if session_error is not None:
                 return session_error
         response = await call_next(request)

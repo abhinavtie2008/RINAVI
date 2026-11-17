@@ -192,7 +192,10 @@ async def document_content(
     document = await service.get_own_document(db, user, document_id)
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    data = get_storage().read(user.id, document.id)
+    try:
+        data = get_storage().read(user.id, document.id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from exc
     return Response(
         content=data,
         media_type=document.content_type,

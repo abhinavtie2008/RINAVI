@@ -110,6 +110,14 @@ def test_income_with_a_scale_word_stays_raw_and_low_confidence() -> None:
     assert [(c.value, c.confidence) for c in candidates] == [("Rs. 1.20 lakh", "low")]
 
 
+def test_negative_income_stays_raw_and_low_confidence() -> None:
+    # Accounting negatives must never become a positive high-confidence income.
+    for raw in ("(5,000)", "-5000"):
+        candidates = extract_candidates(f"Annual Income: {raw}\n")
+
+        assert [(c.value, c.confidence) for c in candidates] == [(raw, "low")], raw
+
+
 def test_impossible_calendar_dates_are_low_confidence() -> None:
     for raw in ("31/02/2000", "2023-02-30", "12/13/2024", "00/01/2000", "2000-00-10"):
         candidates = extract_candidates(f"Date of Birth: {raw}\n")

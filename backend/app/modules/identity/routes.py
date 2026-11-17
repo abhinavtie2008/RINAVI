@@ -14,6 +14,7 @@ from app.core.rate_limit import (
     limiter,
     session_or_ip,
 )
+from app.modules.audit.service import emit_audit
 from app.modules.consent import schemas as consent_schemas
 from app.modules.consent import service as consent_service
 from app.modules.identity import schemas, service, webauthn
@@ -36,6 +37,14 @@ async def dev_signin(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     user = await service.get_or_create_user(db, payload.email)
     token = await service.create_session(db, user)
+    await emit_audit(
+        db,
+        actor_user_id=user.id,
+        action="identity.signed_in",
+        resource_type="user",
+        resource_id=str(user.id),
+        details={"method": "dev"},
+    )
     await db.commit()
     response.set_cookie(
         key=settings.cookie_name,
@@ -58,7 +67,15 @@ async def logout(request: Request, response: Response, db: DbSession) -> None:
     settings = get_settings()
     token = request.cookies.get(settings.cookie_name)
     if token is not None:
-        await service.revoke_session(db, token)
+        user_id = await service.revoke_session(db, token)
+        if user_id is not None:
+            await emit_audit(
+                db,
+                actor_user_id=user_id,
+                action="identity.signed_out",
+                resource_type="user",
+                resource_id=str(user_id),
+            )
         await db.commit()
     response.delete_cookie(settings.cookie_name)
 
@@ -130,13 +147,19 @@ async def passkey_register_finish(
     except webauthn.PasskeyVerificationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    db.add(
-        Credential(
-            user_id=user.id,
-            credential_id=bytes_to_base64url(verification.credential_id),
-            public_key=bytes_to_base64url(verification.credential_public_key),
-            sign_count=verification.sign_count,
-        )
+    credential = Credential(
+        user_id=user.id,
+        credential_id=bytes_to_base64url(verification.credential_id),
+        public_key=bytes_to_base64url(verification.credential_public_key),
+        sign_count=verification.sign_count,
+    )
+    db.add(credential)
+    await emit_audit(
+        db,
+        actor_user_id=user.id,
+        action="identity.passkey_registered",
+        resource_type="credential",
+        resource_id=credential.credential_id,
     )
     await db.commit()
     return {"status": "registered"}
@@ -195,6 +218,14 @@ async def passkey_login_finish(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User no longer exists"
         )
     token = await service.create_session(db, user)
+    await emit_audit(
+        db,
+        actor_user_id=user.id,
+        action="identity.signed_in",
+        resource_type="user",
+        resource_id=str(user.id),
+        details={"method": "passkey"},
+    )
     await db.commit()
     response.set_cookie(
         key=settings.cookie_name,

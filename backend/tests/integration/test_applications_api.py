@@ -1,7 +1,7 @@
 from httpx import ASGITransport, AsyncClient, Cookies
-from sqlalchemy import select
+from sqlalchemy import event, select
 
-from app.core.db import async_session_factory
+from app.core.db import async_session_factory, engine
 from app.main import app
 from app.modules.audit.models import AuditEvent
 
@@ -126,6 +126,56 @@ async def test_draft_lifecycle_prepares_valid_export() -> None:
             await client.delete(f"{API}/applications/drafts/{draft['id']}")
         ).status_code == 204
         assert (await client.get(f"{API}/applications/drafts")).json() == []
+
+
+async def test_draft_list_query_count_does_not_grow_with_drafts() -> None:
+    async with make_client() as client:
+        await sign_in(client)
+        await allow(client, "documents.processing")
+        await allow(client, "profile.storage")
+        await allow(client, "applications.preparation")
+        income_id = await upload(client, INCOME_TEXT, "income.txt")
+        await promote_and_confirm(client, income_id)
+
+        async def create_linked_draft() -> None:
+            created = await client.post(
+                f"{API}/applications/drafts",
+                json={"service_slug": "delhi-income-certificate"},
+            )
+            assert created.status_code == 201
+            linked = await client.put(
+                f"{API}/applications/drafts/{created.json()['id']}"
+                f"/documents/{income_id}",
+                json={"group_id": "income_evidence"},
+            )
+            assert linked.status_code == 200
+
+        statements: list[str] = []
+
+        def record_selects(_conn, _cursor, statement, _params, _context, _many):
+            if statement.lstrip().upper().startswith("SELECT"):
+                statements.append(statement)
+
+        await create_linked_draft()
+        event.listen(engine.sync_engine, "before_cursor_execute", record_selects)
+        try:
+            one = await client.get(f"{API}/applications/drafts")
+            single_count = len(statements)
+            statements.clear()
+            await create_linked_draft()
+            await create_linked_draft()
+            statements.clear()
+            three = await client.get(f"{API}/applications/drafts")
+        finally:
+            event.remove(
+                engine.sync_engine, "before_cursor_execute", record_selects
+            )
+
+    assert one.status_code == 200
+    assert three.status_code == 200
+    assert len(three.json()) == 3
+    # Listing three drafts must not issue more SELECTs than listing one.
+    assert len(statements) == single_count
 
 
 async def test_draft_error_cases_and_cross_user_isolation() -> None:
