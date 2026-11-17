@@ -223,3 +223,21 @@ async def test_login_finish_emits_audit_event(monkeypatch) -> None:
         assert len(passkey_signins) == 1
         assert str(passkey_signins[0].actor_user_id) == str(user_id)
         assert passkey_signins[0].resource_id == str(user_id)
+
+
+async def test_login_finish_rejects_oversized_challenge_id() -> None:
+    async with make_client() as client:
+        response = await client.post(
+            "/api/v1/auth/passkey/login/finish",
+            json={"challenge_id": "x" * 129, "credential": "{}"},
+        )
+        assert response.status_code == 422
+
+
+async def test_login_finish_rejects_oversized_credential() -> None:
+    async with make_client() as client:
+        response = await client.post(
+            "/api/v1/auth/passkey/login/finish",
+            json={"challenge_id": "x", "credential": "x" * (16 * 1024 + 1)},
+        )
+        assert response.status_code == 422
