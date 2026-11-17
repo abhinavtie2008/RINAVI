@@ -1,6 +1,10 @@
+import io
 import logging
+import logging.config
 import sys
 import time
+
+from uvicorn.config import LOGGING_CONFIG
 
 from app.core.db import async_session_factory
 from app.core.logging import RedactingFilter, configure_logging
@@ -231,3 +235,44 @@ async def test_audit_event_survives_actor_deletion_with_null_actor() -> None:
 def test_configure_logging_applies_level() -> None:
     configure_logging("debug")
     assert logging.getLogger().level == logging.DEBUG
+
+
+def test_uvicorn_exception_tracebacks_are_redacted() -> None:
+    # Uvicorn logs unhandled exceptions through its own loggers, whose
+    # handlers do not propagate to the root handler. Without a filter on
+    # those handlers the production traceback path leaks PII.
+    logging.config.dictConfig(LOGGING_CONFIG)
+    configure_logging("INFO")
+
+    uvicorn_logger = logging.getLogger("uvicorn")
+    handler = next(
+        candidate
+        for candidate in uvicorn_logger.handlers
+        if isinstance(candidate, logging.StreamHandler)
+    )
+    capture = io.StringIO()
+    original_stream = handler.stream
+    handler.setStream(capture)
+    try:
+        raise ValueError("contact citizen@example.com and 123456789012 leaked")
+    except ValueError:
+        logging.getLogger("uvicorn.error").error(
+            "Exception in ASGI application", exc_info=True
+        )
+    finally:
+        handler.setStream(original_stream)
+
+    rendered = capture.getvalue()
+    assert "Exception in ASGI application" in rendered
+    assert "citizen@example.com" not in rendered
+    assert "123456789012" not in rendered
+    assert "[REDACTED]" in rendered
+
+
+def test_configure_logging_filters_every_uvicorn_handler() -> None:
+    logging.config.dictConfig(LOGGING_CONFIG)
+    configure_logging("INFO")
+
+    for name in ("uvicorn", "uvicorn.access"):
+        for handler in logging.getLogger(name).handlers:
+            assert any(isinstance(f, RedactingFilter) for f in handler.filters)
