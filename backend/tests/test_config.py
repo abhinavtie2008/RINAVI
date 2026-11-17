@@ -19,10 +19,16 @@ def test_safe_production_settings_are_accepted() -> None:
     assert settings.environment == "production"
 
 
-def test_development_defaults_are_accepted() -> None:
-    settings = Settings(environment="development")
+def test_development_settings_are_accepted_with_explicit_dev_signin() -> None:
+    settings = Settings(environment="development", dev_signin_enabled=True)
     assert settings.dev_signin_enabled is True
     assert settings.cookie_secure is False
+
+
+def test_dev_signin_defaults_to_disabled() -> None:
+    # Dev sign-in is a sign-in bypass, so it must be opt-in even in
+    # development: a forgotten env file must not quietly enable it.
+    assert Settings.model_fields["dev_signin_enabled"].default is False
 
 
 @pytest.mark.parametrize(
