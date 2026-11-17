@@ -1,5 +1,23 @@
 import type { NextConfig } from "next";
 
+// Mirrors the client default in src/lib/api.ts.
+export const DEFAULT_API_URL = "http://localhost:8000";
+
+export function buildCspPolicy(apiUrl: string): string {
+  return [
+    "default-src 'self'",
+    // The Next runtime hydrates with inline scripts and styles; without a
+    // nonce middleware these sources must stay open.
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    `connect-src 'self' ${apiUrl}`,
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+}
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -7,6 +25,12 @@ const securityHeaders = [
   {
     key: "Permissions-Policy",
     value: "geolocation=(), microphone=(), camera=()",
+  },
+  {
+    key: "Content-Security-Policy",
+    value: buildCspPolicy(
+      process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL,
+    ),
   },
 ];
 
