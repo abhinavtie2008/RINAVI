@@ -1,5 +1,6 @@
 import logging
 import sys
+import traceback
 
 from app.core.redaction import redact_text
 
@@ -8,6 +9,13 @@ class RedactingFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         record.msg = redact_text(record.getMessage())
         record.args = ()
+        if record.exc_info:
+            record.exc_text = redact_text(
+                "".join(traceback.format_exception(*record.exc_info))
+            )
+            record.exc_info = None
+        if record.stack_info:
+            record.stack_info = redact_text(record.stack_info)
         return True
 
 
