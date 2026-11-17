@@ -203,3 +203,19 @@ async def test_session_token_is_not_logged(
     digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
     assert token not in caplog.text
     assert f"session:{digest}" in caplog.text
+
+
+async def test_document_retry_is_rate_limited_per_session() -> None:
+    # slowapi scopes each limit to its endpoint, so the retry route keeps its
+    # own 30/hour budget; the 31st request in the window must be throttled.
+    async with make_client() as client:
+        await sign_in(client)
+        await allow(client, "documents.processing")
+        document_id = await upload_income_document(client)
+        url = f"{API}/vault/documents/{document_id}/retry"
+        for _ in range(30):
+            assert (await client.post(url)).status_code == 200
+        response = await client.post(url)
+        assert_rate_limited(response)
+        retry_after = int(response.headers["retry-after"])
+        assert 0 < retry_after
