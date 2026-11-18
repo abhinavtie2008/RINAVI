@@ -20,7 +20,7 @@ Status legend:
 - **DEFERRED** — explicitly out of V1; the trigger states what reopens it.
 - **OPEN** — nobody has decided yet.
 
-**Checkbox:** `[x]` = settled — DONE, or DECIDED with acceptance recorded. DEFERRED items stay `[ ]` until their trigger fires.
+**Checkbox:** `[x]` = settled — DONE, DECIDED with acceptance recorded, PARTIAL with the deferred part tracked by a named step, or PARITY CLEARED with the cutover still deferred. DEFERRED items stay `[ ]` until their trigger fires.
 
 ---
 

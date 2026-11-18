@@ -164,7 +164,7 @@ owns it where no reopen condition applies.
 - The compose demo stack in a browser: on this machine the web shell, CSP
   and CORS were checked over HTTP only; the PR #65 review's browser pass
   (dev sign-in, consent, profile flows) ran against its own compose stack,
-  not this machine's.
+  not the stack used in this pass.
 - Multi-worker or multi-instance behaviour of the rate limiter.
 - Behaviour with a real document, real Aadhaar number or real portal session.
 - The legacy-row migration against a populated production database. It is
