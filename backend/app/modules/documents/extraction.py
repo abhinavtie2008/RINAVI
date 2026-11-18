@@ -43,6 +43,10 @@ _PATTERNS: dict[str, re.Pattern[str]] = {
 _AMOUNT = re.compile(r"\d[\d,]*(?:\.\d+)?")
 # "1.20 lakh" is not rupees; scaling it by hand is safer than guessing.
 _SCALE_WORD = re.compile(r"\b(?:lakhs?|lacs?|crores?|million|billion)\b", re.IGNORECASE)
+# Currency prefixes precede the figure itself; strip them to inspect it.
+_CURRENCY_PREFIX = re.compile(r"^\s*(?:rs\.?|inr|₹)\s*", re.IGNORECASE)
+# A parenthesised amount is a loss ("(5,000)"), possibly with trailing text.
+_PAREN_AMOUNT = re.compile(r"\([\d,]+(?:\.\d+)?\)")
 _ISO_DATE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 _DAY_FIRST_DATE = re.compile(r"(\d{2})[/-](\d{2})[/-](\d{4})")
 
@@ -90,8 +94,14 @@ def _normalize_income(raw: str) -> tuple[str, str]:
     value = raw.strip()
     if _SCALE_WORD.search(value):
         return value, CONFIDENCE_LOW
-    if value.startswith("-") or (value.startswith("(") and value.endswith(")")):
+    rest = _CURRENCY_PREFIX.sub("", value, count=1).strip()
+    if (
+        (value.startswith("(") and value.endswith(")"))
+        or rest.startswith("-")
+        or _PAREN_AMOUNT.match(rest) is not None
+    ):
         # Accounting negatives are losses, never income; keep them for review.
+        # The range dash in "Rs 5,000-7,000" follows a digit, so it is not a sign.
         return value, CONFIDENCE_LOW
     amount = _AMOUNT.search(value)
     if amount is None:

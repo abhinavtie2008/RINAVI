@@ -51,9 +51,13 @@ scripts/dev.sh         # run backend on :8000 and web on :3000
 
 Local development uses SQLite; see
 `docs/architecture/decisions/0002-sqlite-dev-postgres-prod.md`.
+`scripts/dev.sh` enables the dev sign-in route via
+`RINAVI_DEV_SIGNIN_ENABLED=true`; without it (or the equivalent line in
+`backend/.env`) `/api/v1/auth/dev-signin` returns 404, since dev sign-in is a
+sign-in bypass and must be opted into explicitly.
 
 ## Quality gate
 
 `scripts/check.sh` runs the full gate — backend `ruff`, `pyright`, `pytest`
-(234 tests) and web `eslint`, `tsc`, `vitest` (50 tests), production build.
+(247 tests) and web `eslint`, `tsc`, `vitest` (50 tests), production build.
 The same gate runs in CI on every push and pull request.

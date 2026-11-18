@@ -167,6 +167,27 @@ def test_negative_income_stays_raw_and_low_confidence() -> None:
         assert [(c.value, c.confidence) for c in candidates] == [(raw, "low")], raw
 
 
+def test_prefix_negative_income_stays_raw_and_low_confidence() -> None:
+    # Currency prefixes and trailing text must not hide an accounting negative.
+    for raw in ("Rs -5,000", "INR -5000", "Rs. (5,000)", "(5,000) approx"):
+        candidates = extract_candidates(f"Annual Income: {raw}\n")
+
+        assert [(c.value, c.confidence) for c in candidates] == [(raw, "low")], raw
+
+
+def test_income_range_is_not_a_negative() -> None:
+    # The dash between two figures separates a range, not a negative sign.
+    candidates = extract_candidates("Annual Income: Rs 5,000-7,000\n")
+
+    assert [(c.value, c.confidence) for c in candidates] == [("5000", "high")]
+
+
+def test_currency_prefixed_positive_income_still_normalises() -> None:
+    candidates = extract_candidates("Annual Income: INR 5,000\n")
+
+    assert [(c.value, c.confidence) for c in candidates] == [("5000", "high")]
+
+
 def test_impossible_calendar_dates_are_low_confidence() -> None:
     for raw in ("31/02/2000", "2023-02-30", "12/13/2024", "00/01/2000", "2000-00-10"):
         candidates = extract_candidates(f"Date of Birth: {raw}\n")

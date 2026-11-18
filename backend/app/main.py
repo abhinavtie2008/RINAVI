@@ -7,6 +7,7 @@ from starlette.responses import Response
 from starlette.types import ASGIApp
 
 from app.api.router import api_router
+from app.core.body_limit import BodyLimitMiddleware
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.rate_limit import (
@@ -71,8 +72,12 @@ def create_app() -> FastAPI:
     # Starlette applies the last-added middleware outermost: CORS wraps the
     # limiter so 429 responses carry CORS headers and OPTIONS preflights are
     # answered before they consume the request budget. Security headers wrap
-    # both, so throttled responses and preflights carry them too.
+    # both, so throttled responses and preflights carry them too. The body
+    # limit sits inside CORS and the security headers (its 413s carry both)
+    # but outside the limiter, so an oversized body is rejected before it
+    # consumes the request budget.
     app.add_middleware(GlobalRateLimitMiddleware)
+    app.add_middleware(BodyLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

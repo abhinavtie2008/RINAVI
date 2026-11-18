@@ -20,7 +20,9 @@ class Settings(BaseSettings):
     cookie_name: str = "rinavi_session"
     cookie_secure: bool = False
     session_ttl_hours: int = 24 * 7
-    dev_signin_enabled: bool = True
+    # Dev sign-in is a sign-in bypass, so it is opt-in even in development:
+    # a forgotten env file must not quietly enable it.
+    dev_signin_enabled: bool = False
     cors_origins: list[str] = ["http://localhost:3000"]
     consent_policy_version: str = "1.0"
 

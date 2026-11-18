@@ -250,3 +250,45 @@ async def test_audit_events_never_contain_draft_values() -> None:
         assert "Asha Devi" not in rendered
         assert "Scholarship" not in rendered
         assert "application.draft_created" in {event.action for event in events}
+
+
+async def test_oversized_service_slug_is_rejected_with_422() -> None:
+    async with make_client() as client:
+        await sign_in(client)
+        await allow(client, "applications.preparation")
+        response = await client.post(
+            f"{API}/applications/drafts", json={"service_slug": "x" * 81}
+        )
+        assert response.status_code == 422
+
+
+async def test_oversized_field_value_is_rejected_with_422() -> None:
+    async with make_client() as client:
+        await sign_in(client)
+        await allow(client, "applications.preparation")
+        created = await client.post(
+            f"{API}/applications/drafts",
+            json={"service_slug": "delhi-income-certificate"},
+        )
+        draft_id = created.json()["id"]
+        response = await client.put(
+            f"{API}/applications/drafts/{draft_id}/fields/purpose",
+            json={"value": "x" * 501},
+        )
+        assert response.status_code == 422
+
+
+async def test_oversized_group_id_is_rejected_with_422() -> None:
+    async with make_client() as client:
+        await sign_in(client)
+        await allow(client, "applications.preparation")
+        created = await client.post(
+            f"{API}/applications/drafts",
+            json={"service_slug": "delhi-income-certificate"},
+        )
+        draft_id = created.json()["id"]
+        response = await client.put(
+            f"{API}/applications/drafts/{draft_id}/documents/00000000-0000-0000-0000-000000000000",
+            json={"group_id": "x" * 81},
+        )
+        assert response.status_code == 422
