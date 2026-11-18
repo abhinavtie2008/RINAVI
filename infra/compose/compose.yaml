@@ -1,6 +1,11 @@
-# Reference infrastructure for staging and pilot.
-# Local development uses SQLite (ADR-0002); this file is not required for
-# the first coding milestone and is not run on machines without Docker.
+name: rinavi
+
+# Full local demo stack: PostgreSQL + backend + web, with a reference
+# Redis service. This is the demo, not the pilot: every port binds to
+# loopback only, credentials are dev-only defaults, and dev sign-in is
+# deliberately enabled for the demo (never in a hosted environment).
+# Object storage is intentionally absent; the vault volume is local
+# disk (checklist item 64 owns object storage).
 services:
   postgres:
     image: postgres:16
@@ -9,27 +14,90 @@ services:
       POSTGRES_PASSWORD: rinavi
       POSTGRES_DB: rinavi
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rinavi -d rinavi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7
     ports:
-      - "6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
+  backend:
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
     environment:
-      MINIO_ROOT_USER: rinavi
-      MINIO_ROOT_PASSWORD: rinavi-dev-only
+      RINAVI_ENVIRONMENT: development
+      # Dev sign-in is a sign-in bypass and exists for this demo only;
+      # the hosted pilot must never set this.
+      RINAVI_DEV_SIGNIN_ENABLED: "true"
+      RINAVI_DATABASE_URL: postgresql+asyncpg://rinavi:rinavi@postgres:5432/rinavi
+      RINAVI_STORAGE_DIR: /data/vault
+      # WEB_PORT only changes the host-side binding, so the browser
+      # origins must follow it or CORS/WebAuthn reject the web page.
+      RINAVI_CORS_ORIGINS: '["http://localhost:${WEB_PORT:-3000}", "http://127.0.0.1:${WEB_PORT:-3000}"]'
+      RINAVI_WEBAUTHN_RP_ID: localhost
+      RINAVI_WEBAUTHN_ORIGIN: http://localhost:${WEB_PORT:-3000}
+      RINAVI_COOKIE_SECURE: "false"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
     volumes:
-      - minio_data:/data
+      - vault_data:/data/vault
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=2)
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    build:
+      context: ../../apps/web
+      args:
+        # Baked at build time: feeds both the API client and the CSP.
+        # Changing API_PORT (or NEXT_PUBLIC_API_URL) needs a rebuild:
+        # docker compose build web
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:${API_PORT:-8000}}
+    environment:
+      # The standalone server reads HOSTNAME; Docker's own HOSTNAME env
+      # (when present) is the container ID, so set it explicitly.
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
 volumes:
   postgres_data:
-  minio_data:
+  vault_data:

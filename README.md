@@ -25,6 +25,7 @@ behalf.
 - **Application locker** — freeze a completed packet, track its journey with your own notes and reference numbers, and re-apply with your previous evidence
 - **Erasure that always works** — deleting a document or your account works even after consent is withdrawn, and purges stored files
 - **Redacted audit trail** — account activity is logged, but document contents and PII never reach the audit log
+- **One-command local demo** — `docker compose up` in `infra/compose` runs the full stack on PostgreSQL; a smoke script walks the whole citizen flow against it
 
 Data in development is synthetic only. Real documents are out of scope until
 the legal/privacy review and security gate pass — that is a deliberate
@@ -35,7 +36,7 @@ policy, not a missing feature.
 - `apps/web` — Next.js PWA (TypeScript)
 - `backend` — FastAPI modular monolith (Python)
 - `catalog` — versioned, source-linked service definitions and form templates
-- `infra/compose` — reference PostgreSQL/Redis services for staging and pilot (object storage is not wired yet)
+- `infra/compose` — one-command local demo (PostgreSQL, backend, web) plus a reference Redis service for staging and pilot (object storage is not wired yet)
 - `docs` — architecture decision records, compliance, evaluation
 - `scripts` — bootstrap, dev, and check commands
 
@@ -56,8 +57,39 @@ Local development uses SQLite; see
 `backend/.env`) `/api/v1/auth/dev-signin` returns 404, since dev sign-in is a
 sign-in bypass and must be opted into explicitly.
 
+## Local demo (Docker)
+
+Requirements: Docker Desktop (or another Docker engine with Compose v2).
+
+```bash
+# from the repository root, after scripts/bootstrap.sh
+cd infra/compose
+docker compose up --build -d       # first build takes a few minutes
+docker compose ps                  # wait until every service shows "healthy"
+source ../../scripts/venv.sh && activate_backend_venv ../../backend/.venv
+python ../../scripts/smoke_demo.py # walk the whole citizen flow, step by step
+docker compose down -v             # stop and erase all demo data
+```
+
+The web app is at http://localhost:3000 and the API docs at
+http://localhost:8000/docs. Every port binds to loopback only.
+
+This stack is a demo, not the pilot:
+
+- **Synthetic data only.** The smoke script generates its documents in
+  memory; do not upload real citizen documents to a local demo.
+- **Dev sign-in is a bypass.** The compose file sets
+  `RINAVI_DEV_SIGNIN_ENABLED=true` so the demo works without passkeys;
+  the hosted pilot must never set it.
+- **Images wait for OCR.** PNG/JPEG uploads are accepted but parked as
+  `needs_attention` until OCR is implemented.
+- The `rinavi_test` database (for running the backend suite against this
+  Postgres) is created automatically on a fresh volume; on an existing
+  one, run
+  `docker compose exec postgres createdb -U rinavi rinavi_test` once.
+
 ## Quality gate
 
 `scripts/check.sh` runs the full gate — backend `ruff`, `pyright`, `pytest`
-(267 tests) and web `eslint`, `tsc`, `vitest` (54 tests), production build.
+(268 tests) and web `eslint`, `tsc`, `vitest` (54 tests), production build.
 The same gate runs in CI on every push and pull request.
