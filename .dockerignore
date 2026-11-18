@@ -17,6 +17,7 @@ scripts
 **/coverage
 **/out
 **/.env
+**/.env.*
 backend/.venv
 backend/data
 backend/*.db

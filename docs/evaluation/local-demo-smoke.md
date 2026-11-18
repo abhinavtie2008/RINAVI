@@ -57,6 +57,19 @@ using the already-built images:
 - Smoke: **all 14 steps pass**; health returns `{"status":"ok"}`; web
   returns 200.
 
+## Run 3 — custom ports (`WEB_PORT=3100`, `API_PORT=8001`)
+
+`WEB_PORT=3100 API_PORT=8001 docker compose up --build -d`:
+
+- All four services healthy.
+- CORS preflight from `http://localhost:3100` and `http://127.0.0.1:3100`
+  → 200 with a matching `access-control-allow-origin`; an unknown origin
+  (`http://localhost:9999`) → 400.
+- Web CSP `connect-src` baked as `http://localhost:8001` from `API_PORT`;
+  no `unsafe-eval`.
+- Backend settings render `cors_origins` and `webauthn_origin` at `:3100`.
+- Smoke against `http://127.0.0.1:8001`: **all 14 steps pass**.
+
 ## Known limitations
 
 - **Images wait for OCR.** PNG/JPEG uploads are accepted but parked as
