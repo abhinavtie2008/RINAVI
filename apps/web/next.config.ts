@@ -52,6 +52,9 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  // Docker builds set NEXT_STANDALONE=1 so the web image serves the minimal
+  // standalone server; local builds keep the current behavior.
+  output: process.env.NEXT_STANDALONE === "1" ? "standalone" : undefined,
   turbopack: {
     rules: {
       "*.css": {
