@@ -36,7 +36,7 @@ policy, not a missing feature.
 - `apps/web` — Next.js PWA (TypeScript)
 - `backend` — FastAPI modular monolith (Python)
 - `catalog` — versioned, source-linked service definitions and form templates
-- `infra/compose` — one-command local demo (PostgreSQL, backend, web) plus a reference Redis service for staging and pilot (object storage is not wired yet)
+- `infra/compose` — one-command local demo (PostgreSQL, backend, web) with Redis provisioned for the future shared rate-limit backend (object storage is not wired yet)
 - `docs` — architecture decision records, compliance, evaluation
 - `scripts` — bootstrap, dev, and check commands
 
