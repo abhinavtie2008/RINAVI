@@ -32,6 +32,41 @@ jobs:
         working-directory: backend
         run: pytest -q
 
+  backend-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rinavi
+          POSTGRES_PASSWORD: rinavi
+          POSTGRES_DB: rinavi_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rinavi -d rinavi_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      RINAVI_ENVIRONMENT: test
+      RINAVI_DATABASE_URL: postgresql+asyncpg://rinavi:rinavi@localhost:5432/rinavi_test
+      RINAVI_TEST_DATABASE_URL: postgresql+asyncpg://rinavi:rinavi@localhost:5432/rinavi_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install
+        working-directory: backend
+        run: pip install -e ".[dev]"
+      - name: Migrations
+        working-directory: backend
+        run: python -m alembic upgrade head
+      - name: Schema check
+        working-directory: backend
+        run: python -m alembic check
+      - name: Tests
+        working-directory: backend
+        run: pytest -q
+
   web:
     runs-on: ubuntu-latest
     steps:
