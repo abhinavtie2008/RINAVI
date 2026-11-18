@@ -25,7 +25,12 @@ FIELD_KEYS = (
 
 _PATTERNS: dict[str, re.Pattern[str]] = {
     "full_name": re.compile(r"^(?:applicant\s+)?name\s*:\s*(?P<value>.+)$", re.IGNORECASE),
-    "father_name": re.compile(r"^father'?s?\s+name\s*:\s*(?P<value>.+)$", re.IGNORECASE),
+    # Simple PDF fonts encode the ASCII apostrophe as quoteright, so the text
+    # layer carries U+2019 (and word processors write it directly). Accepting
+    # only ASCII silently dropped a required field on real documents.
+    "father_name": re.compile(
+        r"^father['\u2019\u2018`]?s?\s+name\s*:\s*(?P<value>.+)$", re.IGNORECASE
+    ),
     "date_of_birth": re.compile(
         r"^(?:date\s+of\s+birth|dob)\s*:\s*(?P<value>.+)$", re.IGNORECASE
     ),
