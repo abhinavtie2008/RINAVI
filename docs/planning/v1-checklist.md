@@ -1,9 +1,9 @@
 # RINAVI — V1 Final Build & Launch Plan
 
-> **Snapshot:** 2026-11-17, from the working checklist at `main` @ `059f678`. The working copy lives outside this repository and is maintained by Qoder; refresh this file at milestones. `docs/compliance/wp8-pilot-readiness.md` remains authoritative for compliance decisions, and ADR-0003 for module scope.
+> **Snapshot:** 2026-11-18, from the working checklist at `main` @ `df27f11` (267 backend / 54 web). The working copy lives outside this repository and is maintained by Qoder; refresh this file at milestones. `docs/compliance/wp8-pilot-readiness.md` remains authoritative for compliance decisions, and ADR-0003 for module scope.
 
 **Prepared:** 2026-11-16, against `main` @ `58b6419` (backend gate 218, web gate 50).
-**Updated:** 2026-11-17, `main` @ `059f678` (backend gate 234, web gate 50, CI green). **PR #54 merged 2026-11-17** as `059f678` (squash), closing the cleanup train: items 17, 26, 29, 73–80.
+**Updated:** 2026-11-18, `main` @ `df27f11` (backend gate 267, web gate 54, CI green). **All six security-hardening PRs merged**: #57 `4525f8c` (item 91), #58 `4eb46b4` (items 93, 94, 96), #59 `8f7f21f` (item 95), #60 `5315df9` (item 97), #61 `f2f8a9d` (item 98), #62 `df27f11` (item 99) — **code-complete V1 plus the hardening batch is reached**. The cleanup train (#54 `059f678`, #55 `f7ab071`, #56 `9ec25cc`) remains in history.
 **Sources:** `docs/compliance/wp8-pilot-readiness.md`, ADR-0001/0002/0003, `docs/superpowers/plans/2026-11-09-rinavi-structured-build.md` (the WP1–WP12 roadmap), and a fresh deep scan of the repo.
 **Scope:** this is the final plan for the **code-complete V1 build** — the nine modules of ADR-0003 delivering one reliable e-District income-certificate workflow, Assist-only. The master plan is the wider WP1–WP12 launch roadmap; Part 11 tracks the parts of it that sit outside this build. `docs/compliance/wp8-pilot-readiness.md` stays authoritative for compliance decisions, and ADR-0003 for module scope. Accepted V1 deviations from the master plan: no OCR, no async workers, no encryption at rest, no PostgreSQL/pgvector cutover, no browser extension, no `execution`/`integrations`, and no compliance resolver.
 **How to use:** this is a dated snapshot. The checkboxes and statuses describe the state above, not a live tracker; make changes in the working copy and refresh this file at milestones.
@@ -26,13 +26,14 @@ Status legend:
 
 **What V1 is:** nine backend modules (`identity`, `consent`, `vault`, `documents`, `profile`, `catalog`, `applications`, `locker`, `audit`), one service pack (e-District income certificate), a Next.js PWA, and Assist-only preparation — the citizen always submits on the official portal.
 
-**Where it stands:** the WP4–WP7 build plus the cleanup train are merged and green (234 backend / 50 web tests, `main` @ `059f678`). Item 8 and the launch track remain.
+**Where it stands:** code-complete V1 plus the security-hardening batch is reached — the WP4–WP7 build, the cleanup train, the checklist snapshot, item 8, and the six hardening PRs are merged and green (267 backend / 54 web tests, `main` @ `df27f11`). Next is the local containerized demo (phase 2), then the hosted-pilot gates.
 
 | Phase | What closes it | State |
 |---|---|---|
-| **0. Cleanup train** | `fix/v1-cleanup-batch` merged (items 17, 26, 29, 73–80) + item 8 | **Merged as `059f678` (2026-11-17)**; item 8 pending |
-| **1. Code-complete V1** | Gate green on `main` after the merge; checklist snapshot in `docs/planning/` | Item 8 pending; snapshot branch pushed, PR pending |
-| **2. Local demo** | App Dockerfiles + full compose stack (Postgres 16, Redis 7, backend, web); smoke flow runs locally | Not started — needs Docker Desktop |
+| **0. Cleanup train** | `fix/v1-cleanup-batch` merged (items 17, 26, 29, 73–80) + item 8 | **DONE — merged as `059f678` and `9ec25cc` (2026-11-17)** |
+| **1. Code-complete V1** | Gate green on `main` after the merge; checklist snapshot in `docs/planning/` | **DONE — snapshot merged as `f7ab071` (#55); item 8 merged as `9ec25cc` (#56); gate green on `main`** |
+| **1b. Security hardening batch** | Six PRs (items 91, 93–99): income prefix-negatives, input caps + retry limit + dev-signin opt-in, traceback redaction, body-limit middleware, bounded PDF parsing, web CSP | **DONE — merged 2026-11-18 as `4525f8c`, `4eb46b4`, `8f7f21f`, `5315df9`, `f2f8a9d`, `df27f11`; gate green at 267 backend / 54 web** |
+| **2. Local demo** | App Dockerfiles + full compose stack (Postgres 16, Redis 7, backend, web); smoke flow runs locally | Started 2026-11-17 — Docker Desktop 4.99 installed, Postgres 16.16 + Redis 7 running; MinIO reference dead upstream (item 92, decision pending); app Dockerfiles and the Postgres driver pending |
 | **3. Hosted pilot** | Host chosen, deploy config, PostgreSQL parity verified, legal/privacy + security gates cleared | Blocked on gates and host |
 | **4. Post-pilot** | Trigger-gated work (Part 6) and master-plan tracks (Part 11) | Not scheduled |
 
@@ -49,7 +50,7 @@ Status legend:
 - [x] **5. CI gate** — backend: ruff + pyright + pytest (Python 3.14); web: eslint + `next typegen` + tsc + vitest + production build (Node 24). Same gate locally via `scripts/check.sh`. *Status: DONE.*
 - [x] **6. Supply chain** — CodeQL on push/PR, Dependabot (pip/npm/actions), actions pinned, `pip-audit` and `npm audit` steps in CI. *Status: DONE.*
 - [x] **7. `protect-main` ruleset** — required checks (backend + web) block direct pushes to `main`. *Status: DONE.*
-- [ ] **8. Onboarding scripts** — `bootstrap.sh`/`check.sh`/`dev.sh`. *Status: PENDING — one gap:* `bootstrap.sh` does not run `alembic upgrade head`, so a fresh clone has no schema. `dev.sh` already sources `scripts/venv.sh` (since #26) and remains a bash script by design. *Fix step:* add the migration step to `bootstrap.sh`.
+- [x] **8. Onboarding scripts** — `bootstrap.sh`/`check.sh`/`dev.sh`. *Status: DONE — PR #56 (`6647cc9`) merged as `9ec25cc` (2026-11-17): `bootstrap.sh` now runs `RINAVI_ENVIRONMENT=development "$PYTHON" -m alembic upgrade head`, so a fresh clone gets the schema. The env var is required — `migrations/env.py` calls `get_settings()`, which rejects an unset environment. Gate green (234 backend, 50 web); verified against a temp database (all migrations apply, 12 tables). `dev.sh` already sources `scripts/venv.sh` (since #26) and remains a bash script by design.*
 
 ---
 
@@ -91,7 +92,7 @@ Status legend:
 ### 3.4 documents
 
 - [x] **28. Extraction** — 7 fields (`full_name`, `father_name`, `date_of_birth`, `gender`, `address`, `annual_income`, `aadhaar_number`) with line locators and confidence. *Status: DONE.*
-- [x] **29. Normalisation correctness** — rupee amounts keep rupees (`Rs 120,000.00` → `120000`); impossible dates stay raw at low confidence; lakh/crore amounts stay raw at low confidence. *Status: DONE (PR #30). Residual:* negative amounts (e.g. `(5,000)`) normalised to positive; `f888223` keeps them raw at low confidence, merged via PR #54 (`059f678`, item 77). Prefix forms such as `Rs -5,000` still flip positive — tracked at item 91.
+- [x] **29. Normalisation correctness** — rupee amounts keep rupees (`Rs 120,000.00` → `120000`); impossible dates stay raw at low confidence; lakh/crore amounts stay raw at low confidence. *Status: DONE (PR #30). Residual:* negative amounts (e.g. `(5,000)`) normalised to positive; `f888223` keeps them raw at low confidence, merged via PR #54 (`059f678`, item 77). Prefix forms such as `Rs -5,000` were fixed in 4525f8c (item 91, 2026-11-18) — item 91 is closed.
 - [x] **30. Classification** — `income` / `identity` / `residence` / `unsupported`. *Status: DONE.*
 - [x] **31. Failure states** — `content_unavailable`, `ocr_not_configured`, `no_text_layer`, `extraction_failed`, `no_fields_detected` — no 500s from parser or normaliser crashes. *Status: DONE.*
 - [x] **32. OCR** — images return `needs_attention` / `ocr_not_configured`. *Status: DECIDED — V1 is PDF/TXT only; pilot script must say so. Trigger: an OCR milestone would reopen this.*
@@ -142,7 +143,7 @@ The gate: every deferred item is cleared or explicitly accepted. This is the **c
 - [x] **55. Extraction cost baseline** — extraction is deterministic (regex/rules): no LLM, pgvector, Tesseract or Document AI anywhere in the repo, so spend is zero. *Status: DONE by absence; nothing to meter yet. Trigger: any inference dependency is added.*
 - [x] **56. Real documents** — *Status: DECIDED — out of scope until the legal/privacy review and security gate complete; everything in dev/tests is synthetic.*
 - [x] **57. Deployment topology** — *Status: DECIDED — single worker, `memory://` rate-limit storage stays. Trigger: multi-worker or autoscaling → shared Redis backend (`redis` extra already declared).*
-- [x] **58. Pilot host / Dockerfile** — *Status: DECIDED — `infra/compose/compose.yaml` exists (Postgres 16, Redis 7, MinIO), but there is no app `Dockerfile`, Procfile or app service definition, so the app is not deployable as a stack yet. Deferred until a host is chosen or the local demo starts. Trigger: local demo (Part 10, Next) or pilot launch.*
+- [ ] **58. Pilot host / Dockerfile** — *Status: IN PROGRESS — the trigger fired: the local demo started 2026-11-17 (Docker Desktop 4.99, Postgres 16.16 and Redis 7 running). `infra/compose/compose.yaml` still has only services (Postgres, Redis, MinIO); there is no app `Dockerfile`, entrypoint or app service definition yet, and the backend has no PostgreSQL driver (`asyncpg`/`psycopg`) in `pyproject.toml`. The demo stack (Dockerfiles + compose + driver) is the next step. Host selection remains deferred until the WP2 gates clear.*
 - [x] **59. OCR scope** — *Status: DECIDED — PDF/TXT only; stated in the pilot script.*
 
 ---
@@ -183,11 +184,19 @@ Small, concrete, each with a RED test first:
 - [x] **74. Empty consent purpose accepted** — add `min_length` (or purpose allow-list) to `consent/schemas.py` (item 17). *Status: DONE — `642e140`, merged via PR #54 (`059f678`, 2026-11-17).*
 - [x] **75. Missing blob → 500 on content download** — guard `storage.read` in `vault/routes.py::document_content`; return 404/410 matching the pipeline's `content_unavailable` state. *Status: DONE — `54c5889` returns 404 with an integration test; merged via PR #54 (`059f678`, 2026-11-17).*
 - [x] **76. N+1 on drafts list** — `applications/routes.py::list_drafts` called `draft_out` per draft; `4e0cdda` batch-loads profile and document queries with a query-count regression test. *Status: DONE — merged via PR #54 (`059f678`, 2026-11-17).*
-- [x] **77. Negative income normalisation** — `_normalize_income` turns `(5,000)` / `-5000` into positive `5000` at high confidence; keep negatives raw at low confidence. *Status: DONE — `f888223` keeps them raw at low confidence, merged via PR #54 (`059f678`, 2026-11-17). Prefix forms remain at item 91.*
+- [x] **77. Negative income normalisation** — `_normalize_income` turns `(5,000)` / `-5000` into positive `5000` at high confidence; keep negatives raw at low confidence. *Status: DONE — `f888223` keeps them raw at low confidence, merged via PR #54 (`059f678`, 2026-11-17). Prefix forms were fixed in 4525f8c (item 91, 2026-11-18).*
 - [x] **78. Missing audit events** — consent grant/withdraw and identity sign-in/out/passkey routes emitted no audit events. *Status: DONE — `9c081a5` adds `emit_audit` calls and tests; merged via PR #54 (`059f678`, 2026-11-17).*
 - [x] **79. Session 429s report a zero Retry-After** — session-budget 429s were injected with the IP limiter, whose store never saw the session key, so the header said `0` (retry immediately) instead of the remaining window. *Status: DONE — `31b8cf9` injects with the budget that tripped, with a regression test; merged via PR #54 (`059f678`, 2026-11-17).*
 - [x] **80. `wp8-aadhaar-a1` stale branch** — was at `0f80f19`, an ancestor of `main` with zero unique commits. *Status: DONE — deleted 2026-11-17 along with the five merged PR branches; all remote feature branches are gone.*
-- [ ] **91. Prefix-negative income forms** — `_normalize_income` only catches a leading `-` or an exact `(...)` wrapper, so `Rs -5,000`, `INR -5000`, `Rs. (5,000)` and `(5,000) approx` still normalise to `5000` at high confidence (verified during the PR #54 review). *Status: PENDING — non-blocking follow-up: add prefix-aware negative detection plus tests, extending item 77.*
+- [x] **91. Prefix-negative income forms** — `_normalize_income` only catches a leading `-` or an exact `(...)` wrapper, so `Rs -5,000`, `INR -5000`, `Rs. (5,000)` and `(5,000) approx` still normalise to `5000` at high confidence (verified during the PR #54 review). *Status: DONE — hardening PR 1 (`fix/income-prefix-negatives`) merged as `4525f8c` (2026-11-18): prefix-aware negative detection plus tests, extending item 77. Residual: a few uncommon negative forms still stay at low confidence; non-blocking.*
+- [ ] **92. Compose object-storage reference is dead upstream** — `minio/minio:latest` is no longer publicly pullable: the Docker Hub repository returns 404, `docker manifest inspect` returns `denied / authentication required` for `latest` and for old `RELEASE.*` tags, `minio/mc` is the same, and `quay.io/minio/minio` returns 401. MinIO now publishes only AIStor (registration/paid). Every `docker compose up` on the current file fails on this service; Postgres 16 and Redis 7 pull and run normally. *Status: OPEN — decision required before the local demo closes: (a) drop MinIO from the reference stack (recommended — the backend uses `LocalDiskStorage`, has no S3 client, and item 64 owns object storage), or (b) replace it with a maintained S3-compatible service when item 64 fires. No compose change has been made yet; the phase-2 rewrite must record the choice.*
+- [x] **93. Length caps on unbounded request strings** — `FieldUpdateIn.value`, `DraftCreateIn.service_slug`, `DocumentLinkIn.group_id`, `PasskeyFinishRequest.challenge_id`/`credential` have no max lengths, so absurd payloads reach the DB/handlers. Cap them (500 / 80 / 80 / 128 / 16 KiB), with unit and API-level 422 tests. *Status: DONE — hardening PR 2 (`fix/request-input-bounds`) merged as `4eb46b4` (2026-11-18): caps on all four fields with unit and API-level 422 tests.*
+- [x] **94. Rate-limit the retry endpoint** — `POST /vault/documents/{id}/retry` re-parses a PDF with no per-route budget, unlike upload. Give it the upload budget (`UPLOAD_LIMIT`, `session_or_ip`) so a citizen cannot re-parse past 30/hour; test the 31st retry returns 429 with a positive `Retry-After`. *Status: DONE — hardening PR 2 (`fix/request-input-bounds`) merged as `4eb46b4` (2026-11-18): the retry route uses the upload budget; the 31st retry returns 429 with a positive `Retry-After`.*
+- [x] **95. Traceback redaction** — `RedactingFilter` scrubs `record.msg` only; a logged exception with an email or 12-digit run in its message would reach the formatted traceback untouched. Format `exc_info` through `redact_text` into `record.exc_text` (clear `exc_info`), redact `stack_info` too; tests for `[REDACTED]` plus UUID/SHA-256 survival. *Status: DONE — PR #59 (`fix/redact-tracebacks`) merged as `8f7f21f` (2026-11-18): `exc_info`/`stack_info` are redacted, and the filter also attaches to `uvicorn`/`uvicorn.error`/`uvicorn.access` handlers with a behavioural `dictConfig` test.*
+- [x] **96. Dev sign-in becomes explicit opt-in** — `dev_signin_enabled` currently defaults to `True`, so a forgotten env file ships a sign-in bypass. Default it to `False`; `scripts/dev.sh` and `tests/conftest.py` set `RINAVI_DEV_SIGNIN_ENABLED=true`; `.env.example` and the README explain it; the production rejection stays. The phase-2 Docker backend service must set `RINAVI_DEV_SIGNIN_ENABLED=true` for the demo (and must never set it in the hosted-pilot config). *Status: DONE — hardening PR 2 (`fix/request-input-bounds`) merged as `4eb46b4` (2026-11-18): `dev_signin_enabled` defaults to `False`; `scripts/dev.sh` and the test fixture opt in; `.env.example` and the README explain it; production still rejects it.*
+- [x] **97. Request-body cap middleware** — no global cap exists, so a large JSON/plain body is read into memory before any handler. Pure-ASGI middleware wrapping `receive`: 1 MB for JSON, 11 MB otherwise, JSON 413 on overflow, registered before the rate limiter so 413s carry CORS/security headers and don't consume budget. Tests: 2 MB JSON → 413, chunked oversize → 413, 10 MB multipart upload → 201, 10 MB + 1 → 413. *Status: DONE — hardening PR 4 (`feat/request-body-limit`) merged as `5315df9` (2026-11-18). Pilot residual: add reverse-proxy body/read timeouts before the hosted pilot.*
+- [x] **98. Bounded PDF parsing off the event loop** — `extract_text_from_pdf` has no page/text caps and runs synchronously on the event loop, so one hostile PDF can stall the single worker. Cap pages (100) and text (2 MB) with early stop; run extraction via `asyncio.to_thread`; oversize documents land in `needs_attention` with `page_limit_exceeded` / `text_limit_exceeded` notes. *Status: DONE — hardening PR 5 (`fix/bounded-pdf-parsing`) merged as `f2f8a9d` (2026-11-18). Pilot residual: add a parse timeout or process isolation before the hosted pilot.*
+- [x] **99. CSP on the web app** — static policy in `next.config.ts` (`default-src 'self'`, `script-src`/`style-src` with `'unsafe-inline'` for the Next runtime, `img-src 'self' data:`, `connect-src 'self' <API origin>`, `frame-ancestors 'none'`, `base-uri`, `form-action`), with a unit test asserting the policy string and the configured API origin. *Status: DONE — PR #62 (`feat/web-csp`) merged as `df27f11` (2026-11-18): static policy in `next.config.ts`; `script-src` adds `'unsafe-eval'` only when `NODE_ENV === "development"` (React's dev error stacks need it; production stays without it), with both modes unit-tested. `NEXT_PUBLIC_API_URL` is build-time input; rebuild the web image per environment.*
 
 ---
 
@@ -198,7 +207,7 @@ Standard flow (used by every PR so far):
 1. `git switch main && git pull --ff-only origin main` — always start from synced `main`.
 2. Create a branch: `chore/…`, `fix/…`, `feat/…`, `docs/…` depending on the item.
 3. **Code items:** write the failing test first and watch it fail (RED), implement the smallest fix (GREEN), then run the whole gate (REFACTOR). **Doc/config items:** no tests needed, but the gate still runs.
-4. Run `scripts/check.sh` — backend: ruff, pyright, pytest (234); web: eslint, typegen, tsc, vitest (50), build. Exit 0 required.
+4. Run `scripts/check.sh` — backend: ruff, pyright, pytest (267); web: eslint, typegen, tsc, vitest (54), build. Exit 0 required.
 5. For migration changes: run `alembic upgrade head` against a copy of the database and verify the result manually. Most tests build the schema from metadata, but `tests/test_migrations.py` runs Alembic `upgrade head` and `alembic check`; data migrations still need the DB-copy check.
 6. Commit per item, push, open a PR using the repo's PR template (Summary / Type / How tested / Security & privacy checklist / Screenshots), state `Closes #<issue>` where relevant, and confirm CI is green.
 7. Squash-merge in the GitHub UI (the human merges; the agent stops at a green PR), then `git pull --ff-only` locally and delete the merged branch.
@@ -230,17 +239,30 @@ scripts/check.sh
 1. [x] Run `scripts/check.sh` on `fix/v1-cleanup-batch` — expect green (backend 234, web 50). Passed; CI backend, web and CodeQL are green on `4e0cdda`.
 2. [x] Push the branch and open **one PR** covering items 17/74 (blank consent purposes), 26/75 (missing blob → 404), 29/77 (negative income stays raw), 73 (CORS example), 76 (drafts N+1), 78 (audit events), 79 (`Retry-After`) — commits `2d608eb`, `642e140`, `54c5889`, `f888223`, `9c081a5`, `31b8cf9`, `4e0cdda`. Opened as **PR #54**, reviewed with no blocking bugs, and **merged as `059f678` on 2026-11-17**; all checks green.
 3. [x] After the merge: pulled `main`, ticked items 17, 26, 29, 73–80, and deleted the six merged local branches.
-4. [ ] Fix **item 8** — add `alembic upgrade head` to `bootstrap.sh` in its own small PR.
+4. [x] Fix **item 8** — add `alembic upgrade head` to `bootstrap.sh` in its own small PR. *Merged as PR #56 (`9ec25cc`, 2026-11-17).*
 5. [x] **Issue #41** is closed (2026-11-16); full `npm audit` reports **0 vulnerabilities**; the stale local branches are deleted (item 80). Spot-check Dependabot alert #1 on the security page once.
-6. [x] Snapshot this checklist to `docs/planning/v1-checklist.md`, with the snapshot commit/date, a note that the working copy lives outside the repo, and that `wp8-pilot-readiness.md` stays authoritative. Also update the backend test count (225 → 234) in `README.md` and the readiness doc. *Pushed on branch `docs/v1-checklist-snapshot`; PR pending.*
+6. [x] Snapshot this checklist to `docs/planning/v1-checklist.md`, with the snapshot commit/date, a note that the working copy lives outside the repo, and that `wp8-pilot-readiness.md` stays authoritative. Also update the backend test count (225 → 234) in `README.md` and the readiness doc. *Merged as PR #55 (`f7ab071`, 2026-11-17); branch deleted.*
 
-### Next — local containerized demo (starts when Docker Desktop is installed)
+### Now — security hardening batch (six PRs, in this order)
 
-7. [ ] Add `backend/Dockerfile` and `apps/web/Dockerfile` plus `.dockerignore` files.
-8. [ ] Turn `infra/compose/compose.yaml` into the full demo stack: Postgres 16, Redis 7, backend, web, vault volume, env template.
-9. [ ] Verify: `docker compose up` → migrations run → health check → smoke flow (dev sign-in, upload a synthetic document, create a draft, export the packet).
+Approved 2026-11-17 as the follow-up to the cleanup train; each PR was one review surface, merged before the next started. Post-review amendments: #59 also filters uvicorn's own handlers; #62 adds `'unsafe-eval'` to the CSP in development only. **All six merged 2026-11-18.**
+
+1. [x] **Hardening PR 1** — `fix/income-prefix-negatives` (item 91): `Rs -5,000`, `INR -5000`, `Rs. (5,000)`, `(5,000) approx` stay raw at low confidence; scale-word and range cases unchanged. *Merged as `4525f8c`.*
+2. [x] **Hardening PR 2** — `fix/request-input-bounds` (items 93, 94, 96): schema caps with unit + API 422 tests; retry endpoint gets the upload budget; `dev_signin_enabled` defaults to `False` with dev/test env vars and docs. *Merged as `4eb46b4`.*
+3. [x] **Hardening PR 3** — `fix/redact-tracebacks` (item 95): `RedactingFilter` scrubs `exc_info`/`stack_info` and is attached to uvicorn's own handlers, so `uvicorn.error` tracebacks are covered too. *Merged as `8f7f21f`.*
+4. [x] **Hardening PR 4** — `feat/request-body-limit` (item 97): pure-ASGI 1 MB JSON / 11 MB body caps, JSON 413, before the rate limiter. *Merged as `5315df9`.*
+5. [x] **Hardening PR 5** — `fix/bounded-pdf-parsing` (item 98): 100-page / 2 MB text caps, `asyncio.to_thread`, defined `needs_attention` notes. *Merged as `f2f8a9d`.*
+6. [x] **Hardening PR 6** — `feat/web-csp` (item 99): static CSP in `next.config.ts` with the configured API origin in `connect-src`, plus `'unsafe-eval'` in development only. *Merged as `df27f11`.*
+
+*Close-out (2026-11-18):* `main` is at `df27f11`; the local gate is green at **267 backend / 54 web** (verified locally: 267 passed; 54 passed across 14 web files); items 91 and 93–99 are ticked above; item 92 stays open. The README/readiness count reconciliation and this refreshed snapshot were part of the 2026-11-18 close-out.
+
+### Next — local containerized demo (started 2026-11-17)
+
+7. [ ] Add `backend/Dockerfile` and `apps/web/Dockerfile` plus `.dockerignore` files. The backend build context must include `catalog/` as well as `backend/` (`catalog/loader.py` resolves `parents[4]/catalog/services`), run as a non-root user, and start through an entrypoint that applies `alembic upgrade head` before uvicorn.
+8. [ ] Add a PostgreSQL driver (`asyncpg>=0.32`; cp314 Windows wheels exist) so `postgresql+asyncpg://` works, then turn `infra/compose/compose.yaml` into the full demo stack: `name: rinavi`, Postgres 16, Redis 7, backend, web, vault volume, env template, healthchecks and `depends_on: service_healthy`. The backend service sets `RINAVI_DEV_SIGNIN_ENABLED=true` for the demo (never in the hosted-pilot config), `RINAVI_ENVIRONMENT=development`, and a Postgres `RINAVI_DATABASE_URL`.
+9. [ ] Verify from clean volumes: `docker compose up --build` → migrations run → `/api/v1/health` → smoke flow (dev sign-in, upload a synthetic PDF, extract, confirm a profile value, create a draft, validate, export the packet). Also run the backend suite with `RINAVI_DATABASE_URL=postgresql+asyncpg://...` against the compose Postgres and add a `backend-postgres` CI job; this is the first half of item 53. Run `docker compose down -v` and repeat once.
 10. [ ] Keep the single worker and `memory://` rate limiting as the default; Redis is provisioned for the later switch (item 57).
-11. [ ] Correct the README's `infra/compose` description and document the demo run steps.
+11. [ ] Correct the README's `infra/compose` description, add a Docker quick start (with the synthetic-only warning and image/OCR caveat), and record the smoke evidence in `docs/evaluation/`.
 
 ### Later — hosted pilot (blocked until the gates clear)
 
@@ -248,6 +270,8 @@ scripts/check.sh
 13. [ ] Choose a host; add deploy config, a CI deploy step and an operations runbook (item 58).
 14. [ ] Verify **PostgreSQL parity** against a real instance before any cutover (item 53).
 15. [ ] Run **WP8 pilot operations** (item 84) and **WP11 launch readiness** (item 85), then launch the controlled synthetic pilot.
+
+Pre-pilot residuals before step 15: reverse-proxy body/read timeouts (item 97) and a PDF parse timeout or process isolation (item 98).
 
 ### After the pilot — trigger-gated
 

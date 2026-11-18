@@ -17,7 +17,7 @@ behalf.
 
 - **Sign-in & passkeys** — dev sign-in for local work, WebAuthn passkeys, session cookies
 - **Consent, deny-by-default** — every feature asks for purpose-scoped consent before touching data
-- **Document vault** — upload PDF/TXT/images, stateful processing (`processed`, `needs_attention`), retry, delete
+- **Document vault** — upload PDF/TXT (images are accepted but wait for OCR), stateful processing (`processed`, `needs_attention`), retry, delete
 - **Extraction** — deterministic field extraction with confidence scores and `line N` locators so you can check where every value came from (OCR/LLM upgrades are planned, not assumed)
 - **Profile review** — promote values from a document, review, correct, confirm — values always carry their source, and deleting the source marks them stale
 - **Service catalog** — a versioned Delhi e-District income-certificate pack with official sources, guidance, evidence checklist, and form template
@@ -35,7 +35,7 @@ policy, not a missing feature.
 - `apps/web` — Next.js PWA (TypeScript)
 - `backend` — FastAPI modular monolith (Python)
 - `catalog` — versioned, source-linked service definitions and form templates
-- `infra/compose` — reference PostgreSQL/Redis/storage for staging and pilot
+- `infra/compose` — reference PostgreSQL/Redis services for staging and pilot (object storage is not wired yet)
 - `docs` — architecture decision records, compliance, evaluation
 - `scripts` — bootstrap, dev, and check commands
 
@@ -59,5 +59,5 @@ sign-in bypass and must be opted into explicitly.
 ## Quality gate
 
 `scripts/check.sh` runs the full gate — backend `ruff`, `pyright`, `pytest`
-(247 tests) and web `eslint`, `tsc`, `vitest` (50 tests), production build.
+(267 tests) and web `eslint`, `tsc`, `vitest` (54 tests), production build.
 The same gate runs in CI on every push and pull request.
