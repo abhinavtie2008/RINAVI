@@ -11,10 +11,11 @@ the ledger. Where the ledger said "not re-verified", this pass looked.
 **Updated 2026-11-18:** Track B is closed. The six hardening PRs (#57–#62), the
 PostgreSQL parity PR (#64) and the containerized demo PR (#65) are merged; the
 local gate is **268 backend / 54 web** on `main` @ `d9c0474`. The demo stack
-was verified three times from clean volumes (default ports twice, custom
-ports once), the backend suite passes against the compose PostgreSQL (268),
-and MinIO is dropped from the compose stack (checklist item 92, Option A
-recorded).
+was verified from clean volumes twice (default ports) plus one custom-port
+run (the custom-port path was independently re-verified from a clean volume
+by the PR #66 review), the backend suite passes against the compose
+PostgreSQL (268), and MinIO is dropped from the compose stack (checklist
+item 92, Option A recorded).
 
 ## How to read this
 
@@ -44,7 +45,7 @@ No item is left undecided. Every accepted or deferred item names what reopens it
 | Supply chain | CodeQL on push and PR, Dependabot for pip/npm/actions, the `protect-main` ruleset requires `backend` and `web`, actions pinned to `@v7` | `.github/workflows/ci.yml`, PRs #20, #27–#29 |
 | Security hardening | Prefix-negative income forms stay raw; request strings are capped; the retry route shares the upload budget; dev sign-in is opt-in; traceback redaction covers `exc_info`, `stack_info` and uvicorn's own handlers; request bodies are capped (1 MB JSON / 11 MB otherwise); PDF parsing is bounded (100 pages / 2 MB text) and runs off the event loop; the web app sends a static CSP | PRs #57–#62; `tests/security/test_redaction.py`, `tests/integration/test_body_limits.py`, `tests/integration/test_document_pipeline.py`, `apps/web/src/lib/csp.test.ts` |
 | Test gate | `scripts/check.sh` covers ruff, pyright, pytest, eslint, `next typegen`, tsc, vitest and a production build; same gate in CI, plus a `backend-postgres` job that runs the suite against PostgreSQL | `scripts/check.sh`, `.github/workflows/ci.yml`; backend 268 tests, web 54 tests across 14 files after A1 (#52), the cleanup batch (#54), the hardening batch (#57–#62) and the Postgres parity work (#64) |
-| Local containerized demo | One command starts the whole app on PostgreSQL: `docker compose up` in `infra/compose` builds non-root backend (UID 10001) and web images, applies migrations, and passes a 14-step smoke of the citizen flow; every port binds to loopback; no MinIO | PR #65, `scripts/smoke_demo.py`, `docs/evaluation/local-demo-smoke.md`; three clean-volume runs (default and custom ports), backend suite green against the compose PostgreSQL |
+| Local containerized demo | One command starts the whole app on PostgreSQL: `docker compose up` in `infra/compose` builds non-root backend (UID 10001) and web images, applies migrations, and passes a 14-step smoke of the citizen flow; every port binds to loopback; no MinIO | PR #65, `scripts/smoke_demo.py`, `docs/evaluation/local-demo-smoke.md`; two clean-volume runs (default ports) plus one custom-port run, backend suite green against the compose PostgreSQL |
 
 ## WP5 deferred ledger — verified state
 
@@ -127,7 +128,8 @@ unowned gaps.
 
 ## Track B follow-ups (recorded, not blocking)
 
-Raised by the PR #65 review; each is recorded with what reopens it.
+Raised by the PR #65 review; each is recorded with what reopens it, or who
+owns it where no reopen condition applies.
 
 1. **No Docker CI job.** `ci.yml` runs `backend`, `backend-postgres` and `web`
    only; neither Dockerfile nor the compose stack is built on PRs. A
@@ -140,8 +142,13 @@ Raised by the PR #65 review; each is recorded with what reopens it.
    is unsupported until someone needs it.
 3. **Smoke is API-only.** `scripts/smoke_demo.py` drives the backend API; the
    web shell (CSP, CORS, baked API URL) was checked over HTTP and by the PR
-   #65 review's browser pass. WP11 (checklist item 85) still owns browser/E2E
-   journeys.
+   #65 review's browser pass. The CORS allow-list includes
+   `http://127.0.0.1:<port>`, but the baked API URL is `localhost` and the
+   session cookie is `SameSite=Lax`, so a page loaded from `127.0.0.1`
+   would not send the cookie — the loopback-origin allowance covers the API
+   client, not full UI auth from the alternate hostname. WP11 (checklist
+   item 85) still owns browser/E2E journeys. Reopens when the web shell
+   changes materially or the demo becomes part of the launch path.
 4. **Floating base-image tags.** `python:3.14-slim`, `node:24-slim`,
    `postgres:16`, `redis:7` track their channels; digest pinning was declined
    for now so patch updates keep flowing. Reopens if reproducible builds
@@ -149,13 +156,15 @@ Raised by the PR #65 review; each is recorded with what reopens it.
 5. **Stale `compose_postgres_data` volume.** The pre-demo compose project left
    a volume that the `rinavi` project's `down -v` does not remove; delete it
    manually (`docker volume rm compose_postgres_data`) once its data is
-   unwanted.
+   unwanted. Reopens if the old compose project is ever restarted or the
+   volume reappears on this machine.
 
 ## What this pass did not verify
 
-- The demo stack in a browser on this machine: the web shell, CSP and CORS
-  were checked over HTTP; the PR #65 review drove dev sign-in, consent and
-  profile flows in a browser.
+- The compose demo stack in a browser: on this machine the web shell, CSP
+  and CORS were checked over HTTP only; the PR #65 review's browser pass
+  (dev sign-in, consent, profile flows) ran against its own compose stack,
+  not this machine's.
 - Multi-worker or multi-instance behaviour of the rate limiter.
 - Behaviour with a real document, real Aadhaar number or real portal session.
 - The legacy-row migration against a populated production database. It is

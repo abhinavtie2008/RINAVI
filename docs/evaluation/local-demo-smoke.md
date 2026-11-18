@@ -69,6 +69,9 @@ using the already-built images:
   no `unsafe-eval`.
 - Backend settings render `cors_origins` and `webauthn_origin` at `:3100`.
 - Smoke against `http://127.0.0.1:8001`: **all 14 steps pass**.
+- Fresh-volume note: this run did not record a teardown before starting;
+  the custom-port path was independently re-verified from a clean volume
+  during the PR #66 review.
 
 ## Known limitations
 
