@@ -8,6 +8,12 @@ before the controlled pilot.
 Every state below was checked against the code on that commit, not copied from
 the ledger. Where the ledger said "not re-verified", this pass looked.
 
+**Updated 2026-11-18:** the six hardening PRs (#57–#62) are merged, and the
+local gate is **267 backend / 54 web** on `main` @ `df27f11`. The security
+hardening row below and the test-count line were re-checked on that commit.
+The local containerized demo has started and will produce the first app images;
+MinIO is dead upstream (open decision, checklist item 92).
+
 ## How to read this
 
 - **Cleared** — the work is in `main` and a test or command in this repo covers it.
@@ -34,19 +40,20 @@ No item is left undecided. Every accepted or deferred item names what reopens it
 | Aadhaar portal-only | Aadhaar is filtered from profile reads and promotions, draft snapshots and values, validation, export, packets, and `/vault/documents/{id}/fields`; legacy profile rows are deleted; the dead UI label is gone | PR #52, `core/privacy.py`, migration `b7e4f1a2c9d3`, `tests/unit/test_application_builder.py`, `tests/integration/test_profile_api.py` |
 | Dependency advisory | `eslint` 10.15 plus a scoped `minimatch` 11 override for `typescript-estree`; `npm audit` reports 0 vulnerabilities | PR #50, `apps/web/package.json`; issue #41 closed 2026-11-16 |
 | Supply chain | CodeQL on push and PR, Dependabot for pip/npm/actions, the `protect-main` ruleset requires `backend` and `web`, actions pinned to `@v7` | `.github/workflows/ci.yml`, PRs #20, #27–#29 |
-| Test gate | `scripts/check.sh` covers ruff, pyright, pytest, eslint, `next typegen`, tsc, vitest and a production build; same gate in CI | `scripts/check.sh`; backend 234 tests, web 50 tests across 13 files after A1 (#52) and the cleanup batch (#54) |
+| Security hardening | Prefix-negative income forms stay raw; request strings are capped; the retry route shares the upload budget; dev sign-in is opt-in; traceback redaction covers `exc_info`, `stack_info` and uvicorn's own handlers; request bodies are capped (1 MB JSON / 11 MB otherwise); PDF parsing is bounded (100 pages / 2 MB text) and runs off the event loop; the web app sends a static CSP | PRs #57–#62; `tests/security/test_redaction.py`, `tests/integration/test_body_limits.py`, `tests/integration/test_document_pipeline.py`, `apps/web/src/lib/csp.test.ts` |
+| Test gate | `scripts/check.sh` covers ruff, pyright, pytest, eslint, `next typegen`, tsc, vitest and a production build; same gate in CI | `scripts/check.sh`; backend 267 tests, web 54 tests across 14 files after A1 (#52), the cleanup batch (#54) and the hardening batch (#57–#62) |
 
 ## WP5 deferred ledger — verified state
 
 | # | Item | State | What is actually there | Reopens when |
 |---|---|---|---|---|
 | 1 | Async processing isolation | **Accepted for the synthetic pilot** | `process_document` still runs inline inside the upload request (`vault/routes.py`). No worker package, no Celery/Redis dependency. A 10 MB PDF is parsed while the request is held open. | The pilot moves to real documents, uploads beyond the synthetic set, or overlapping users; then an async worker is required. |
-| 2 | Encryption at rest + object storage | **Accepted for synthetic only** | `LocalDiskStorage` writes plaintext bytes to `<storage_dir>/<user_id>/<document_id>.bin`. No `cryptography` dependency, no S3/MinIO client in `pyproject.toml`. `infra/compose/compose.yaml` pins `minio/minio:latest` with `rinavi`/`rinavi-dev-only` credentials, and `postgres` with `rinavi`/`rinavi` — reference only, not a hardening baseline. | The first real document is accepted, or storage leaves the founder's machine. Encryption + object storage must clear before either. |
+| 2 | Encryption at rest + object storage | **Accepted for synthetic only** | `LocalDiskStorage` writes plaintext bytes to `<storage_dir>/<user_id>/<document_id>.bin`. No `cryptography` dependency, no S3/MinIO client in `pyproject.toml`. `infra/compose/compose.yaml` pins `minio/minio:latest` with `rinavi`/`rinavi-dev-only` credentials, and `postgres` with `rinavi`/`rinavi` — reference only, not a hardening baseline. The pinned `minio/minio` image is no longer publicly pullable; removal or replacement is an open decision (checklist item 92). | The first real document is accepted, or storage leaves the founder's machine. Encryption + object storage must clear before either. |
 | 3 | Image OCR | **Accepted (deliberate)** | PNG/JPEG uploads come back `needs_attention` with `note = "ocr_not_configured"`, asserted in `test_document_pipeline.py`. Consequence: image evidence is unusable, so pilot instructions must say PDF or TXT. | Image evidence is needed for a pilot service; OCR then becomes in scope. |
 | 4 | Aadhaar Verhoeff validation | **Moot under A1** | `_normalize_aadhaar` still accepts any 12 digits, but the value is never promoted, stored in a profile, shown in a draft, exported or put in a packet. The portal is the only place an Aadhaar number is entered or validated. | Aadhaar becomes a pack input or is stored outside `extracted_fields`; then checksum validation and a policy decision are required. |
 | 5 | Export completeness | **Accepted for the synthetic pilot** | `GET /auth/export` returns `user` and `consent_records` only (`identity/schemas.py::AccountExport`). Document metadata and profile values are missing. | RINAVI promises citizens they can take their data with them, or real documents are accepted. Both require a complete export. |
 | 6 | Retention sweeps | **Accepted for the synthetic pilot** | No scheduler or cron job exists. A document whose delete fails at `storage.delete` (503) keeps both row and file, which is recoverable by retrying; nothing sweeps files left behind by an interrupted delete. | Real documents are accepted or the pilot has more than one user; then a scheduled sweep and an operator runbook are required. |
-| 7 | PostgreSQL migration | **Deferred — accepted ADR-0002 deviation** | `database_url` still defaults to `sqlite+aiosqlite`; local runs and CI are SQLite only. `infra/compose/compose.yaml` offers PostgreSQL 16; parity was never run against a real instance. This synthetic-only gate explicitly does not satisfy ADR-0002. | Real documents are accepted, more than one worker is used, or the pilot becomes a controlled pilot in ADR-0002's sense. PostgreSQL must clear before any of those. |
+| 7 | PostgreSQL migration | **Deferred — accepted ADR-0002 deviation** | `database_url` still defaults to `sqlite+aiosqlite`; local runs and CI are SQLite only. `infra/compose/compose.yaml` offers PostgreSQL 16, but no PostgreSQL driver (`asyncpg`/`psycopg`) is declared and parity was never run against a real instance. This synthetic-only gate explicitly does not satisfy ADR-0002; the local demo is the first parity run. | Real documents are accepted, more than one worker is used, or the pilot becomes a controlled pilot in ADR-0002's sense. PostgreSQL must clear before any of those. |
 | 8 | Extraction cost baseline | **Cleared by absence** | The pipeline is deterministic and makes no AI calls: no `openai`, `anthropic`, Tesseract or other inference dependency exists. Spend is zero, so there is nothing to meter yet. Correction counts already come from `profile.value_corrected` audit events. | Any inference dependency is added. |
 
 ## Found after WP7
@@ -67,11 +74,12 @@ unowned gaps.
    and `integrations` as well; ADR-0003 records both as post-pilot and neither
    is stubbed in V1. This reopens when submission automation or external portal
    integrations enter scope.
-3. **There is no deployment target.** No `Dockerfile`, `Procfile`, `fly.toml` or
-   render config; `infra/compose` is a reference for services, not an app stack.
-   `scripts/dev.sh` is Git-Bash/Windows-only. Host selection is deferred for
-   this gate, and the pilot **cannot launch** until a host is chosen and the app
-   is deployed there. This reopens at launch, not at code-complete.
+3. **There is no deployment target yet.** No `Dockerfile`, `Procfile`, `fly.toml`
+   or render config; `infra/compose` is a reference for services, not an app
+   stack. The local containerized demo started 2026-11-17 and will produce the
+   app images, but no host has been chosen. `scripts/dev.sh` is
+   Git-Bash/Windows-only. The pilot **cannot launch** until a host is chosen and
+   the app is deployed there. This reopens at launch, not at code-complete.
 4. **Rate-limit storage is per-process.** `rate_limit_storage_uri` defaults to
    `memory://`, so with more than one worker each process keeps its own counters
    and the effective budget multiplies. The gate assumes a **single worker**.
@@ -116,6 +124,7 @@ unowned gaps.
 ## What this pass did not verify
 
 - Anything in a browser: no page was driven end to end.
+- The local Docker demo: no app image or compose app stack exists yet (started 2026-11-17).
 - PostgreSQL behaviour or Alembic parity against a real instance.
 - Multi-worker or multi-instance behaviour of the rate limiter.
 - Behaviour with a real document, real Aadhaar number or real portal session.
