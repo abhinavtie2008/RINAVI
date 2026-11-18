@@ -43,6 +43,10 @@ _PATTERNS: dict[str, re.Pattern[str]] = {
 _AMOUNT = re.compile(r"\d[\d,]*(?:\.\d+)?")
 # "1.20 lakh" is not rupees; scaling it by hand is safer than guessing.
 _SCALE_WORD = re.compile(r"\b(?:lakhs?|lacs?|crores?|million|billion)\b", re.IGNORECASE)
+# Currency prefixes precede the figure itself; strip them to inspect it.
+_CURRENCY_PREFIX = re.compile(r"^\s*(?:rs\.?|inr|₹)\s*", re.IGNORECASE)
+# A parenthesised amount is a loss ("(5,000)"), possibly with trailing text.
+_PAREN_AMOUNT = re.compile(r"\([\d,]+(?:\.\d+)?\)")
 _ISO_DATE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 _DAY_FIRST_DATE = re.compile(r"(\d{2})[/-](\d{2})[/-](\d{4})")
 
@@ -90,8 +94,14 @@ def _normalize_income(raw: str) -> tuple[str, str]:
     value = raw.strip()
     if _SCALE_WORD.search(value):
         return value, CONFIDENCE_LOW
-    if value.startswith("-") or (value.startswith("(") and value.endswith(")")):
+    rest = _CURRENCY_PREFIX.sub("", value, count=1).strip()
+    if (
+        (value.startswith("(") and value.endswith(")"))
+        or rest.startswith("-")
+        or _PAREN_AMOUNT.match(rest) is not None
+    ):
         # Accounting negatives are losses, never income; keep them for review.
+        # The range dash in "Rs 5,000-7,000" follows a digit, so it is not a sign.
         return value, CONFIDENCE_LOW
     amount = _AMOUNT.search(value)
     if amount is None:
@@ -164,9 +174,30 @@ def extract_text_from_txt(data: bytes) -> str:
     return data.decode("utf-8")
 
 
-def extract_text_from_pdf(data: bytes) -> str:
+# Bounds on how much of a PDF is read: a hostile document must not consume
+# unbounded pages or memory.
+PAGE_LIMIT = 100
+TEXT_LIMIT_CHARS = 2 * 1024 * 1024
+
+
+def extract_text_from_pdf(data: bytes) -> tuple[str, str | None]:
+    """Extract text, stopping at the page or text limit.
+
+    The returned note names the limit that stopped extraction
+    (``page_limit_exceeded`` / ``text_limit_exceeded``), or is None when
+    the whole document fit within both limits.
+    """
     reader = PdfReader(BytesIO(data))
-    # Layout mode keeps line structure, which the line-locator extraction relies on.
-    return "\n".join(
-        page.extract_text(extraction_mode="layout") or "" for page in reader.pages
-    )
+    parts: list[str] = []
+    total = 0
+    for index, page in enumerate(reader.pages):
+        if index == PAGE_LIMIT:
+            return "\n".join(parts), "page_limit_exceeded"
+        # Layout mode keeps line structure, which the line-locator extraction
+        # relies on.
+        page_text = page.extract_text(extraction_mode="layout") or ""
+        total += len(page_text)
+        if total > TEXT_LIMIT_CHARS:
+            return "\n".join(parts), "text_limit_exceeded"
+        parts.append(page_text)
+    return "\n".join(parts), None

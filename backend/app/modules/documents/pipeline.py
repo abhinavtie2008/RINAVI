@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from sqlalchemy import delete
@@ -47,9 +48,17 @@ async def process_document(
 
     try:
         if document.content_type == "application/pdf":
-            text = extract_text_from_pdf(data)
+            # PDF parsing is CPU work; neither function touches the DB, so it
+            # is safe to run off the event loop.
+            text, note = await asyncio.to_thread(extract_text_from_pdf, data)
         else:
             text = extract_text_from_txt(data)
+            note = None
+        if note is not None:
+            document.status = DocumentStatus.NEEDS_ATTENTION
+            document.note = note
+            await db.flush()
+            return
         if not text.strip():
             document.status = DocumentStatus.NEEDS_ATTENTION
             document.note = "no_text_layer"

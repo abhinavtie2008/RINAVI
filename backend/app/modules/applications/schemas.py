@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DraftValueOut(BaseModel):
@@ -33,15 +33,15 @@ class DraftOut(BaseModel):
 
 
 class DraftCreateIn(BaseModel):
-    service_slug: str
+    service_slug: str = Field(max_length=80)
 
 
 class FieldUpdateIn(BaseModel):
-    value: str
+    value: str = Field(max_length=500)
 
 
 class DocumentLinkIn(BaseModel):
-    group_id: str
+    group_id: str = Field(max_length=80)
 
 
 class DeclarationIn(BaseModel):

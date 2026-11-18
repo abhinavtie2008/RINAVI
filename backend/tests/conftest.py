@@ -11,6 +11,8 @@ _STORAGE_DIR = f"{_tmp}/vault"
 os.environ["RINAVI_DATABASE_URL"] = f"sqlite+aiosqlite:///{_tmp}/rinavi-test.db"
 os.environ["RINAVI_STORAGE_DIR"] = _STORAGE_DIR
 os.environ["RINAVI_ENVIRONMENT"] = "test"
+# Integration tests sign in through the dev-signin route; it is opt-in.
+os.environ["RINAVI_DEV_SIGNIN_ENABLED"] = "true"
 atexit.register(shutil.rmtree, _tmp, ignore_errors=True)
 
 
