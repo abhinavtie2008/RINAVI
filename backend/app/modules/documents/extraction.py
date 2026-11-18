@@ -174,9 +174,30 @@ def extract_text_from_txt(data: bytes) -> str:
     return data.decode("utf-8")
 
 
-def extract_text_from_pdf(data: bytes) -> str:
+# Bounds on how much of a PDF is read: a hostile document must not consume
+# unbounded pages or memory.
+PAGE_LIMIT = 100
+TEXT_LIMIT_CHARS = 2 * 1024 * 1024
+
+
+def extract_text_from_pdf(data: bytes) -> tuple[str, str | None]:
+    """Extract text, stopping at the page or text limit.
+
+    The returned note names the limit that stopped extraction
+    (``page_limit_exceeded`` / ``text_limit_exceeded``), or is None when
+    the whole document fit within both limits.
+    """
     reader = PdfReader(BytesIO(data))
-    # Layout mode keeps line structure, which the line-locator extraction relies on.
-    return "\n".join(
-        page.extract_text(extraction_mode="layout") or "" for page in reader.pages
-    )
+    parts: list[str] = []
+    total = 0
+    for index, page in enumerate(reader.pages):
+        if index == PAGE_LIMIT:
+            return "\n".join(parts), "page_limit_exceeded"
+        # Layout mode keeps line structure, which the line-locator extraction
+        # relies on.
+        page_text = page.extract_text(extraction_mode="layout") or ""
+        total += len(page_text)
+        if total > TEXT_LIMIT_CHARS:
+            return "\n".join(parts), "text_limit_exceeded"
+        parts.append(page_text)
+    return "\n".join(parts), None

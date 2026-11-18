@@ -1,4 +1,5 @@
 import os
+import threading
 from pathlib import Path
 
 import pytest
@@ -8,7 +9,7 @@ from sqlalchemy import select
 from app.core.db import async_session_factory
 from app.main import app
 from app.modules.audit.models import AuditEvent
-from tests.factories import make_text_pdf
+from tests.factories import make_multipage_pdf, make_text_pdf
 
 API = "/api/v1"
 
@@ -103,6 +104,100 @@ async def test_pdf_with_text_layer_is_processed() -> None:
         fields = await client.get(f"{API}/vault/documents/{response.json()['id']}/fields")
         keys = {f["field_key"] for f in fields.json()}
         assert {"full_name", "annual_income"} <= keys
+
+
+async def test_pdf_over_page_limit_is_marked_needs_attention() -> None:
+    async with make_client() as client:
+        await sign_in(client)
+        await allow_documents(client)
+
+        pdf = make_multipage_pdf([["Applicant Name: Asha Devi"]] * 101)
+        response = await upload(
+            client, name="large.pdf", content=pdf, content_type="application/pdf"
+        )
+
+        assert response.status_code == 201
+        body = response.json()
+        assert body["status"] == "needs_attention"
+        assert body["note"] == "page_limit_exceeded"
+
+
+async def test_pdf_over_text_limit_is_marked_needs_attention(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The production limit is 2 MB; a small one exercises the same pipeline
+    # branch without generating a 2 MB document in the test.
+    monkeypatch.setattr(
+        "app.modules.documents.extraction.TEXT_LIMIT_CHARS", 64, raising=False
+    )
+    async with make_client() as client:
+        await sign_in(client)
+        await allow_documents(client)
+
+        pdf = make_multipage_pdf(
+            [
+                ["Applicant Name: Asha Devi"],
+                ["Annual Income: Rs. 1,20,000"],
+                ["Address: 14, Nehru Colony, Example Nagar"],
+            ]
+        )
+        response = await upload(
+            client, name="income.pdf", content=pdf, content_type="application/pdf"
+        )
+
+        assert response.status_code == 201
+        body = response.json()
+        assert body["status"] == "needs_attention"
+        assert body["note"] == "text_limit_exceeded"
+
+
+async def test_pdf_extraction_runs_off_the_event_loop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    main_thread = threading.get_ident()
+    extraction_threads: list[int] = []
+
+    def capture(data: bytes) -> tuple[str, str | None]:
+        extraction_threads.append(threading.get_ident())
+        return "Applicant Name: Asha Devi\n", None
+
+    monkeypatch.setattr(
+        "app.modules.documents.pipeline.extract_text_from_pdf", capture
+    )
+
+    async with make_client() as client:
+        await sign_in(client)
+        await allow_documents(client)
+
+        pdf = make_text_pdf(["Applicant Name: Asha Devi"])
+        response = await upload(
+            client, name="income.pdf", content=pdf, content_type="application/pdf"
+        )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "processed"
+    assert extraction_threads
+    assert extraction_threads[0] != main_thread
+
+
+async def test_retry_reports_the_same_page_limit() -> None:
+    async with make_client() as client:
+        await sign_in(client)
+        await allow_documents(client)
+
+        pdf = make_multipage_pdf([["Applicant Name: Asha Devi"]] * 101)
+        uploaded = await upload(
+            client, name="large.pdf", content=pdf, content_type="application/pdf"
+        )
+        assert uploaded.json()["note"] == "page_limit_exceeded"
+
+        retried = await client.post(
+            f"{API}/vault/documents/{uploaded.json()['id']}/retry"
+        )
+
+        assert retried.status_code == 200
+        assert retried.json()["status"] == "needs_attention"
+        assert retried.json()["note"] == "page_limit_exceeded"
 
 
 async def test_image_is_marked_needs_attention_without_ocr() -> None:
