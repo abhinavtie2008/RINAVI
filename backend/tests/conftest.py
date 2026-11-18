@@ -14,9 +14,11 @@ _override = os.environ.get("RINAVI_TEST_DATABASE_URL")
 if _override:
     # The schema fixture drops and recreates every table per test; refuse to
     # do that to a database whose name does not say "test".
-    if "test" not in (make_url(_override).database or "").lower():
+    _url = make_url(_override)
+    if "test" not in (_url.database or "").lower():
         raise RuntimeError(
-            f"RINAVI_TEST_DATABASE_URL must name a test database, got {_override!r}"
+            "RINAVI_TEST_DATABASE_URL must name a test database, got "
+            f"{_url.render_as_string(hide_password=True)}"
         )
     os.environ["RINAVI_DATABASE_URL"] = _override
 else:
@@ -33,12 +35,15 @@ async def _reset_schema() -> AsyncIterator[None]:
     from app.core.db import Base, engine
 
     shutil.rmtree(_STORAGE_DIR, ignore_errors=True)
+    # pytest-asyncio runs each test in its own event loop. Dispose before and
+    # after so pooled asyncpg connections never cross loops — including when a
+    # previous test's teardown was skipped by an error.
+    if engine.dialect.name != "sqlite":
+        await engine.dispose()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
-    # pytest-asyncio runs each test in its own event loop. Pooled asyncpg
-    # connections must not outlive the loop that created them.
     if engine.dialect.name != "sqlite":
         await engine.dispose()
 

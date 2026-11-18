@@ -47,7 +47,10 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       RINAVI_ENVIRONMENT: test
-      RINAVI_DATABASE_URL: postgresql+asyncpg://rinavi:rinavi@localhost:5432/rinavi_test
+      # pytest must run against Postgres here. RINAVI_TEST_DATABASE_URL is the
+      # only database override conftest.py honors; RINAVI_DATABASE_URL is set
+      # on the Alembic steps only, so the suite cannot silently fall back to
+      # SQLite.
       RINAVI_TEST_DATABASE_URL: postgresql+asyncpg://rinavi:rinavi@localhost:5432/rinavi_test
     steps:
       - uses: actions/checkout@v7
@@ -57,11 +60,24 @@ jobs:
       - name: Install
         working-directory: backend
         run: pip install -e ".[dev]"
+      - name: Assert Postgres test target
+        working-directory: backend
+        run: >-
+          python -c "import os; from sqlalchemy.engine import make_url;
+          url = os.environ['RINAVI_TEST_DATABASE_URL'];
+          assert make_url(url).get_backend_name() == 'postgresql', url"
       - name: Migrations
         working-directory: backend
+        env:
+          RINAVI_DATABASE_URL: postgresql+asyncpg://rinavi:rinavi@localhost:5432/rinavi_test
         run: python -m alembic upgrade head
+      # Must stay before Tests: the suite drops and recreates every table
+      # from metadata, so a check after it would compare metadata against
+      # itself and fake a migration-path pass.
       - name: Schema check
         working-directory: backend
+        env:
+          RINAVI_DATABASE_URL: postgresql+asyncpg://rinavi:rinavi@localhost:5432/rinavi_test
         run: python -m alembic check
       - name: Tests
         working-directory: backend
