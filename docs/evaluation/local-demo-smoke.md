@@ -69,6 +69,26 @@ using the already-built images:
   no `unsafe-eval`.
 - Backend settings render `cors_origins` and `webauthn_origin` at `:3100`.
 - Smoke against `http://127.0.0.1:8001`: **all 14 steps pass**.
+- Fresh-volume note: this run did not record a teardown before starting;
+  the custom-port path was independently re-verified from a clean volume
+  during the PR #66 review.
+
+## Run 4 — PR #66 review, clean-volume custom ports
+
+The PR #66 review re-ran the custom-port path from a clean volume on
+2026-11-18:
+
+- `docker compose down -v`, then
+  `WEB_PORT=3100 API_PORT=8001 docker compose up --build -d --wait`:
+  all four services healthy.
+- CORS preflight from `http://localhost:3100` and `http://127.0.0.1:3100`
+  → 200 with a matching `access-control-allow-origin`; an unknown origin
+  (`http://localhost:9999`) → 400.
+- Web CSP `connect-src 'self' http://localhost:8001`; no `unsafe-eval`.
+- Smoke against `http://127.0.0.1:8001`: **all 14 steps pass**.
+- Copied `.env.example` with `API_PORT=8001` and `WEB_PORT=3100`:
+  `docker compose config` renders `NEXT_PUBLIC_API_URL=http://localhost:8001`,
+  CORS/WebAuthn at `:3100`.
 
 ## Known limitations
 
