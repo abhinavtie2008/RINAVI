@@ -9,8 +9,11 @@ Every state below was checked against the code on that commit, not copied from
 the ledger. Where the ledger said "not re-verified", this pass looked.
 
 **Added 2026-11-19:** the phase A pilot paperwork is drafted in this folder —
-see "Pilot phase A artefacts" below. It records no new decisions and leaves
-every state in this document unchanged.
+see "Pilot phase A artefacts" below. Its second pass added the threat model and
+the portal-permission register, and fixed the one code inconsistency the data
+map found (a draft could not be deleted after withdrawing
+`applications.preparation`). No decision recorded below changes; the
+**qualified legal review** is now the only WP2 artefact still outstanding.
 
 **Updated 2026-11-18:** Track B is closed. The six hardening PRs (#57–#62), the
 PostgreSQL parity PR (#64) and the containerized demo PR (#65) are merged; the
@@ -136,8 +139,8 @@ unowned gaps.
 this folder. It was written against the code on `main` @ `45c63d7` — table and
 column names, the four purposes, the deletion paths and the retention gaps were
 read out of the repository, not assumed. It is **draft pending the qualified
-review** and changes no decision recorded above: item 83 is still open, so real
-documents and any hosted pilot stay blocked.
+review** and changes no decision recorded above: item 83's gate is still
+conditional on that review, so real documents and any hosted pilot stay blocked.
 
 | File | What it settles | State |
 |---|---|---|
@@ -147,6 +150,8 @@ documents and any hosted pilot stay blocked.
 | `terms-draft.md` | Pilot participation terms: prototype, synthetic documents only, no government affiliation, liability, jurisdiction | Draft |
 | `retention-policy.md` | Per-store retention, deletion mechanics, what survives an account deletion and why, close-out steps | Draft |
 | `recording-consent.md` | Separate consent for notes and recordings, the retention period and the facilitator script | Draft |
+| `portal-permission-register.md` | Which portals exist in scope, the access level allowed to each (all A0 today), the prohibitions that are structural rather than promises, the citizen-authorisation model and the six open items for the reviewer | Draft, not signed off |
+| `threat-model.md` | Assets, actors, trust boundaries, 31 threats with the control that covers each, and eight risks accepted for synthetic data with their reopen triggers | Draft |
 
 What the mapping surfaced, for the reviewer rather than for a code change:
 
@@ -162,11 +167,17 @@ What the mapping surfaced, for the reviewer rather than for a code change:
 3. **Deletion is hard and immediate, but nothing expires by itself.** Expired
    sessions, old audit rows and orphaned blobs have no sweep (item 68), and
    cases and profile values have no delete route — only account deletion removes
-   them. `retention-policy.md` §5 lists each gap with its owner.
+   them. `retention-policy.md` §5 lists each gap with its owner. The one deletion
+   inconsistency the map found — draft deletion gated while document deletion
+   was not — is fixed in `fix/ungate-draft-deletion`, so erasure no longer
+   depends on a withdrawn grant.
 
-Still missing before the gate can close: the **portal-permission register**, the
-**threat model**, and the **qualified legal review** itself. Item 83 stays
-unticked for that reason.
+The WP2 artefact set is now complete: the **portal-permission register** and the
+**threat model** were added on 2026-11-19, leaving the **qualified legal
+review** as the only thing still missing — which no repository change can
+provide. Item 83 is ticked in the checklist on that basis, and the gate stays
+**conditional**: real documents and any hosted pilot remain blocked until the
+review signs off.
 
 ## Track B follow-ups (recorded, not blocking)
 

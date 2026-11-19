@@ -147,15 +147,19 @@ Three review points, stated as questions rather than conclusions:
    reads document fields, but the promote route is gated on `profile.storage`;
    the citizen will normally hold `documents.processing` already, and the review
    should confirm one purpose is enough.
-3. **Deletion is gated inconsistently.** `DELETE /vault/documents/{id}` and
-   `DELETE /auth/account` carry **no** consent dependency, and that is the right
-   default: erasure must never be conditional on a grant the citizen may have
-   just withdrawn. But `DELETE /applications/drafts/{id}` *is* gated on
-   `applications.preparation`. A citizen who withdraws that purpose can still
-   delete a document, yet can only remove a draft by deleting the whole account.
-   Confirm whether draft deletion should be ungated the same way. Profile values
-   and cases have no delete route at all (§8), so the same question applies to
-   them.
+3. **Deletion is gated inconsistently — resolved for drafts.**
+   `DELETE /vault/documents/{id}` and `DELETE /auth/account` carry **no**
+   consent dependency, and that is the right default: erasure must never be
+   conditional on a grant the citizen may have just withdrawn.
+   `DELETE /applications/drafts/{id}` was the exception — gated on
+   `applications.preparation`, so a citizen who withdrew that purpose could
+   delete a document but could only remove a draft by deleting the whole
+   account. It is now ungated the same way (`fix/ungate-draft-deletion`, with
+   tests for the withdrawn-consent path and for cross-account isolation);
+   reading, editing, exporting and completing a draft stay behind the purpose.
+   Profile values and cases still have no delete route at all (§8), so erasure
+   coverage remains incomplete for them — that is the question left for the
+   reviewer, not the gate.
 
 ## 5. Flows
 
