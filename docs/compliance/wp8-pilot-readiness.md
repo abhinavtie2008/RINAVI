@@ -8,6 +8,17 @@ before the controlled pilot.
 Every state below was checked against the code on that commit, not copied from
 the ledger. Where the ledger said "not re-verified", this pass looked.
 
+**Added 2026-11-19:** the phase A pilot paperwork is drafted in this folder —
+see "Pilot phase A artefacts" below. Its second pass added the threat model and
+the portal-permission register. A review pass corrected the data map's profile
+statuses, case-creation gate and audit-detail list, the retention policy's
+transaction wording, the privacy notice's Aadhaar promise and the permission
+register's purpose-allowlist claim. The one code inconsistency the data map
+found — a draft could not be deleted after withdrawing
+`applications.preparation` — is fixed by PR #71. No decision recorded below
+changes; the **qualified legal review** is now the only WP2 artefact still
+outstanding.
+
 **Updated 2026-11-18:** Track B is closed. The six hardening PRs (#57–#62), the
 PostgreSQL parity PR (#64) and the containerized demo PR (#65) are merged; the
 local gate is **268 backend / 54 web** on `main` @ `d9c0474`. The demo stack
@@ -41,10 +52,10 @@ No item is left undecided. Every accepted or deferred item names what reopens it
 | Blob lifecycle | A record whose file is gone reports `content_unavailable` instead of 500; a rolled-back upload discards its bytes | PR #30, `documents/pipeline.py`, `vault/routes.py` |
 | Audit redaction | Document contents and PII never reach the audit log; SHA-256 digests preserved | PR #17, `audit/service.py`, `tests/security/test_redaction.py` |
 | Aadhaar portal-only | Aadhaar is filtered from profile reads and promotions, draft snapshots and values, validation, export, packets, and `/vault/documents/{id}/fields`; legacy profile rows are deleted; the dead UI label is gone | PR #52, `core/privacy.py`, migration `b7e4f1a2c9d3`, `tests/unit/test_application_builder.py`, `tests/integration/test_profile_api.py` |
-| Dependency advisory | `eslint` 10.15 plus a scoped `minimatch` 11 override for `typescript-estree`; `npm audit` reports 0 vulnerabilities | PR #50, `apps/web/package.json`; issue #41 closed 2026-11-16 |
-| Supply chain | CodeQL on push and PR, Dependabot for pip/npm/actions, the `protect-main` ruleset requires `backend` and `web`, actions pinned to `@v7` | `.github/workflows/ci.yml`, PRs #20, #27–#29 |
+| Dependency advisory | `eslint` 10.15 plus a scoped `minimatch` 11 override for `typescript-estree`; `npm audit --omit=dev` reports 0 vulnerabilities; dev-only test-dependency advisories are tracked in `threat-model.md` §5.6 | PR #50, `apps/web/package.json`; issue #41 closed 2026-11-16 |
+| Supply chain | CodeQL on push and PR, Dependabot for pip/npm/actions, the `protect-main` ruleset requires `backend`, `web` and `backend-postgres`, actions pinned to `@v7` | `.github/workflows/ci.yml`, PRs #20, #27–#29 |
 | Security hardening | Prefix-negative income forms stay raw; request strings are capped; the retry route shares the upload budget; dev sign-in is opt-in; traceback redaction covers `exc_info`, `stack_info` and uvicorn's own handlers; request bodies are capped (1 MB JSON / 11 MB otherwise); PDF parsing is bounded (100 pages / 2 MB text) and runs off the event loop; the web app sends a static CSP | PRs #57–#62; `tests/security/test_redaction.py`, `tests/integration/test_body_limits.py`, `tests/integration/test_document_pipeline.py`, `apps/web/src/lib/csp.test.ts` |
-| Test gate | `scripts/check.sh` covers ruff, pyright, pytest, eslint, `next typegen`, tsc, vitest and a production build; same gate in CI, plus a `backend-postgres` job that runs the suite against PostgreSQL | `scripts/check.sh`, `.github/workflows/ci.yml`; backend 268 tests, web 54 tests across 14 files after A1 (#52), the cleanup batch (#54), the hardening batch (#57–#62) and the Postgres parity work (#64) |
+| Test gate | `scripts/check.sh` covers ruff, pyright, pytest, eslint, `next typegen`, tsc, vitest and a production build; same gate in CI, plus a `backend-postgres` job that runs the suite against PostgreSQL | `scripts/check.sh`, `.github/workflows/ci.yml`; **268 backend / 54 web across 14 files** on `main` @ `45c63d7`. PR #67 and #69 add backend tests, PR #70 adds a browser spec that runs only in the manual e2e job (not the vitest count), PR #71 adds backend tests and #72 rewrites a web test. Refresh this figure after the merge train. |
 | Local containerized demo | One command starts the whole app on PostgreSQL: `docker compose up` in `infra/compose` builds non-root backend (UID 10001) and web images, applies migrations, and passes a 14-step smoke of the citizen flow; every port binds to loopback; no MinIO | PR #65, `scripts/smoke_demo.py`, `docs/evaluation/local-demo-smoke.md`; two clean-volume runs (default ports) plus one custom-port run, backend suite green against the compose PostgreSQL |
 
 ## WP5 deferred ledger — verified state
@@ -125,6 +136,52 @@ unowned gaps.
 | 8 | OCR scope | Accept PDF/TXT only; the pilot script must say image uploads are unsupported. | Image evidence is required; OCR then enters scope. |
 | 9 | Concurrent workers | Accept a single worker with `memory://` rate-limit storage. | Multi-worker or autoscaling; a shared rate-limit backend is required. |
 | 10 | Dependency advisory | Cleared by the eslint 10.15 + scoped `minimatch` 11 override; no fallback was needed. | The override is removed or a new advisory affects shipped code. |
+
+## Pilot phase A artefacts
+
+**Added 2026-11-19.** The WP2 paperwork for the synthetic pilot is drafted in
+this folder. It was written against the code on `main` @ `45c63d7` — table and
+column names, the four purposes, the deletion paths and the retention gaps were
+read out of the repository, not assumed. It is **draft pending the qualified
+review** and changes no decision recorded above: item 83's gate is still
+conditional on that review, so real documents and any hosted pilot stay blocked.
+
+| File | What it settles | State |
+|---|---|---|
+| `pilot-plan.md` | How phase A runs: cohort, session format, success measures, stop conditions, reopen trigger for a real pilot | Draft |
+| `data-map.md` | Every store, the personal data in it, which purpose gates it, who can see it, and the gaps the mapping exposes | Draft |
+| `privacy-notice-draft.md` | Citizen-facing notice in plain English, including the export limitation and the plaintext-storage limitation | Draft |
+| `terms-draft.md` | Pilot participation terms: prototype, synthetic documents only, no government affiliation, liability, jurisdiction | Draft |
+| `retention-policy.md` | Per-store retention, deletion mechanics, what survives an account deletion and why, close-out steps | Draft |
+| `recording-consent.md` | Separate consent for notes and recordings, the retention period and the facilitator script | Draft |
+| `portal-permission-register.md` | Which portals exist in scope, the access level allowed to each (all A0 today), the prohibitions that are structural rather than promises, the citizen-authorisation model and the six open items for the reviewer | Draft, not signed off |
+| `threat-model.md` | Assets, actors, trust boundaries, 31 threats with the control that covers each, and eight risks accepted for synthetic data with their reopen triggers | Draft |
+
+What the mapping surfaced, for the reviewer rather than for a code change:
+
+1. **Aadhaar is still written to `extracted_fields`.** A1 stops it reaching a
+   profile, draft, packet, export or the `/fields` response, but the extracted
+   value is stored and readable with database access. Fine for SPECIMEN
+   numbers; needs a decision (drop on write, or encrypt) before any real
+   document.
+2. **Two consent-scope questions.** `POST /applications/drafts/{id}/complete`
+   snapshots draft values and evidence under `applications.preparation` alone;
+   `apply-again` requires both `locker.tracking` and `applications.preparation`.
+   Promotion reads document fields but is gated on `profile.storage`. Both are
+   recorded in `data-map.md` §4 as questions to confirm, not as findings.
+3. **Deletion is hard and immediate, but nothing expires by itself.** Expired
+   sessions, old audit rows and orphaned blobs have no sweep (item 68). Cases
+   and confirmed profile values have no delete route — only account deletion
+   removes them; non-confirmed values can be rejected. `retention-policy.md` §5
+   lists each gap with its owner. The one deletion inconsistency the map found —
+   draft deletion gated while document deletion was not — is fixed in PR #71, so
+   erasure no longer depends on a withdrawn grant.
+
+The WP2 artefact set is now drafted: the **portal-permission register** and the
+**threat model** were added on 2026-11-19, leaving the **qualified legal
+review** as the only thing still missing — which no repository change can
+provide. Item 83 stays unticked until that review signs off; the gate remains
+**conditional**: real documents and any hosted pilot are blocked until then.
 
 ## Track B follow-ups (recorded, not blocking)
 
