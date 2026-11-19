@@ -1,11 +1,15 @@
 # Threat model — V1, synthetic pilot
 
 **Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-19,
-against `main` @ `45c63d7`.
+against `main` @ `45c63d7` plus PRs #67, #68 and #70 where noted.
 **Companion to:** `data-map.md` (what exists and where), `portal-permission-register.md`
 (what the system may do with a portal), `retention-policy.md` (what outlives
 deletion). **Authority:** `wp8-pilot-readiness.md` stays authoritative for
 compliance decisions. Neither is legal advice.
+
+**Public copy:** this document names residual risk *categories*, not the specific
+missing controls or exploit paths. The detailed residual register is supplied to
+the qualified reviewer separately.
 
 ## 1. Scope and method
 
@@ -118,13 +122,13 @@ after this model was written is the exposure. Reopen on any new module or route.
 | T8 | **Stolen device keeps access forever** | Sign-out revokes the row; a session is rejected after `expires_at` (7 days); account deletion clears the cookie | `identity/service.py::get_user_for_token`, `revoke_session` |
 | T9 | **Brute force / credential stuffing** | No passwords exist to stuff. Dev sign-in is 5/minute and 404 unless `RINAVI_DEV_SIGNIN_ENABLED`, which production refuses; passkey begin 10/minute, finish 20/minute | `core/rate_limit.py`, `core/config.py::_reject_unsafe_production`, `tests/integration/test_rate_limits.py` |
 
-**Residual:** there is no CSRF token, and the CSP allows `'unsafe-inline'` for
-scripts because the Next runtime hydrates with inline script and the app has no
-nonce middleware. Both are acceptable for a same-site, single-origin app on
-loopback and neither is acceptable as-is on a shared registrable domain: reopen
-on hosting, on any third-party script, or on any HTML injection sink. Session
-TTL is fixed at login — there is no idle timeout — and no privilege changes
-exist that would require rotation.
+**Residual:** browser-session hardening is sized for a same-site, single-origin
+pilot on loopback, not for a shared registrable domain. Request-integrity,
+content-security-policy and session-lifetime improvements are deliberately
+deferred to the hosting gate; the specific gaps are kept out of this public copy
+and listed in the private review material. Reopen on hosting, on any third-party
+script, or on any HTML injection sink. No privilege changes exist that would
+require session rotation today.
 
 ### 5.3 Untrusted input
 
@@ -138,20 +142,20 @@ exist that would require rotation.
 | T15 | **Mass assignment / writing a portal-only field** | Pydantic request schemas with length caps; draft field ids are checked against the pack; a field bound to a restricted (Aadhaar) binding is rejected with 422; unknown field → 404 | `applications/schemas.py`, `applications/service.py::set_field_value`, `core/privacy.py`, `tests/unit/test_application_builder.py` |
 | T16 | **Stored XSS through citizen text** | React text interpolation only; no HTML sink in the web app; the export is rendered as text, not markup | `apps/web/src/features/**` (no `dangerouslySetInnerHTML`) |
 
-**Residual:** the parse deadline (a wall-clock bound per document) is in the
-pending `fix/pdf-parse-deadline` branch, not on `main`, so today a crafted PDF
-can hold a request open for the duration of the page/text caps. Parsing is still
+**Residual:** the parse deadline is PR #67. It bounds time between pages;
+`PdfReader` construction and a single `extract_text()` call remain unbounded, so
+a crafted PDF can still hold a request open up to the page/text caps. Parsing is
 synchronous inside the upload request (readiness ledger item 1), so on a single
 worker a slow document delays every other request — an availability issue that
-also degrades rate-limit fairness. Both reclose with the deadline PR and an
-async worker; neither is a confidentiality risk.
+also degrades rate-limit fairness. Both reclose with a worker-level timeout and
+an async worker; neither is a confidentiality risk.
 
 ### 5.4 Leakage through logs, audit and storage
 
 | ID | Threat | Control | Where |
 |---|---|---|---|
 | T17 | **PII in logs** — a document value or email reaching stdout | A redaction filter scrubs email addresses, 12-digit runs (Aadhaar-shaped) and 10-digit runs (phone-shaped), while preserving UUIDs and SHA-256 digests for correlation; it covers `exc_info`/`stack_info` and is attached to uvicorn's own handlers as well as the app's | `core/redaction.py`, `core/logging.py`, `tests/security/test_redaction.py` |
-| T18 | **PII in the audit trail** | `emit_audit` redacts `details` on the way in; the recorded details are classification, content type, size, purpose and method — never field values, never filenames, never document text | `audit/service.py`, `tests/integration/test_applications_api.py::test_audit_events_never_contain_draft_values` |
+| T18 | **PII in the audit trail** | `emit_audit` redacts `details` on the way in; the recorded details are non-PII context — classification, content type, size, purpose, method, field keys/ids, service slug, group/document/case/draft ids, event type and confirmation flags — never field values, never filenames, never document text | `audit/service.py`, `tests/integration/test_applications_api.py::test_audit_events_never_contain_draft_values` |
 | T19 | **Aadhaar propagation** | Filtered from profile reads, promotions, draft snapshots, values, validation, export, packets and the `/fields` response; legacy rows deleted by migration | `core/privacy.py`, migration `b7e4f1a2c9d3`, PR #52 |
 | T20 | **Unauthorised read of the stored bytes** | Filesystem permissions of the OS account only | — |
 
@@ -191,13 +195,11 @@ more than one worker the effective budget multiplies (readiness ledger item 9).
 **Residual:** base images float on channel tags (`python:3.14-slim`,
 `node:24-slim`, `postgres:16`), so a rebuild can change the runtime without a
 commit — a deliberate choice to keep patch flow, recorded in readiness "Track B
-follow-ups" §4. `npm audit` is clean on `main`, but the pending
-`test/browser-e2e-journey` branch adds `@playwright/test`, which pulls 17 high
-dev-only advisories (a `picomatch` ReDoS through `vitest`/`vite`); nothing in the
-shipped bundle is affected (`--omit=dev` is 0), and the fix is a lockfile bump
-when the advisory gets a patch. Container **builds** are not yet built in CI —
-the `docker` job exists only on the pending `ci/docker-image-job` branch, so an
-image regression is caught locally or not at all.
+follow-ups" §4. `npm audit --omit=dev` is 0 on `main`; PR #70 adds the Playwright
+test dependency, whose dev-only advisories do not affect the shipped bundle,
+and the fix is a lockfile bump when patched.
+Container **builds** are covered by the `docker` job in PR #68; until that
+merges, an image regression is caught locally or not at all.
 
 ## 6. Accepted risks (synthetic pilot only)
 
@@ -212,7 +214,7 @@ phase A rather than a launch.
 | 6.3 | Audit rows editable and permanent | They hold no content, and no incident process exists yet to need them as evidence | Real documents, or an incident-response requirement (item 85) |
 | 6.4 | No backup, so deletion is also loss | Fake data, re-creatable by hand | Any real document, or a promised restore (item 85) |
 | 6.5 | No retention or session sweep | Small volume, disclosed in the retention policy | Real documents (item 68) |
-| 6.6 | Dev sign-in creates accounts for any email, and reveals the account id | Disabled by default, refused in production, and the pilot uses passkeys or the demo stack | Any environment where `RINAVI_DEV_SIGNIN_ENABLED=true` is reachable by a participant |
+| 6.6 | Dev sign-in creates accounts for any email | Disabled by default, refused in production, and the pilot uses passkeys or the demo stack | Any environment where `RINAVI_DEV_SIGNIN_ENABLED=true` is reachable by a participant |
 | 6.7 | Aadhaar survives in `extracted_fields` | The pilot's Aadhaar values are visibly fake | Real documents (item 35 residual) |
 | 6.8 | Inline synchronous parsing, single worker | One participant at a time, supervised | Concurrent users, or an async worker (ledger item 1) |
 
@@ -220,7 +222,7 @@ phase A rather than a launch.
 
 - **Hosted deployment.** No host is chosen (readiness decision 7). A hosting
   provider becomes a processor, adds a network boundary at B1, and makes TLS,
-  CSRF tokens, nonce-based CSP, log retention and possibly a WAF in scope. This
+  browser-session hardening, log retention and possibly a WAF in scope. This
   document must be rewritten, not amended, at that point.
 - **Real documents.** OCR, real scans, real Aadhaar numbers, encryption at rest
   and retention are all post-gate.
@@ -256,3 +258,4 @@ rather than adding a feature:
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-11-19 | First draft: 31 threats across six groups, eight accepted risks, review triggers tied to the readiness decisions |
+| 0.2 | 2026-11-19 | Public copy redacted: residual paragraphs kept at risk-category level; exploit-level detail moved to the private review material; pending branch names replaced with PR numbers |

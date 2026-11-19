@@ -1,7 +1,7 @@
 # Retention policy — draft
 
 **Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-19,
-against `main` @ `45c63d7`.
+against `main` @ `45c63d7` plus PR #71 where noted.
 **Companion to:** `data-map.md` (where the data is), `privacy-notice-draft.md`
 (what participants are told). Not legal advice.
 
@@ -10,8 +10,11 @@ against `main` @ `45c63d7`.
 Keep personal data only while it serves the purpose it was collected for, and
 delete it when the citizen says so. In V1 that principle is met by **immediate,
 hard deletion on request**, not by a background schedule. There is no soft
-delete, no tombstone and no "deleted" flag: a deleted row is gone in the same
-transaction that removes the file.
+delete, no tombstone and no "deleted" flag. A document delete erases the file
+first and commits the row deletion afterwards; the two stores are not one
+transaction. A failed unlink returns 503 and keeps both, so the citizen can
+retry; a crash between the unlink and the commit can leave a row whose file is
+gone, which the API reports as `content_unavailable`.
 
 This is deliberately the simplest thing that is honest. The consequence is that
 there is also **no automatic expiry** for anything the citizen does not
@@ -29,7 +32,7 @@ explicitly delete, and no sweep that catches leftovers. Those gaps are listed in
 | `documents` | Filename, type, size, status, classification | Until the document or the account is deleted | `DELETE /vault/documents/{id}`; cascade with the user |
 | document blob | The uploaded bytes | Same as its `documents` row | File removed **before** the row; a failed unlink returns 503 and keeps both, so the citizen can retry |
 | `extracted_fields` | Field values read from a document | Same as the document | Cascade on document delete |
-| `profile_values` | Name, address, income, date of birth, gender, father's name | Until the account is deleted | Cascade with the user; no per-value delete route |
+| `profile_values` | Name, address, income, date of birth, gender, father's name | Until the account is deleted; a non-confirmed value can be rejected | Cascade with the user; `POST /profile/values/{id}/reject` hard-deletes a non-confirmed value without a consent check; a confirmed value has no per-value delete route (deleting its source document makes it `stale`, and reject then removes it) |
 | `application_drafts` | Draft values, evidence links, declaration flag | Until the draft or the account is deleted | `DELETE /applications/drafts/{id}`, or `DELETE /applications/drafts` for all of them; both are ungated, so they also work after `applications.preparation` is withdrawn; cascade with the user |
 | `application_cases` | Packet snapshot and text, reference numbers, outcome notes | Until account deletion | **No delete route**; cascade with the user |
 | `case_events` | Case timeline entries | Same as the case | Cascade on case delete (account deletion today) |
@@ -81,7 +84,7 @@ gap for the pilot close-out (§5).
 |---|---|---|
 | No retention scheduler | Expired sessions, old audit rows and any orphaned blob stay forever | Item 68 (readiness ledger item 6) |
 | A failed delete keeps file and row together | Nothing is orphaned, but nothing is reclaimed either, until someone retries | Accepted; documented behaviour, 503 + retry |
-| No delete route for cases or profile values | Only account deletion removes them | Part 6; accepted for the pilot |
+| No delete route for cases or confirmed profile values | Cases and confirmed values only go with the account; non-confirmed values can be rejected | Part 6; accepted for the pilot |
 | No pilot-wide wipe script | Close-out depends on manual steps in the right order | Pilot operations, to be written before the first session |
 | Audit rows never expire | Grows without bound; must not become a shadow profile | Item 68 when real documents are in scope |
 | Log retention undefined | Depends on the host chosen | Decide with hosting (item 58) |

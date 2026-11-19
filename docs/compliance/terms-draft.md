@@ -77,9 +77,9 @@ legal, financial or tax advice.
 
 The practice documents and the app belong to us; you get a limited right to use
 them for the pilot only. The information you enter stays yours. You give us
-permission to store and process it to run the pilot and to improve the product,
-limited to the four purposes in the privacy notice. Withdrawing a permission
-stops future use; deleting the item or the account removes it.
+permission to store and process it to run the pilot, limited to the four
+purposes in the privacy notice. Withdrawing a permission stops future use;
+deleting the item or the account removes it.
 
 Interview notes and any recording are covered by a separate consent form, and
 you can decline that and still take part.

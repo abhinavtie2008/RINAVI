@@ -60,11 +60,13 @@ You can withdraw any permission on the **Permissions** page. Withdrawing stops
 the next use; it does not delete what is already stored. Delete the item, or
 your account, for that.
 
-### 5. What we never ask for and never store
+### 5. What we never ask for, and what we never promote
 
-- Your real Aadhaar number. If a document you upload happens to contain one, we
+- Your real Aadhaar number as a profile field. If a document you upload happens
+  to contain one, we keep it only as part of that document's stored record: we
   do not add it to your profile, show it in a draft, put it in your packet or
-  include it in an export.
+  include it in an export. Delete the document to erase it. The pilot uses
+  SPECIMEN numbers only.
 - Portal passwords, OTP codes or CAPTCHA answers.
 - Your location, contact list, photos or files other than the two you upload.
 - Advertising or tracking identifiers. There is no analytics or advertising

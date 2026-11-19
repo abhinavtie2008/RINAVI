@@ -17,9 +17,10 @@ an oversight — see §2.
 
 Three facts in the current build force this shape:
 
-1. A draft cannot be completed without **three evidence documents** (identity,
-   residence, income); the service pack requires at least one linked, processed
-   document per group, and profile values can only be created by promoting a
+1. A draft cannot be completed without **two evidence documents** (identity and
+   income). The pack's residence group has an empty `accepted_classifications`
+   list, so it accepts any processed document; the flow links the income
+   document there as well. Profile values can only be created by promoting a
    document.
 2. Images are parked as `needs_attention` because **OCR is not implemented**, so
    only PDF/TXT can become evidence — and most people photograph their proofs.

@@ -1,8 +1,8 @@
 # Data map — V1, synthetic pilot
 
 **Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-19, against
-`main` @ `45c63d7`. **Scope:** the single RINAVI deployment used for the phase A
-pilot described in `pilot-plan.md`.
+`main` @ `45c63d7` plus PRs #67–#72 where noted. **Scope:** the single RINAVI
+deployment used for the phase A pilot described in `pilot-plan.md`.
 **Authority:** `wp8-pilot-readiness.md` stays authoritative for compliance
 decisions; this file records *where data actually lives*. Neither is legal
 advice.
@@ -82,12 +82,16 @@ encrypt).
 
 | Table | Holds | Personal data | Retention |
 |---|---|---|---|
-| `profile_values` | `field_key`, `value`, `status`, `source_document_id`, `source_locator`, `confidence`, `stale_reason`, `correction_history` (JSON), `created_at`, `updated_at` | The citizen's name, address, income, date of birth, gender, father's name | Until account deletion; no per-value delete route |
+| `profile_values` | `field_key`, `value`, `status`, `source_document_id`, `source_locator`, `confidence`, `stale_reason`, `correction_history` (JSON), `created_at`, `updated_at` | The citizen's name, address, income, date of birth, gender, father's name | Until account deletion; a non-confirmed value can be rejected (hard-deleted), a confirmed value has no delete route |
 
 Deleting a source document sets `source_document_id` to NULL and marks the
-value stale; it does not delete the value. There is no route that removes a
-profile value — status is `confirmed`, `needs_review` or `rejected`, and a
-rejected value still has its text stored.
+value `stale`; it does not delete the value. The statuses are `unconfirmed`,
+`confirmed` and `stale`. `POST /profile/values/{id}/reject` hard-deletes a
+value unless it is `confirmed`, and is deliberately not consent-gated, so a
+participant can reject a value extracted under a purpose they have withdrawn.
+A `confirmed` value has no per-value delete route of its own; deleting its
+source document marks it `stale` (after which reject removes it), and account
+deletion removes it regardless.
 
 ### 3.5 Preparation and tracking
 
@@ -106,7 +110,7 @@ does not shrink afterwards — editing the draft does not rewrite a case.
 
 | Table | Holds | Personal data | Retention |
 |---|---|---|---|
-| `audit_events` | `action`, `resource_type`, `resource_id`, `details` (JSON, redacted), `actor_user_id`, `created_at` | Pseudonymous: actor UUID and resource UUID; `details` carries classification, content type, size and purpose | Indefinite; **survives account deletion** with `actor_user_id` set to NULL |
+| `audit_events` | `action`, `resource_type`, `resource_id`, `details` (JSON, redacted), `actor_user_id`, `created_at` | Pseudonymous: actor UUID and resource UUID; `details` carries non-PII context — classification, content type, size, purpose and method, plus field keys/ids, service slug, group/document/case/draft ids, event type and confirmation flags; an email on `account.deleted` is redacted before storage | Indefinite; **survives account deletion** with `actor_user_id` set to NULL |
 
 Actions recorded: `identity.signed_in`, `identity.signed_out`,
 `identity.passkey_registered`, `consent.granted`, `consent.withdrawn`,
@@ -133,16 +137,19 @@ data — a table can be touched under more than one purpose.
 | Purpose | Gates | Data read or written |
 |---|---|---|
 | `documents.processing` | `/vault`: upload, list, get, content, fields, retry | `documents`, `extracted_fields`, blob store |
-| `profile.storage` | Every `/profile` route: read, promote, confirm, correct, reject | `profile_values`, reads `documents` to promote |
+| `profile.storage` | Every `/profile` route except reject: read, promote, confirm, correct. Reject is deliberately ungated so erasure survives withdrawal | `profile_values`, reads `documents` to promote |
 | `applications.preparation` | Every `/applications` route except the two draft-erasure routes (`DELETE /drafts/{id}` and `DELETE /drafts`): drafts, values, links, validation, export, packet | `application_drafts`, reads `profile_values` and `documents` |
 | `locker.tracking` | `/locker` routes: cases, events | `application_cases`, `case_events` |
 
 Three review points, stated as questions rather than conclusions:
 
-1. **Case creation under `locker.tracking`.** A case snapshots draft values and
-   evidence. The route is gated on `locker.tracking` alone, so confirm the
-   purpose labels are broad enough to cover reusing preparation data inside a
-   tracked case.
+1. **Case creation under `applications.preparation`.** The route
+   `POST /applications/drafts/{id}/complete` snapshots draft values and
+   evidence and writes `application_cases` + `case_events`; it is gated on
+   `applications.preparation` alone. `POST /locker/cases/{id}/apply-again`
+   requires both `locker.tracking` and `applications.preparation`. Confirm that
+   preparing a packet under `applications.preparation` covers the case
+   snapshot, or whether completion should also require `locker.tracking`.
 2. **Promotion under `profile.storage`.** Promoting a document into the profile
    reads document fields, but the promote route is gated on `profile.storage`;
    the citizen will normally hold `documents.processing` already, and the review
@@ -154,17 +161,17 @@ Three review points, stated as questions rather than conclusions:
    `DELETE /applications/drafts/{id}` was the exception — gated on
    `applications.preparation`, so a citizen who withdrew that purpose could
    delete a document but could only remove a draft by deleting the whole
-   account. It is now ungated the same way (`fix/ungate-draft-deletion`, with
-   tests for the withdrawn-consent path and for cross-account isolation);
-   reading, editing, exporting and completing a draft stay behind the purpose.
+   account. It is now ungated the same way (PR #71, with tests for the
+   withdrawn-consent path and for cross-account isolation); reading, editing,
+   exporting and completing a draft stay behind the purpose.
    The web app reaches erasure from the consent gate through the collection
-   route `DELETE /applications/drafts` (`fix/draft-deletion-affordance`),
-   because the draft list itself returns 403 in that state — a bulk erase was
-   chosen over a metadata listing so that erasure introduces no read of data
-   whose purpose has been withdrawn.
-   Profile values and cases still have no delete route at all (§8), so erasure
-   coverage remains incomplete for them — that is the question left for the
-   reviewer, not the gate.
+   route `DELETE /applications/drafts` (PR #72), because the draft list itself
+   returns 403 in that state — a bulk erase was chosen over a metadata listing
+   so that erasure introduces no read of data whose purpose has been withdrawn.
+   Cases still have no delete route at all (§8), and confirmed profile values
+   only go with the account; non-confirmed values can be rejected. Erasure
+   coverage therefore remains incomplete for cases and confirmed profile
+   values — that is the question left for the reviewer, not the gate.
 
 ## 5. Flows
 

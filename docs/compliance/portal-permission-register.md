@@ -16,7 +16,7 @@ senses in this project, and they are easy to confuse:
 
 | Sense | Who grants it | Where it is recorded |
 |---|---|---|
-| **Citizen authorisation** — may RINAVI use this person's data for this purpose? | The citizen, per purpose, revocable | `consent_records`; four fixed purposes |
+| **Citizen authorisation** — may RINAVI use this person's data for this purpose? | The citizen, per purpose, revocable | `consent_records`; the four purposes the UI presents. The API accepts any 1–80 character purpose string, so the allowlist is a UI convention, not a server-side constraint (`data-map.md` §4) |
 | **Portal permission** — do the portal's own terms allow this kind of access (automated login, form fill, scraping, submission)? | The portal operator, in its terms of use | **This file** — currently unverified for every portal (§8) |
 | **Statutory basis** — what does the DPDP Act or a sector rule require? | Law, interpreted by the qualified reviewer | Readiness ledger; not this file |
 
