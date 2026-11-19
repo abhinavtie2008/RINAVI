@@ -47,6 +47,30 @@ def test_extracts_all_fields_with_high_confidence() -> None:
     assert by_key["full_name"].locator == "line 4"
 
 
+@pytest.mark.parametrize("apostrophe", ["'", "\u2019", "\u2018", "`"])
+def test_father_name_accepts_typographic_apostrophes(apostrophe: str) -> None:
+    # A simple PDF font encodes the ASCII apostrophe as quoteright, so text
+    # extracted from a PDF arrives as U+2019, and word processors write that
+    # form directly. The ASCII-only pattern silently dropped a required field.
+    candidates = extract_candidates(f"Father{apostrophe}s Name: Rajesh Devi\n")
+
+    by_key = {c.field_key: c for c in candidates}
+    assert by_key["father_name"].value == "Rajesh Devi"
+    assert by_key["father_name"].confidence == "high"
+
+
+def test_father_name_survives_the_pdf_text_layer() -> None:
+    # The regression path: the value only disappears after PDF decoding, so
+    # the plain-text test above cannot catch it on its own.
+    pdf = make_text_pdf(["Father's Name: Rajesh Devi"])
+
+    text, note = extract_text_from_pdf(pdf)
+
+    assert note is None
+    by_key = {c.field_key: c for c in extract_candidates(text)}
+    assert by_key["father_name"].value == "Rajesh Devi"
+
+
 def test_unnormalizable_values_are_low_confidence() -> None:
     text = (
         "Date of Birth: sometime in 1994\n"
