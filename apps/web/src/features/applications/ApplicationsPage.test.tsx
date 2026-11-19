@@ -112,4 +112,33 @@ describe("ApplicationsPage", () => {
       "Income Certificate (Delhi)",
     );
   });
+
+  it("offers to delete saved drafts after application preparation is withdrawn", async () => {
+    let deleted = false;
+    mockApi([
+      [
+        "/api/v1/consent/grants",
+        () => jsonResponse([{ ...ACTIVE_GRANT, withdrawn_at: "2026-11-19T00:00:00" }]),
+      ],
+      [
+        "/api/v1/applications/drafts",
+        (init) => {
+          if (init?.method === "DELETE") {
+            deleted = true;
+            return new Response(null, { status: 204 });
+          }
+          return jsonResponse([]);
+        },
+      ],
+    ]);
+
+    render(<ApplicationsPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Delete saved drafts" }),
+    );
+
+    expect(await screen.findByTestId("drafts-deleted")).toBeInTheDocument();
+    expect(deleted).toBe(true);
+  });
 });

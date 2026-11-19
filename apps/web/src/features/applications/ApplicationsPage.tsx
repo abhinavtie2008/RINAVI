@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api";
 import {
   APPLICATIONS_PURPOSE,
   createDraft,
+  deleteAllDrafts,
   listDrafts,
   type Draft,
 } from "@/lib/applications";
@@ -26,6 +27,7 @@ export function ApplicationsPage() {
   const [serviceSlug, setServiceSlug] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draftsDeleted, setDraftsDeleted] = useState(false);
 
   async function loadApplicationData() {
     const [loadedDrafts, loadedServices] = await Promise.all([
@@ -63,6 +65,19 @@ export function ApplicationsPage() {
       await loadApplicationData();
     } catch {
       setError("Could not record consent.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteSavedDrafts() {
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteAllDrafts();
+      setDraftsDeleted(true);
+    } catch {
+      setError("Could not delete your drafts.");
     } finally {
       setBusy(false);
     }
@@ -113,6 +128,25 @@ export function ApplicationsPage() {
           >
             Allow application preparation
           </button>
+          <div className="flex flex-col gap-2 border-t border-neutral-200 pt-3">
+            <p className="text-sm">
+              Deleting your drafts is always available, with or without this
+              permission.
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleDeleteSavedDrafts()}
+              disabled={busy}
+              className="rounded border border-neutral-300 px-3 py-1"
+            >
+              Delete saved drafts
+            </button>
+            {draftsDeleted ? (
+              <p data-testid="drafts-deleted" className="text-sm">
+                Saved drafts deleted.
+              </p>
+            ) : null}
+          </div>
           {error ? <p data-testid="applications-error">{error}</p> : null}
         </section>
       </div>
