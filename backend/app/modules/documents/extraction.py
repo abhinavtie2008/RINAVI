@@ -1,4 +1,5 @@
 import re
+import time
 from dataclasses import dataclass
 from datetime import date
 from io import BytesIO
@@ -183,21 +184,29 @@ def extract_text_from_txt(data: bytes) -> str:
 # unbounded pages or memory.
 PAGE_LIMIT = 100
 TEXT_LIMIT_CHARS = 2 * 1024 * 1024
+# Bounds how long it may take. The page and text limits cap the work done, not
+# the wall-clock cost of a malformed or adversarial file, and extraction runs
+# inside the request on a single worker. Checked between pages, so the answer
+# is the text read so far plus a note rather than a stalled worker.
+PARSE_TIMEOUT_SECONDS = 20.0
 
 
 def extract_text_from_pdf(data: bytes) -> tuple[str, str | None]:
-    """Extract text, stopping at the page or text limit.
+    """Extract text, stopping at the page, text or time limit.
 
     The returned note names the limit that stopped extraction
-    (``page_limit_exceeded`` / ``text_limit_exceeded``), or is None when
-    the whole document fit within both limits.
+    (``page_limit_exceeded`` / ``text_limit_exceeded`` / ``parse_timeout``),
+    or is None when the whole document fit within every limit.
     """
     reader = PdfReader(BytesIO(data))
     parts: list[str] = []
     total = 0
+    deadline = time.monotonic() + PARSE_TIMEOUT_SECONDS
     for index, page in enumerate(reader.pages):
         if index == PAGE_LIMIT:
             return "\n".join(parts), "page_limit_exceeded"
+        if time.monotonic() > deadline:
+            return "\n".join(parts), "parse_timeout"
         # Layout mode keeps line structure, which the line-locator extraction
         # relies on.
         page_text = page.extract_text(extraction_mode="layout") or ""
