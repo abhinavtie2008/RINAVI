@@ -109,3 +109,9 @@ export function deleteDraft(id: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+// Used where drafts cannot be listed (the preparation purpose is withdrawn), so
+// there is no id to delete one at a time.
+export function deleteAllDrafts(): Promise<void> {
+  return apiFetch<void>("/api/v1/applications/drafts", { method: "DELETE" });
+}
