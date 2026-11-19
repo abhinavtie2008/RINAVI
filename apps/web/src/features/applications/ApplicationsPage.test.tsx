@@ -113,8 +113,8 @@ describe("ApplicationsPage", () => {
     );
   });
 
-  it("offers to delete saved drafts after application preparation is withdrawn", async () => {
-    let deleted = false;
+  it("deletes all saved drafts only after confirmation", async () => {
+    let deleteCalls = 0;
     mockApi([
       [
         "/api/v1/consent/grants",
@@ -124,7 +124,7 @@ describe("ApplicationsPage", () => {
         "/api/v1/applications/drafts",
         (init) => {
           if (init?.method === "DELETE") {
-            deleted = true;
+            deleteCalls += 1;
             return new Response(null, { status: 204 });
           }
           return jsonResponse([]);
@@ -135,10 +135,24 @@ describe("ApplicationsPage", () => {
     render(<ApplicationsPage />);
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "Delete saved drafts" }),
+      await screen.findByRole("button", { name: "Delete all saved drafts" }),
     );
 
+    expect(screen.getByTestId("delete-drafts-confirm")).toHaveTextContent(
+      "This deletes every saved application draft.",
+    );
+    expect(deleteCalls).toBe(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByTestId("delete-drafts-confirm")).not.toBeInTheDocument();
+    expect(deleteCalls).toBe(0);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete all saved drafts" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete all" }));
+
     expect(await screen.findByTestId("drafts-deleted")).toBeInTheDocument();
-    expect(deleted).toBe(true);
+    expect(deleteCalls).toBe(1);
   });
 });

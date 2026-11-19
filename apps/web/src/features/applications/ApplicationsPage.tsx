@@ -28,6 +28,7 @@ export function ApplicationsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftsDeleted, setDraftsDeleted] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   async function loadApplicationData() {
     const [loadedDrafts, loadedServices] = await Promise.all([
@@ -76,6 +77,7 @@ export function ApplicationsPage() {
     try {
       await deleteAllDrafts();
       setDraftsDeleted(true);
+      setConfirmingDelete(false);
     } catch {
       setError("Could not delete your drafts.");
     } finally {
@@ -133,14 +135,44 @@ export function ApplicationsPage() {
               Deleting your drafts is always available, with or without this
               permission.
             </p>
-            <button
-              type="button"
-              onClick={() => void handleDeleteSavedDrafts()}
-              disabled={busy}
-              className="rounded border border-neutral-300 px-3 py-1"
-            >
-              Delete saved drafts
-            </button>
+            {confirmingDelete ? (
+              <div
+                data-testid="delete-drafts-confirm"
+                className="flex flex-col gap-2 rounded border border-neutral-300 p-3"
+              >
+                <p className="text-sm">
+                  This deletes every saved application draft. It cannot be
+                  undone.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteSavedDrafts()}
+                    disabled={busy}
+                    className="rounded border border-neutral-300 px-3 py-1"
+                  >
+                    Confirm delete all
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDelete(false)}
+                    disabled={busy}
+                    className="rounded border border-neutral-300 px-3 py-1"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                disabled={busy}
+                className="rounded border border-neutral-300 px-3 py-1"
+              >
+                Delete all saved drafts
+              </button>
+            )}
             {draftsDeleted ? (
               <p data-testid="drafts-deleted" className="text-sm">
                 Saved drafts deleted.
