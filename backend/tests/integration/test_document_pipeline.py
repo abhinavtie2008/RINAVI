@@ -151,6 +151,29 @@ async def test_pdf_over_text_limit_is_marked_needs_attention(
         assert body["note"] == "text_limit_exceeded"
 
 
+async def test_pdf_parse_timeout_is_reported_as_needs_attention(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The production deadline is 20s; zero exercises the same pipeline branch
+    # without building a document that is genuinely slow to parse.
+    monkeypatch.setattr(
+        "app.modules.documents.extraction.PARSE_TIMEOUT_SECONDS", 0.0
+    )
+    async with make_client() as client:
+        await sign_in(client)
+        await allow_documents(client)
+
+        pdf = make_text_pdf(["Applicant Name: Asha Devi"])
+        response = await upload(
+            client, name="income.pdf", content=pdf, content_type="application/pdf"
+        )
+
+        assert response.status_code == 201
+        body = response.json()
+        assert body["status"] == "needs_attention"
+        assert body["note"] == "parse_timeout"
+
+
 async def test_pdf_extraction_runs_off_the_event_loop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
