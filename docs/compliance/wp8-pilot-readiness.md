@@ -8,6 +8,10 @@ before the controlled pilot.
 Every state below was checked against the code on that commit, not copied from
 the ledger. Where the ledger said "not re-verified", this pass looked.
 
+**Added 2026-11-19:** the phase A pilot paperwork is drafted in this folder —
+see "Pilot phase A artefacts" below. It records no new decisions and leaves
+every state in this document unchanged.
+
 **Updated 2026-11-18:** Track B is closed. The six hardening PRs (#57–#62), the
 PostgreSQL parity PR (#64) and the containerized demo PR (#65) are merged; the
 local gate is **268 backend / 54 web** on `main` @ `d9c0474`. The demo stack
@@ -125,6 +129,44 @@ unowned gaps.
 | 8 | OCR scope | Accept PDF/TXT only; the pilot script must say image uploads are unsupported. | Image evidence is required; OCR then enters scope. |
 | 9 | Concurrent workers | Accept a single worker with `memory://` rate-limit storage. | Multi-worker or autoscaling; a shared rate-limit backend is required. |
 | 10 | Dependency advisory | Cleared by the eslint 10.15 + scoped `minimatch` 11 override; no fallback was needed. | The override is removed or a new advisory affects shipped code. |
+
+## Pilot phase A artefacts
+
+**Added 2026-11-19.** The WP2 paperwork for the synthetic pilot is drafted in
+this folder. It was written against the code on `main` @ `45c63d7` — table and
+column names, the four purposes, the deletion paths and the retention gaps were
+read out of the repository, not assumed. It is **draft pending the qualified
+review** and changes no decision recorded above: item 83 is still open, so real
+documents and any hosted pilot stay blocked.
+
+| File | What it settles | State |
+|---|---|---|
+| `pilot-plan.md` | How phase A runs: cohort, session format, success measures, stop conditions, reopen trigger for a real pilot | Draft |
+| `data-map.md` | Every store, the personal data in it, which purpose gates it, who can see it, and the gaps the mapping exposes | Draft |
+| `privacy-notice-draft.md` | Citizen-facing notice in plain English, including the export limitation and the plaintext-storage limitation | Draft |
+| `terms-draft.md` | Pilot participation terms: prototype, synthetic documents only, no government affiliation, liability, jurisdiction | Draft |
+| `retention-policy.md` | Per-store retention, deletion mechanics, what survives an account deletion and why, close-out steps | Draft |
+| `recording-consent.md` | Separate consent for notes and recordings, the retention period and the facilitator script | Draft |
+
+What the mapping surfaced, for the reviewer rather than for a code change:
+
+1. **Aadhaar is still written to `extracted_fields`.** A1 stops it reaching a
+   profile, draft, packet, export or the `/fields` response, but the extracted
+   value is stored and readable with database access. Fine for SPECIMEN
+   numbers; needs a decision (drop on write, or encrypt) before any real
+   document.
+2. **Two consent-scope questions.** A case snapshots draft values and evidence
+   but the route is gated on `locker.tracking` alone; promotion reads document
+   fields but is gated on `profile.storage`. Both are recorded in `data-map.md`
+   §4 as questions to confirm, not as findings.
+3. **Deletion is hard and immediate, but nothing expires by itself.** Expired
+   sessions, old audit rows and orphaned blobs have no sweep (item 68), and
+   cases and profile values have no delete route — only account deletion removes
+   them. `retention-policy.md` §5 lists each gap with its owner.
+
+Still missing before the gate can close: the **portal-permission register**, the
+**threat model**, and the **qualified legal review** itself. Item 83 stays
+unticked for that reason.
 
 ## Track B follow-ups (recorded, not blocking)
 
