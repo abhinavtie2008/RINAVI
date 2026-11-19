@@ -272,6 +272,31 @@ async def complete_draft(
     return await locker_service.case_out(db, case)
 
 
+@router.delete("/drafts", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_all_drafts(user: CurrentUser, db: DbSession) -> None:
+    """Erase every draft without requiring the preparation purpose.
+
+    The web app offers this on the consent gate, where it cannot list drafts to
+    offer per-draft deletion instead: the list route needs
+    ``applications.preparation`` and returns 403 once it is withdrawn. One
+    audit event per draft keeps the action vocabulary identical to a single
+    delete, so nothing downstream has to learn a new action.
+    """
+    drafts = await service.list_drafts(db, user)
+    for draft in drafts:
+        draft_id, service_slug = draft.id, draft.service_slug
+        await db.delete(draft)
+        await emit_audit(
+            db,
+            actor_user_id=user.id,
+            action="application.draft_deleted",
+            resource_type="application_draft",
+            resource_id=str(draft_id),
+            details={"service_slug": service_slug, "bulk": True},
+        )
+    await db.commit()
+
+
 # Deliberately ungated, like document and account deletion: erasure must not
 # depend on a consent the citizen may have just withdrawn. A withdrawn
 # ``applications.preparation`` grant still leaves the draft readable by anyone

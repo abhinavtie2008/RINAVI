@@ -112,4 +112,47 @@ describe("ApplicationsPage", () => {
       "Income Certificate (Delhi)",
     );
   });
+
+  it("deletes all saved drafts only after confirmation", async () => {
+    let deleteCalls = 0;
+    mockApi([
+      [
+        "/api/v1/consent/grants",
+        () => jsonResponse([{ ...ACTIVE_GRANT, withdrawn_at: "2026-11-19T00:00:00" }]),
+      ],
+      [
+        "/api/v1/applications/drafts",
+        (init) => {
+          if (init?.method === "DELETE") {
+            deleteCalls += 1;
+            return new Response(null, { status: 204 });
+          }
+          return jsonResponse([]);
+        },
+      ],
+    ]);
+
+    render(<ApplicationsPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Delete all saved drafts" }),
+    );
+
+    expect(screen.getByTestId("delete-drafts-confirm")).toHaveTextContent(
+      "This deletes every saved application draft.",
+    );
+    expect(deleteCalls).toBe(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByTestId("delete-drafts-confirm")).not.toBeInTheDocument();
+    expect(deleteCalls).toBe(0);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete all saved drafts" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete all" }));
+
+    expect(await screen.findByTestId("drafts-deleted")).toBeInTheDocument();
+    expect(deleteCalls).toBe(1);
+  });
 });
