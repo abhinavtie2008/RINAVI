@@ -156,6 +156,7 @@ conditional on that review, so real documents and any hosted pilot stay blocked.
 | `recording-consent.md` | Separate consent for notes and recordings, the retention period and the facilitator script | Draft |
 | `portal-permission-register.md` | Which portals exist in scope, the access level allowed to each (all A0 today), the prohibitions that are structural rather than promises, the citizen-authorisation model and the six open items for the reviewer | Draft, not signed off |
 | `threat-model.md` | Assets, actors, trust boundaries, 31 threats with the control that covers each, and eight risks accepted for synthetic data with their reopen triggers | Draft |
+| `reviewer-brief.md` | One page for the qualified reviewer: what is in scope, the three open consent and erasure questions, and the eight accepted risks with their reopen triggers | Draft, for the reviewer |
 
 What the mapping surfaced, for the reviewer rather than for a code change:
 
