@@ -1,8 +1,8 @@
 # Data map — V1, synthetic pilot
 
 **Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-19, against
-`main` @ `45c63d7` plus PRs #67–#72 where noted. **Scope:** the single RINAVI
-deployment used for the phase A pilot described in `pilot-plan.md`.
+`main` @ `fee4e9f`. **Scope:** the single RINAVI deployment used for the phase A
+pilot described in `pilot-plan.md`.
 **Authority:** `wp8-pilot-readiness.md` stays authoritative for compliance
 decisions; this file records *where data actually lives*. Neither is legal
 advice.

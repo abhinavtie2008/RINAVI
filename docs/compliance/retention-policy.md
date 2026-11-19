@@ -1,7 +1,7 @@
 # Retention policy — draft
 
 **Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-19,
-against `main` @ `45c63d7` plus PR #71 where noted.
+against `main` @ `fee4e9f`.
 **Companion to:** `data-map.md` (where the data is), `privacy-notice-draft.md`
 (what participants are told). Not legal advice.
 

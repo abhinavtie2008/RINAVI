@@ -1,6 +1,6 @@
 # Pilot plan — phase A (synthetic, controlled)
 
-**Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-18, against `main` @ `45c63d7`.
+**Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-18, against `main` @ `fee4e9f`.
 **Authority:** `docs/compliance/wp8-pilot-readiness.md` stays authoritative for compliance decisions; this file records *how the first pilot runs*. Neither is legal advice.
 
 ## 1. What this pilot is

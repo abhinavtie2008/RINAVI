@@ -2,7 +2,7 @@
 
 **Status:** draft for the WP2 legal/privacy review, and the precondition WP10
 (checklist item 87) names before any browser extension or portal adapter is
-built. **Date:** 2026-11-19, against `main` @ `45c63d7`.
+built. **Date:** 2026-11-19, against `main` @ `fee4e9f`.
 **Companion to:** `data-map.md` (what RINAVI stores), `threat-model.md` (what
 can go wrong), `pilot-plan.md` §6 (what the pilot does not collect).
 **Authority:** `wp8-pilot-readiness.md` stays authoritative for compliance

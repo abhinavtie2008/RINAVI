@@ -1,7 +1,7 @@
 # Threat model — V1, synthetic pilot
 
 **Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-19,
-against `main` @ `45c63d7` plus PRs #67, #68 and #70 where noted.
+against `main` @ `fee4e9f`.
 **Companion to:** `data-map.md` (what exists and where), `portal-permission-register.md`
 (what the system may do with a portal), `retention-policy.md` (what outlives
 deletion). **Authority:** `wp8-pilot-readiness.md` stays authoritative for
