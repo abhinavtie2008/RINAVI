@@ -272,10 +272,14 @@ async def complete_draft(
     return await locker_service.case_out(db, case)
 
 
+# Deliberately ungated, like document and account deletion: erasure must not
+# depend on a consent the citizen may have just withdrawn. A withdrawn
+# ``applications.preparation`` grant still leaves the draft readable by anyone
+# with database access, so the delete route stays available; reading and
+# editing it remain behind ``CONSENT``.
 @router.delete(
     "/drafts/{draft_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[CONSENT],
 )
 async def delete_draft(
     draft_id: uuid.UUID, user: CurrentUser, db: DbSession

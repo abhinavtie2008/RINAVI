@@ -128,6 +128,58 @@ async def test_draft_lifecycle_prepares_valid_export() -> None:
         assert (await client.get(f"{API}/applications/drafts")).json() == []
 
 
+async def test_withdrawn_preparation_consent_still_allows_draft_deletion() -> None:
+    # Erasure must never be conditional on a grant the citizen may have just
+    # withdrawn: document and account deletion already work that way, and a
+    # draft holds their name, address, income and evidence links.
+    async with make_client() as client:
+        await sign_in(client)
+        granted = await client.post(
+            f"{API}/consent/grants", json={"purpose": "applications.preparation"}
+        )
+        assert granted.status_code == 201
+        draft = (
+            await client.post(
+                f"{API}/applications/drafts",
+                json={"service_slug": "delhi-income-certificate"},
+            )
+        ).json()
+
+        withdrawn = await client.post(
+            f"{API}/consent/grants/{granted.json()['id']}/withdraw"
+        )
+        assert withdrawn.status_code == 200
+        # Reading and editing the draft stay gated on the purpose.
+        assert (await client.get(f"{API}/applications/drafts")).status_code == 403
+
+        assert (
+            await client.delete(f"{API}/applications/drafts/{draft['id']}")
+        ).status_code == 204
+
+        await allow(client, "applications.preparation")
+        assert (await client.get(f"{API}/applications/drafts")).json() == []
+
+
+async def test_draft_deletion_is_owner_scoped_without_consent_gate() -> None:
+    async with make_client() as client:
+        await sign_in(client)
+        await allow(client, "applications.preparation")
+        draft = (
+            await client.post(
+                f"{API}/applications/drafts",
+                json={"service_slug": "delhi-income-certificate"},
+            )
+        ).json()
+        async with make_client() as other:
+            await sign_in(other, "other@example.com")
+            assert (
+                await other.delete(f"{API}/applications/drafts/{draft['id']}")
+            ).status_code == 404
+        assert (
+            await client.delete(f"{API}/applications/drafts/{draft['id']}")
+        ).status_code == 204
+
+
 async def test_draft_list_query_count_does_not_grow_with_drafts() -> None:
     async with make_client() as client:
         await sign_in(client)
