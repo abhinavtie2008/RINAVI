@@ -145,7 +145,7 @@ jobs:
           fi
       - name: Set up Buildx
         if: steps.changes.outputs.images == 'true'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Build backend image
         if: steps.changes.outputs.images == 'true'
         uses: docker/build-push-action@v6
