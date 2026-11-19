@@ -134,7 +134,7 @@ data — a table can be touched under more than one purpose.
 |---|---|---|
 | `documents.processing` | `/vault`: upload, list, get, content, fields, retry | `documents`, `extracted_fields`, blob store |
 | `profile.storage` | Every `/profile` route: read, promote, confirm, correct, reject | `profile_values`, reads `documents` to promote |
-| `applications.preparation` | Every `/applications` route: drafts, values, links, validation, export, packet | `application_drafts`, reads `profile_values` and `documents` |
+| `applications.preparation` | Every `/applications` route except the two draft-erasure routes (`DELETE /drafts/{id}` and `DELETE /drafts`): drafts, values, links, validation, export, packet | `application_drafts`, reads `profile_values` and `documents` |
 | `locker.tracking` | `/locker` routes: cases, events | `application_cases`, `case_events` |
 
 Three review points, stated as questions rather than conclusions:
@@ -157,6 +157,11 @@ Three review points, stated as questions rather than conclusions:
    account. It is now ungated the same way (`fix/ungate-draft-deletion`, with
    tests for the withdrawn-consent path and for cross-account isolation);
    reading, editing, exporting and completing a draft stay behind the purpose.
+   The web app reaches erasure from the consent gate through the collection
+   route `DELETE /applications/drafts` (`fix/draft-deletion-affordance`),
+   because the draft list itself returns 403 in that state — a bulk erase was
+   chosen over a metadata listing so that erasure introduces no read of data
+   whose purpose has been withdrawn.
    Profile values and cases still have no delete route at all (§8), so erasure
    coverage remains incomplete for them — that is the question left for the
    reviewer, not the gate.

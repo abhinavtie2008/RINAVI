@@ -30,7 +30,7 @@ explicitly delete, and no sweep that catches leftovers. Those gaps are listed in
 | document blob | The uploaded bytes | Same as its `documents` row | File removed **before** the row; a failed unlink returns 503 and keeps both, so the citizen can retry |
 | `extracted_fields` | Field values read from a document | Same as the document | Cascade on document delete |
 | `profile_values` | Name, address, income, date of birth, gender, father's name | Until the account is deleted | Cascade with the user; no per-value delete route |
-| `application_drafts` | Draft values, evidence links, declaration flag | Until the draft or the account is deleted | `DELETE /applications/drafts/{id}`, ungated, so it also works after `applications.preparation` is withdrawn; cascade with the user |
+| `application_drafts` | Draft values, evidence links, declaration flag | Until the draft or the account is deleted | `DELETE /applications/drafts/{id}`, or `DELETE /applications/drafts` for all of them; both are ungated, so they also work after `applications.preparation` is withdrawn; cascade with the user |
 | `application_cases` | Packet snapshot and text, reference numbers, outcome notes | Until account deletion | **No delete route**; cascade with the user |
 | `case_events` | Case timeline entries | Same as the case | Cascade on case delete (account deletion today) |
 | `audit_events` | Action, resource id, redacted details | Kept as the security record; no expiry | Survives account deletion; `actor_user_id` becomes NULL |
