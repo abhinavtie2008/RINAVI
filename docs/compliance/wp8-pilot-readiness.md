@@ -8,16 +8,16 @@ before the controlled pilot.
 Every state below was checked against the code on that commit, not copied from
 the ledger. Where the ledger said "not re-verified", this pass looked.
 
-**Added 2026-11-19:** the phase A pilot paperwork is drafted in this folder —
-see "Pilot phase A artefacts" below. Its second pass added the threat model and
-the portal-permission register. A review pass corrected the data map's profile
-statuses, case-creation gate and audit-detail list, the retention policy's
-transaction wording, the privacy notice's Aadhaar promise and the permission
-register's purpose-allowlist claim. The one code inconsistency the data map
-found — a draft could not be deleted after withdrawing
-`applications.preparation` — is fixed by PR #71. No decision recorded below
-changes; the **qualified legal review** is now the only WP2 artefact still
-outstanding.
+**Added 2026-11-19:** the phase A pilot paperwork is drafted in this folder and
+merged in #73 (`ac8aa27`) — see "Pilot phase A artefacts" below. Its second
+pass added the threat model and the portal-permission register. A review pass
+corrected the data map's profile statuses, case-creation gate and audit-detail
+list, the retention policy's transaction wording, the privacy notice's Aadhaar
+promise and the permission register's purpose-allowlist claim. The one code
+inconsistency the data map found — a draft could not be deleted after
+withdrawing `applications.preparation` — is fixed by #71, with the erase
+control added to the consent gate in #72. No decision recorded below changes;
+the **qualified legal review** is now the only WP2 artefact still outstanding.
 
 **Updated 2026-11-18:** Track B is closed. The six hardening PRs (#57–#62), the
 PostgreSQL parity PR (#64) and the containerized demo PR (#65) are merged; the
@@ -55,7 +55,7 @@ No item is left undecided. Every accepted or deferred item names what reopens it
 | Dependency advisory | `eslint` 10.15 plus a scoped `minimatch` 11 override for `typescript-estree`; `npm audit --omit=dev` reports 0 vulnerabilities; dev-only test-dependency advisories are tracked in `threat-model.md` §5.6 | PR #50, `apps/web/package.json`; issue #41 closed 2026-11-16 |
 | Supply chain | CodeQL on push and PR, Dependabot for pip/npm/actions, the `protect-main` ruleset requires `backend`, `web` and `backend-postgres`, actions pinned to `@v7` | `.github/workflows/ci.yml`, PRs #20, #27–#29 |
 | Security hardening | Prefix-negative income forms stay raw; request strings are capped; the retry route shares the upload budget; dev sign-in is opt-in; traceback redaction covers `exc_info`, `stack_info` and uvicorn's own handlers; request bodies are capped (1 MB JSON / 11 MB otherwise); PDF parsing is bounded (100 pages / 2 MB text) and runs off the event loop; the web app sends a static CSP | PRs #57–#62; `tests/security/test_redaction.py`, `tests/integration/test_body_limits.py`, `tests/integration/test_document_pipeline.py`, `apps/web/src/lib/csp.test.ts` |
-| Test gate | `scripts/check.sh` covers ruff, pyright, pytest, eslint, `next typegen`, tsc, vitest and a production build; same gate in CI, plus a `backend-postgres` job that runs the suite against PostgreSQL | `scripts/check.sh`, `.github/workflows/ci.yml`; **268 backend / 54 web across 14 files** on `main` @ `45c63d7`. PR #67 and #69 add backend tests, PR #70 adds a browser spec that runs only in the manual e2e job (not the vitest count), PR #71 adds backend tests and #72 rewrites a web test. Refresh this figure after the merge train. |
+| Test gate | `scripts/check.sh` covers ruff, pyright, pytest, eslint, `next typegen`, tsc, vitest and a production build; same gate in CI, plus a `backend-postgres` job that runs the suite against PostgreSQL | `scripts/check.sh`, `.github/workflows/ci.yml`; **280 backend / 55 web across 14 files** on `main` @ `ac8aa27`, after the merge train (#67–#73) landed. #67, #69 and #71 added backend tests, #72 rewrote a web test, and #70's browser spec runs only in the manual e2e job, so it is not part of the vitest count. |
 | Local containerized demo | One command starts the whole app on PostgreSQL: `docker compose up` in `infra/compose` builds non-root backend (UID 10001) and web images, applies migrations, and passes a 14-step smoke of the citizen flow; every port binds to loopback; no MinIO | PR #65, `scripts/smoke_demo.py`, `docs/evaluation/local-demo-smoke.md`; two clean-volume runs (default ports) plus one custom-port run, backend suite green against the compose PostgreSQL |
 
 ## WP5 deferred ledger — verified state
@@ -140,7 +140,7 @@ unowned gaps.
 ## Pilot phase A artefacts
 
 **Added 2026-11-19.** The WP2 paperwork for the synthetic pilot is drafted in
-this folder. It was written against the code on `main` @ `45c63d7` — table and
+this folder. It was written against the code on `main` @ `fee4e9f` — table and
 column names, the four purposes, the deletion paths and the retention gaps were
 read out of the repository, not assumed. It is **draft pending the qualified
 review** and changes no decision recorded above: item 83's gate is still
