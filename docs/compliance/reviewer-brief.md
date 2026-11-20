@@ -60,7 +60,7 @@ each names what reopens it.
 | 6.5 | No retention or session sweep | Real documents (item 68) |
 | 6.6 | Dev sign-in creates accounts for any email | Any environment where a participant can reach it |
 | 6.7 | Aadhaar survives in `extracted_fields` | Real documents (item 35 residual) |
-| 6.8 | Inline synchronous parsing, single worker | Concurrent users, or an async worker |
+| 6.8 | Parsing inside the upload request (thread-offloaded), single worker | Concurrent users, or a job queue with a worker-level timeout |
 
 **Outside this review:** hosting, TLS, proxy, WAF; encryption at rest; object
 storage; OCR and real scans; retention automation; DigiLocker; any extension or
