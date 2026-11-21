@@ -38,7 +38,7 @@ policy, not a missing feature.
 - `backend` — FastAPI modular monolith (Python)
 - `catalog` — versioned, source-linked service definitions and form templates
 - `infra/compose` — one-command local demo (PostgreSQL, backend, web) with Redis provisioned for the future shared rate-limit backend (object storage is not wired yet)
-- `docs` — architecture decision records, compliance, evaluation
+- `docs` — architecture decision records, compliance, evaluation, handbook
 - `scripts` — bootstrap, dev, and check commands
 
 ## Quick start
