@@ -1,7 +1,10 @@
 # Reviewer brief — WP2 legal/privacy review
 
-**To:** the qualified legal/privacy reviewer named in `wp8-pilot-readiness.md` ·
+**To:** the qualified legal/privacy reviewer engaged by the pilot owner ·
 **From:** the pilot owner · **Date:** 2026-11-19 · **Against:** `main` @ `ac8aa27`
+
+The reviewer's identity and engagement terms are held privately, not in this
+repository. `README.md` in this folder records what is public and what is not.
 
 **The ask:** approve, approve with conditions, or decline the **phase A synthetic
 pilot** described by the eight documents in this folder. They describe the system;
