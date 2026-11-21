@@ -91,5 +91,5 @@ This stack is a demo, not the pilot:
 ## Quality gate
 
 `scripts/check.sh` runs the full gate — backend `ruff`, `pyright`, `pytest`
-(268 tests) and web `eslint`, `tsc`, `vitest` (54 tests), production build.
+(280 tests) and web `eslint`, `tsc`, `vitest` (55 tests), production build.
 The same gate runs in CI on every push and pull request.
