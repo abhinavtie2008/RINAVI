@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RINAVI — Project Handbook</title>
+<meta name="author" content="RINAVI">
+<meta name="description" content="A standing introduction to RINAVI: the problem, the citizen journey, the architecture, the consent model, the security posture and the boundaries it refuses to cross.">
+<meta name="keywords" content="RINAVI, government services, income certificate, consent, privacy, DPDP, assist-only">
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 16mm 19mm 16mm;
+    @bottom-center {
+      content: "RINAVI · Project Handbook · " counter(page);
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 7.5pt;
+      letter-spacing: 0.06em;
+      color: #8a94a0;
+    }
+  }
+  @page :first { @bottom-center { content: ""; } }
+
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0;
+    orphans: 3;
+    widows: 3;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 9.9pt;
+    line-height: 1.46;
+    color: #1b2430;
+  }
+  p { margin: 0 0 2.2mm; }
+  strong { color: #10202c; }
+  em { color: #2b3a47; }
+  a { color: #0f4c5c; text-decoration: none; }
+  code {
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 8.6pt;
+    background: #f1f4f6;
+    padding: 0.3mm 1mm;
+    border-radius: 1.2mm;
+    color: #12333d;
+  }
+  ul, ol { margin: 0 0 2.6mm; padding-left: 5.5mm; }
+  li { margin-bottom: 1.1mm; }
+  li::marker { color: #a8763e; }
+
+  h2 {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 16.5pt;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #0d3a48;
+    margin: 11mm 0 3.6mm;
+    padding-bottom: 2.4mm;
+    border-bottom: 1.2pt solid #a8763e;
+    break-after: avoid;
+    break-before: auto;
+  }
+  section + section h2 { margin-top: 12mm; }
+  h2 .num {
+    display: inline-block;
+    min-width: 11mm;
+    color: #a8763e;
+    font-weight: 400;
+  }
+  h3 {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 10.4pt;
+    font-weight: 600;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+    color: #5a6a76;
+    margin: 5.2mm 0 1.8mm;
+    break-after: avoid;
+  }
+  h3:first-of-type { margin-top: 1mm; }
+
+  .lead { font-size: 11.4pt; line-height: 1.5; color: #23303c; }
+  .small { font-size: 9pt; }
+  .muted { color: #5d6a75; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.8mm 0 4.2mm;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 8.25pt;
+    line-height: 1.34;
+    break-inside: avoid;
+  }
+  th {
+    text-align: left;
+    background: #eef2f4;
+    color: #12333d;
+    font-weight: 600;
+    padding: 1.8mm 2mm;
+    border-bottom: 0.8pt solid #c6d2d8;
+    vertical-align: bottom;
+  }
+  td {
+    padding: 1.5mm 2mm;
+    border-bottom: 0.5pt solid #dfe6ea;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+  td:first-child { white-space: normal; }
+
+  .note {
+    background: #f8f3ea;
+    border-left: 2.6pt solid #a8763e;
+    padding: 2.8mm 3.4mm;
+    margin: 3mm 0 4mm;
+    font-size: 9.3pt;
+    break-inside: avoid;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .tag {
+    display: block;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 7.4pt;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #8b6327;
+    margin-bottom: 1mm;
+  }
+  .box {
+    border: 0.7pt solid #c6d2d8;
+    padding: 3mm 3.6mm;
+    margin: 3mm 0 4mm;
+    break-inside: avoid;
+    background: #fbfcfd;
+  }
+  .box p:last-child { margin-bottom: 0; }
+
+  pre {
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 7.9pt;
+    line-height: 1.4;
+    background: #f4f7f8;
+    border: 0.6pt solid #d6e0e5;
+    padding: 3mm 3.4mm;
+    margin: 2mm 0 4mm;
+    white-space: pre;
+    break-inside: avoid;
+    color: #16323c;
+  }
+
+  .twocol { display: flex; gap: 6mm; }
+  .twocol > div { flex: 1; }
+
+  /* cover */
+  .cover {
+    height: 249mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    break-after: page;
+  }
+  .cover .kicker {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 8pt;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #a8763e;
+  }
+  .cover h1 {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 64pt;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: #0d3a48;
+    margin: 5.2mm 0 1.8mm;
+    line-height: 1;
+  }
+  .cover .tagline {
+    font-size: 17pt;
+    font-style: italic;
+    color: #2f4653;
+    line-height: 1.32;
+    max-width: 128mm;
+  }
+  .cover .rule {
+    height: 2.4pt;
+    width: 34mm;
+    background: #a8763e;
+    margin: 8mm 0;
+  }
+  .cover .sub {
+    font-size: 11pt;
+    color: #3d4d59;
+    max-width: 132mm;
+    line-height: 1.5;
+  }
+  .cover .meta {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 8.2pt;
+    line-height: 1.6;
+    color: #5d6a75;
+    border-top: 0.6pt solid #d6e0e5;
+    padding-top: 3.4mm;
+  }
+  .cover .meta b { color: #12333d; font-weight: 600; }
+
+  /* contents */
+  .contents { break-after: page; }
+  .contents h2 { page-break-before: avoid; }
+  .contents ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    columns: 1;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 9.6pt;
+  }
+  .contents li {
+    display: flex;
+    gap: 4mm;
+    padding: 1.55mm 0;
+    border-bottom: 0.4pt dotted #cfd9df;
+    margin: 0;
+  }
+  .contents .n {
+    color: #a8763e;
+    min-width: 8mm;
+    font-variant-numeric: tabular-nums;
+  }
+  .contents .t { color: #1b2430; }
+  .contents .d { color: #6b7883; margin-left: auto; text-align: right; font-size: 8.4pt; }
+  .contents .pg { min-width: 9mm; text-align: right; color: #0d3a48; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .closing {
+    margin-top: 6mm;
+    font-size: 8.6pt;
+    color: #5d6a75;
+    border-top: 0.6pt solid #d6e0e5;
+    padding-top: 3mm;
+  }
+  .kbd { font-family: "Segoe UI", Arial, sans-serif; font-size: 9pt; }
+  .avoid { break-inside: avoid; }
+  hr.soft { border: 0; border-top: 0.5pt solid #dfe6ea; margin: 5mm 0; }
+</style>
+</head>
+<body>
+
+<!-- ===================== COVER ===================== -->
+<section class="cover">
+  <div>
+    <div class="kicker">Project handbook</div>
+    <h1>RINAVI</h1>
+    <div class="tagline">Not another government portal.<br>Your companion across all of them.</div>
+    <div class="rule"></div>
+    <p class="sub">A complete introduction to the project: the problem it addresses, the
+    citizen journey, the architecture, the consent model, the security posture, and the
+    boundaries it refuses to cross.</p>
+  </div>
+  <div class="meta">
+    <b>What this document is.</b> A standing introduction written to be handed to someone
+    who has never seen RINAVI — an engineer, a partner, a reviewer, a prospective user.<br>
+    <b>What it deliberately excludes.</b> Test counts, commit references, dates, progress
+    claims and anything else that is true only for a moment. It describes the design, not a
+    snapshot of the build.<br>
+    <b>Independence.</b> RINAVI is independent and is not affiliated with, endorsed by, or
+    acting for any government body, department, or authority.
+  </div>
+</section>
+
+<!-- ===================== CONTENTS ===================== -->
+<section class="contents">
+  <h2>Contents</h2>
+  <ol>
+    <li><span class="n">1</span><span class="t">RINAVI in one page</span><span class="d">what it is, and the bet behind it</span><span class="pg">3</span></li>
+    <li><span class="n">2</span><span class="t">The problem</span><span class="d">why a companion, not a portal</span><span class="pg">4</span></li>
+    <li><span class="n">3</span><span class="t">Who it is for</span><span class="d">and who it is not for</span><span class="pg">4</span></li>
+    <li><span class="n">4</span><span class="t">The citizen journey</span><span class="d">seven steps, end to end</span><span class="pg">5</span></li>
+    <li><span class="n">5</span><span class="t">The boundary</span><span class="d">what RINAVI never does, and why that is structural</span><span class="pg">6</span></li>
+    <li><span class="n">6</span><span class="t">Design principles</span><span class="d">the eight rules that decide arguments</span><span class="pg">7</span></li>
+    <li><span class="n">7</span><span class="t">Architecture</span><span class="d">one monolith, nine modules, no outbound calls</span><span class="pg">8</span></li>
+    <li><span class="n">8</span><span class="t">The data model</span><span class="d">what is stored, and what is absent on purpose</span><span class="pg">9</span></li>
+    <li><span class="n">9</span><span class="t">Consent</span><span class="d">four purposes, and what refusing one does</span><span class="pg">11</span></li>
+    <li><span class="n">10</span><span class="t">Documents and extraction</span><span class="d">from upload to a value you can verify</span><span class="pg">11</span></li>
+    <li><span class="n">11</span><span class="t">Profile values</span><span class="d">promote, correct, confirm, go stale</span><span class="pg">12</span></li>
+    <li><span class="n">12</span><span class="t">Drafts and preflight</span><span class="d">the packet, and the checks before it</span><span class="pg">13</span></li>
+    <li><span class="n">13</span><span class="t">The application locker</span><span class="d">memory of what was filed</span><span class="pg">14</span></li>
+    <li><span class="n">14</span><span class="t">The service catalog</span><span class="d">packs, versioning, snapshots</span><span class="pg">15</span></li>
+    <li><span class="n">15</span><span class="t">Security</span><span class="d">authentication, limits, redaction, audit</span><span class="pg">16</span></li>
+    <li><span class="n">16</span><span class="t">Privacy and compliance posture</span><span class="d">DPDP framing, retention, accepted residuals</span><span class="pg">17</span></li>
+    <li><span class="n">17</span><span class="t">Deliberate limits</span><span class="d">what V1 does not do, and must not pretend to</span><span class="pg">19</span></li>
+    <li><span class="n">18</span><span class="t">The decision ladder</span><span class="d">what must be true before real documents</span><span class="pg">19</span></li>
+    <li><span class="n">19</span><span class="t">Repository and running it</span><span class="d">layout, scripts, the demo stack</span><span class="pg">20</span></li>
+    <li><span class="n">20</span><span class="t">How it is evaluated</span><span class="d">the pilot's design, not its numbers</span><span class="pg">21</span></li>
+    <li><span class="n">21</span><span class="t">Glossary</span><span class="d">the words this document uses precisely</span><span class="pg">23</span></li>
+  </ol>
+  <p class="closing">Read chapters 1–6 for the product, 7–14 for the engineering, 15–18 for the
+  trust argument, and 19–21 for the practical detail. Every chapter stands alone well enough
+  to be read out of order.</p>
+</section>
+
+<!-- ===================== 1 ===================== -->
+<section>
+<h2><span class="num">1</span>RINAVI in one page</h2>
+
+<p class="lead">RINAVI is an independent, privacy-first companion that helps citizens prepare
+and manage applications for Indian government services. It organises documents, extracts the
+values they contain, keeps a source-linked profile, assembles a draft application, checks the
+evidence, and remembers what happened afterwards. The citizen reviews it and files it
+themselves on the official portal.</p>
+
+<div class="note">
+  <span class="tag">The one-sentence version</span>
+  <p>RINAVI does the preparation and the remembering, the citizen does the submitting, and the
+  government portal remains the only authority.</p>
+</div>
+
+<h3>What that means in practice</h3>
+<table>
+  <tr><th style="width:31%">The citizen gets</th><th>A place where the paperwork for a government application is assembled, checked and kept — with every value traceable to the document it came from, and a record of what was filed and when.</th></tr>
+  <tr><td><strong>What RINAVI gets to do</strong></td><td>Read documents the citizen uploads, hold values in a profile, build drafts, validate them, produce a copy-ready packet, and store the citizen's own notes about a filed application.</td></tr>
+  <tr><td><strong>What RINAVI never does</strong></td><td>Submit an application, store a portal password, ask for or relay an OTP, solve a CAPTCHA, open a portal session, scrape a portal, decide eligibility, or claim any government affiliation.</td></tr>
+  <tr><td><strong>What keeps it honest</strong></td><td>Four purpose-scoped consents; erasure that works even after consent is withdrawn; an audit trail that records actions but never document content; and a runtime with no outbound HTTP client at all.</td></tr>
+  <tr><td><strong>Where the project is</strong></td><td>V1 is Assist-only and narrow: one service (Delhi income certificate), one geography, English, synthetic documents only, supervised pilot. Real documents wait behind a legal and security gate that is described in chapter 18.</td></tr>
+</table>
+
+<h3>The bet</h3>
+<p>Most attempts to "fix" government paperwork try to remove the citizen from the loop —
+automate the login, fill the form, press submit. That is the part with the credentials, the
+OTPs and the legal exposure, and it is also the part where a mistake is hardest to see and
+hardest to undo.</p>
+<p>RINAVI bets the opposite: the durable value is in <em>preparation</em> and <em>memory</em>.
+Citizens lose time re-entering the same details into every portal, lose track of which document
+went where, and hand the whole task to an agent precisely because the process is opaque.
+A companion that explains the process, assembles the packet, shows where every field came from,
+and keeps a record afterwards is useful without ever touching a credential.</p>
+
+<h3>What "Assist-only" rules out</h3>
+<p>Assist-only is not a temporary limitation while the automation is built. It is the product
+boundary. It means the packet is a text the citizen copies into their own browser session; the
+portal is where the declaration is made; and any future step that would cross that line needs a
+new decision record, a new dependency, and a new permission — three reviewable changes rather
+than one quiet one.</p>
+</section>
+
+<!-- ===================== 2 ===================== -->
+<section>
+<h2><span class="num">2</span>The problem</h2>
+
+<p class="lead">An Indian citizen applying for a certificate or a benefit usually deals with a
+process that is fragmented, repetitive, and judged only at the end.</p>
+
+<h3>What actually goes wrong</h3>
+<table>
+  <tr><th style="width:26%">Failure</th><th>What it looks like</th></tr>
+  <tr><td><strong>Fragmentation</strong></td><td>Every department has its own portal, its own account, its own form vocabulary, and its own idea of what a "proof of income" is. Nothing carries over.</td></tr>
+  <tr><td><strong>Repetition</strong></td><td>The same name, father's name, date of birth, address and income are typed again for every service, each time as an unverified claim with no memory of the last attempt.</td></tr>
+  <tr><td><strong>Opaque evidence rules</strong></td><td>Which documents count, whether a photograph is needed, whether self-attestation is enough — usually learned by being rejected.</td></tr>
+  <tr><td><strong>Intermediary dependence</strong></td><td>Where the process is confusing, citizens pay an agent or a service centre. They hand over documents and a fee, and often cannot verify what was actually entered or filed.</td></tr>
+  <tr><td><strong>No durable record</strong></td><td>After submission, the citizen keeps a reference number in a message, a screenshot, or nothing. Deadlines pass silently.</td></tr>
+  <tr><td><strong>Asymmetric consequences</strong></td><td>A typo in a name or an income figure is discovered weeks later, and the cost falls entirely on the person who can least afford another cycle.</td></tr>
+</table>
+
+<h3>Why the obvious answer is the wrong one</h3>
+<p>Modern tooling makes it technically easy to automate a portal: a headless browser, a stored
+password, a CAPTCHA service, a form filler. It is also the version of the idea that concentrates
+every risk in one place — credentials held by a third party, terms of use almost certainly
+breached, a declaration made by software on a citizen's behalf, and an outcome the citizen
+cannot see being decided.</p>
+<p>RINAVI starts from the opposite constraint: <strong>no request leaves the deployment</strong>.
+No portal connection, no email, no analytics, no model API. Everything useful that can be built
+inside that constraint is what V1 is: verification, assembly, explanation, memory. The
+constraint is not a limitation to be worked around later; it is what makes the trust claims
+checkable.</p>
+
+<h3>Where the value concentrates</h3>
+<ul>
+  <li><strong>Verification</strong> — every value shows the document and the line it came from, so a citizen can check rather than hope.</li>
+  <li><strong>Assembly</strong> — one draft, one evidence checklist, one declaration, one packet, instead of a scavenger hunt.</li>
+  <li><strong>Explanation</strong> — the official steps and the notice that this is not a submission, in the same place as the form.</li>
+  <li><strong>Memory</strong> — a frozen packet, a status, a reference number the citizen typed, and a timeline that survives the browser tab.</li>
+</ul>
+</section>
+
+<!-- ===================== 3 ===================== -->
+<section>
+<h2><span class="num">3</span>Who it is for</h2>
+
+<p class="lead">RINAVI is built for the person who has to file, and for the moment before they
+decide to hand it to someone else.</p>
+
+<table>
+  <tr><th style="width:23%">Audience</th><th>Why RINAVI fits</th><th style="width:26%">What it does not solve for them</th></tr>
+  <tr><td><strong>The self-filer</strong></td><td>Comfortable with an English interface and has documents as PDFs; wants the form assembled and checked before opening the portal.</td><td>Anything the portal itself does; RINAVI cannot see the portal's state.</td></tr>
+  <tr><td><strong>The agent-reluctant</strong></td><td>Would otherwise pay an intermediary, but wants to see and keep what is being submitted, and to keep their own record.</td><td>It does not replace the agent's knowledge of a specific office's quirks; the pack only reflects official sources.</td></tr>
+  <tr><td><strong>The helper</strong></td><td>A family member or volunteer assisting someone else — the packet is legible, printable and reviewable together.</td><td>It is single-account: there is no delegated access and no shared workspace.</td></tr>
+  <tr><td><strong>The reviewer</strong></td><td>Anyone assessing whether the claims are true: the design is narrow enough to audit end to end.</td><td>—</td></tr>
+</table>
+
+<h3>Who it is explicitly not for, in V1</h3>
+<ul>
+  <li><strong>Anyone who wants the application filed for them.</strong> That is the boundary, not a gap in the roadmap.</li>
+  <li><strong>Anyone without an English interface or a PDF.</strong> V1 is English-only and, without OCR, cannot read a photograph of a document.</li>
+  <li><strong>Anyone needing a service other than the Delhi income certificate.</strong> One pack ships; the catalog is designed to hold more, and does not pretend to.</li>
+  <li><strong>Anyone who needs an accessibility or mobile-first experience.</strong> The web app is a responsive PWA, but accessibility and localisation have not been designed for yet, and saying so is part of the honesty.</li>
+</ul>
+
+<div class="box">
+  <p><strong>A note on the pilot.</strong> The first use of RINAVI is a supervised study with
+  adult volunteers using obviously fake <em>SPECIMEN — SYNTHETIC</em> documents. The participants
+  are real; the paperwork is not. That is deliberate: it rehearses the product without holding
+  anyone's actual identity documents, and it is why the limits in chapter 17 are acceptable for
+  now rather than hidden.</p>
+</div>
+</section>
+
+<!-- ===================== 4 ===================== -->
+<section>
+<h2><span class="num">4</span>The citizen journey</h2>
+
+<p class="lead">Seven steps, in the order a citizen experiences them. Each step says what the
+system stores and what it refuses to do.</p>
+
+<pre>
+  sign in ──▶ grant purposes ──▶ upload ──▶ extract ──▶ promote &amp; confirm
+                                                              │
+        record &amp; track ◀── export packet ◀── draft &amp; preflight ◀┘
+</pre>
+
+<h3>1 · Sign in</h3>
+<p>An email address, and optionally a passkey. No password is ever created, and no phone number
+is collected. The session is a server-side record; the browser holds only an opaque token in an
+HttpOnly cookie, and the database stores a hash of that token rather than the token itself.
+Sign-out revokes the session.</p>
+<p class="small muted"><strong>Stores:</strong> email, display name, optional passkey public key and sign counter, session hash and expiry.</p>
+
+<h3>2 · Grant purposes, one at a time</h3>
+<p>Before anything is read or written, the citizen grants purpose-scoped consent: document
+processing, profile storage, application preparation, and application tracking. Each is asked
+for separately and can be refused. Refusing one disables exactly the part of the product that
+needs it, and nothing else. Withdrawing later stops the next use; it does not silently delete
+what already exists, because deletion is a separate, explicit act.</p>
+<p class="small muted"><strong>Stores:</strong> purpose, policy version, grant and withdrawal timestamps — kept as the proof of what was agreed.</p>
+
+<h3>3 · Upload into the vault</h3>
+<p>PDF and plain-text documents up to a fixed ceiling (10 MiB), with the type sniffed from the
+bytes rather than trusted from the filename. Each file is stored under a per-account directory
+and gets a row describing it, its size, its classification, and its processing status. Images can
+be uploaded but are parked as needing attention, because V1 has no OCR — the product says so
+instead of pretending to read them.</p>
+
+<h3>4 · Extraction, with evidence</h3>
+<p>Deterministic, explainable field matching — not a model. Each value carries a confidence and a
+locator (for example, the line it was found on), so a citizen can check where a number came from.
+Documents that cannot be parsed are parked as needing attention and can be retried, rather than
+half-read.</p>
+
+<h3>5 · Profile: promote, then confirm</h3>
+<p>A citizen promotes an extracted value into their profile. It arrives linked to its source
+document and line, marked unconfirmed. They review it, correct it if needed, and confirm it.
+Correcting keeps a history. If the source document is later deleted, the value is marked stale
+rather than quietly left as fact.</p>
+
+<h3>6 · Draft and preflight</h3>
+<p>A draft is created from a versioned service pack and seeded only from <em>confirmed</em> profile
+values. The citizen links evidence to the pack's checklist groups, fills anything the profile
+cannot supply, and confirms the declaration. A deterministic preflight lists what is missing or
+inconsistent — required fields, malformed values, evidence gaps, documents that vanished, values
+that drifted from the profile. The draft can be refreshed to re-pull the profile when a value was
+corrected at the source.</p>
+
+<h3>7 · Export, then record what happened</h3>
+<p>Export produces a copy-ready text packet: the field values, the evidence list, the official
+steps, the declaration state, and a prominent notice that this is <em>not</em> a submission.
+The citizen files it themselves in their own browser session, then comes back and records the
+status, the reference number, the deadline and any notes. The packet is frozen at that moment, so
+a later catalog update cannot rewrite history.</p>
+
+<div class="note">
+  <span class="tag">Any point in the journey</span>
+  <p>Erasure works throughout, and never depends on a consent the citizen might have just
+  withdrawn. A document can be deleted; all drafts can be erased in one action; the whole account
+  can be deleted. Each of these works from the consent screen itself, which is where a person is
+  most likely to be standing when they change their mind.</p>
+</div>
+</section>
+
+<!-- ===================== 5 ===================== -->
+<section>
+<h2><span class="num">5</span>The boundary</h2>
+
+<p class="lead">RINAVI's promises are only worth something if each one is enforced by the absence
+of code, not by a sentence in a policy. These are the prohibitions, and where each one lives.</p>
+
+<table>
+  <tr><th style="width:6%">#</th><th style="width:30%">Prohibition</th><th>Why it is structural</th></tr>
+  <tr><td>P1</td><td><strong>Never stores a portal password</strong></td><td>No password, PIN or secret field exists in any table. The credentials table holds a passkey public key and a sign counter — a public key cannot be replayed as a login.</td></tr>
+  <tr><td>P2</td><td><strong>Never asks for or relays an OTP</strong></td><td>No OTP field, no SMS integration, and no mobile number is collected at all.</td></tr>
+  <tr><td>P3</td><td><strong>Never solves or bypasses a CAPTCHA</strong></td><td>No CAPTCHA handling, no image challenge reading, and no browser-automation dependency in either application.</td></tr>
+  <tr><td>P4</td><td><strong>Never opens a portal session</strong></td><td>The only cookie the system ever sets is its own session cookie. No portal host appears in any redirect, cookie or request.</td></tr>
+  <tr><td>P5</td><td><strong>Never submits an application or declaration</strong></td><td>There is no submission module and no outbound HTTP client in the runtime dependencies. The declaration is a local boolean the citizen sets for their own packet.</td></tr>
+  <tr><td>P6</td><td><strong>Never scrapes a portal</strong></td><td>No HTML parser for portal pages, no crawler, no scheduler: nothing in the system runs on a timer.</td></tr>
+  <tr><td>P7</td><td><strong>Never bulk-collects other people's applications</strong></td><td>Every query is scoped to the signed-in account. There is no admin role, no staff login, and no cross-account read route.</td></tr>
+  <tr><td>P8</td><td><strong>Never spreads an Aadhaar number</strong></td><td>If one appears in a document it stays inside that document's extracted record; it is filtered out of profile reads, promotions, drafts, validation, exports and packets.</td></tr>
+</table>
+
+<h3>Three more things it does not do</h3>
+<ul>
+  <li><strong>It does not decide eligibility.</strong> The pack explains what the official source says; the portal decides.</li>
+  <li><strong>It does not give legal, financial or tax advice.</strong> Nothing in the product is advice.</li>
+  <li><strong>It does not claim affiliation, speed or approval.</strong> No promise that an application will be accepted, or processed faster, appears anywhere in the product or its material.</li>
+</ul>
+
+<div class="box">
+  <p><strong>Why absence is the right control.</strong> A field that does not exist cannot leak.
+  A client that cannot make outbound requests cannot be pointed at a portal. A module that is
+  not installed cannot submit. This is the difference between "we promise not to" and "there is
+  nothing here that could" — and it is the claim a reviewer can test in an afternoon.</p>
+</div>
+</section>
+
+<!-- ===================== 6 ===================== -->
+<section>
+<h2><span class="num">6</span>Design principles</h2>
+
+<p class="lead">Eight rules that settle arguments. When two options are both defensible, these
+decide.</p>
+
+<h3>1 · Consent before processing, per purpose</h3>
+<p>No route touches personal data without a live grant for the purpose it serves. Consent is not
+a single checkbox at sign-up; it is four separate, revocable permissions that map to four
+different parts of the product.</p>
+
+<h3>2 · Explain, do not decide</h3>
+<p>Where the system cannot know the answer — eligibility, acceptance, timing — it says what the
+official source says and stops. A confident wrong answer is worse than an honest "the portal
+decides".</p>
+
+<h3>3 · Every value has a source</h3>
+<p>Values are not free-floating facts. A profile value remembers the document, the line and the
+confidence behind it, and goes stale when that source disappears. A draft value remembers whether
+it came from the profile or from the citizen.</p>
+
+<h3>4 · The citizen is the only submitter</h3>
+<p>Preparation ends at a packet. The act of filing, and the declaration attached to it, belong to
+the person whose application it is.</p>
+
+<h3>5 · Erasure is never conditional</h3>
+<p>Deleting a document, a draft, or the whole account must work even after the relevant consent
+is withdrawn. Making deletion depend on a grant would let withdrawal trap data — the exact
+opposite of what withdrawal is for.</p>
+
+<h3>6 · Audit without content</h3>
+<p>The system records what happened — an upload, a promotion, a deletion — with identifiers and
+non-personal context, never document text or field values. An audit trail that becomes a second
+copy of the data is a liability, not a control.</p>
+
+<h3>7 · Narrow by design</h3>
+<p>One service pack, one geography, one language, one facilitator. Narrowness is what makes the
+compliance story, the threat model and the test surface small enough to be true.</p>
+
+<h3>8 · No request leaves the deployment</h3>
+<p>No outbound client, no email, no analytics, no model API. Every feature that would need one is
+a new decision, not a configuration change.</p>
+</section>
+
+<!-- ===================== 7 ===================== -->
+<section>
+<h2><span class="num">7</span>Architecture</h2>
+
+<p class="lead">A Next.js progressive web app in front of a FastAPI modular monolith, with one
+database and one vault directory — deployed, in the pilot, on a single machine reachable only at
+loopback.</p>
+
+<pre>
+ ┌───────────────────────┐        ┌──────────────────────────────────────────┐
+ │  apps/web             │  HTTP  │  backend — FastAPI, one process           │
+ │  Next.js PWA (TS)     │───────▶│  /api/v1 · session cookie · consent deps  │
+ │  server components    │        │                                          │
+ └───────────────────────┘        │  identity  consent  vault  documents     │
+                                  │  profile   catalog  applications         │
+                                  │  locker    audit                         │
+                                  └───────┬───────────────┬──────────────────┘
+                                          │               │
+                            ┌─────────────▼───┐   ┌───────▼────────────────┐
+                            │ database        │   │ vault directory        │
+                            │ SQLite (dev)    │   │ <user_id>/<doc>.bin    │
+                            │ PostgreSQL      │   │ plaintext, no backup   │
+                            │ (staging/pilot) │   └────────────────────────┘
+                            └─────────────────┘
+                     catalog/  versioned JSON packs, loaded by the catalog module
+</pre>
+
+<h3>Why a modular monolith</h3>
+<p>One application keeps the invariants that matter — source-linked values, versioned templates,
+consent before processing — enforceable in-process, without distributed transactions or a
+message bus. Each module exposes a contract and is independently replaceable, so the boundary is
+real without the operational cost of services. In V1 there is exactly one deployment unit, one
+database, one API entry point.</p>
+
+<h3>The nine modules</h3>
+<table>
+  <tr><th style="width:17%">Module</th><th>Responsibility</th></tr>
+  <tr><td><code>identity</code></td><td>Accounts, sessions, WebAuthn passkeys, sign-out, account deletion, the account export.</td></tr>
+  <tr><td><code>consent</code></td><td>Granting and withdrawing the four purposes; the consent history that proves what was agreed.</td></tr>
+  <tr><td><code>vault</code></td><td>Upload, listing, reading, deleting a document; the on-disk blob store; content sniffing and size limits.</td></tr>
+  <tr><td><code>documents</code></td><td>Classification, deterministic field extraction, processing status, retry and the "needs attention" path.</td></tr>
+  <tr><td><code>profile</code></td><td>Source-linked values: promote, correct (with history), confirm, reject, and the stale transition.</td></tr>
+  <tr><td><code>catalog</code></td><td>Loading versioned service packs, serving the service list and detail, keeping packs immutable per version.</td></tr>
+  <tr><td><code>applications</code></td><td>Drafts, values and evidence links, preflight validation, the declaration, export, and completion into a case.</td></tr>
+  <tr><td><code>locker</code></td><td>Frozen case packets, statuses, citizen-entered reference numbers, the event timeline, and "apply again".</td></tr>
+  <tr><td><code>audit</code></td><td>Append-only-in-practice event records with redacted detail; survives account deletion with the actor link severed.</td></tr>
+</table>
+
+<h3>What is deliberately not a module</h3>
+<p>A submission/execution module and a portal-integration module exist in the target architecture
+and are <em>not</em> implemented in V1 — not stubbed, not promised by any API contract. The
+compliance resolver, which would compute a readiness verdict beyond the deterministic preflight,
+is likewise post-pilot. Deferring them keeps the product's claims and its code in agreement.</p>
+
+<h3>Two database decisions</h3>
+<p>Local development and tests run on SQLite through an async SQLAlchemy layer with Alembic
+migrations; PostgreSQL is the staging and pilot database. The migration pipeline is identical, so
+schema work is portable, and SQLite-specific SQL is avoided on purpose. Nothing in the domain
+model depends on either engine.</p>
+
+<h3>The request path</h3>
+<p>A request carries a session cookie; the backend resolves it to a user; a consent dependency
+checks the live grant for the purpose the route serves; the service then reads or writes rows
+scoped to that user. Ownership is a dependency, not a convention — there is no route that takes
+someone else's identifier without a matching owner check.</p>
+
+<h3>Deployment shape</h3>
+<p>One machine, ports bound to loopback, the web app and the API started together. A container
+compose file runs the full stack against PostgreSQL for demos and for the pilot's shape, with a
+Redis service provisioned for a future shared rate-limit backend — rate limiting is currently
+in-process, which is correct for one worker and is one of the things a second worker would
+reopen.</p>
+</section>
+
+<!-- ===================== 8 ===================== -->
+<section>
+<h2><span class="num">8</span>The data model</h2>
+
+<p class="lead">Eleven tables, each with an owner and an end. The interesting part of this model
+is what is missing from it.</p>
+
+<table>
+  <tr><th style="width:20%">Table</th><th>Holds</th><th style="width:24%">Ends when</th></tr>
+  <tr><td><code>users</code></td><td>Email, display name, creation time.</td><td>Account deleted.</td></tr>
+  <tr><td><code>sessions</code></td><td>A hash of the cookie token, expiry, revocation time.</td><td>Expiry, sign-out, or account deletion.</td></tr>
+  <tr><td><code>credentials</code></td><td>Passkey public key and sign counter only.</td><td>Account deleted.</td></tr>
+  <tr><td><code>consent_records</code></td><td>Purpose, policy version, granted and withdrawn timestamps.</td><td>Account deleted; withdrawal keeps the row as proof.</td></tr>
+  <tr><td><code>documents</code></td><td>Filename, content type, size, status, classification, note.</td><td>Document or account deleted.</td></tr>
+  <tr><td><code>extracted_fields</code></td><td>Field key, value, confidence, locator — including an Aadhaar number when one is present.</td><td>Cascades with the document.</td></tr>
+  <tr><td><code>profile_values</code></td><td>Field key, value, status, source document and locator, confidence, correction history.</td><td>Account deletion, or rejection of a non-confirmed value.</td></tr>
+  <tr><td><code>application_drafts</code></td><td>Service and pack version, template snapshot, field values, evidence links, declaration flag.</td><td>Draft or account deleted.</td></tr>
+  <tr><td><code>application_cases</code></td><td>Frozen packet snapshot and text, status, reference and acknowledgement numbers, deadline, notes.</td><td>Account deletion; no per-case delete route.</td></tr>
+  <tr><td><code>case_events</code></td><td>Timeline entries with a type and a payload.</td><td>Cascades with the case.</td></tr>
+  <tr><td><code>audit_events</code></td><td>Action, resource type and id, redacted detail, actor id.</td><td>Never — the actor link is severed on account deletion.</td></tr>
+</table>
+
+<h3>What is absent on purpose</h3>
+<ul>
+  <li>No password or credential-secret column.</li>
+  <li>No OTP, mobile number or SMS table.</li>
+  <li>No portal session, cookie jar or token store.</li>
+  <li>No analytics or device-identifier table.</li>
+  <li>No admin, staff or role table.</li>
+  <li>No document text in the audit table.</li>
+</ul>
+
+<h3>The one exception, stated plainly</h3>
+<p>An Aadhaar number found inside an uploaded document is stored with that document's extracted
+fields, because it is part of what the document says. It is then excluded from every path that
+would spread it: it is not promoted to the profile, not shown in drafts, not validated, not
+exported and not packed. Deleting the document erases it. This is a recorded residual, not an
+oversight, and chapter 18 names what would reopen it.</p>
+
+<h3>Deletion mechanics</h3>
+<p><strong>A document:</strong> the file is erased first, then the row is deleted. If the erase
+fails the request returns an error and keeps both, so the citizen can retry rather than end up
+with a row pointing at a file that is gone.</p>
+<p><strong>An account:</strong> the account's vault directory is purged first, then the user row
+is deleted; every table keyed to the user or their documents cascades. Only the audit trail
+survives, with the actor identifier set to null and no personal detail inside it.</p>
+<p><strong>A draft:</strong> one draft, or all drafts in a single action. Both are ungated by
+consent so that erasure is always available, including from the screen where a purpose was just
+withdrawn.</p>
+</section>
+
+<!-- ===================== 9 ===================== -->
+<section>
+<h2><span class="num">9</span>Consent</h2>
+
+<p class="lead">Four purposes, each mapping to a part of the product, each independently
+revocable. Deny-by-default is not a slogan here: a missing grant is a refusal, and the route
+returns 403 rather than deciding for the citizen.</p>
+
+<table>
+  <tr><th style="width:24%">Purpose</th><th style="width:38%">What it gates</th><th>What stops without it</th></tr>
+  <tr><td><code>documents.processing</code></td><td>The vault: upload, list, read, download content, read extracted fields, retry.</td><td>No upload and no reading of documents.</td></tr>
+  <tr><td><code>profile.storage</code></td><td>The profile: read, promote, confirm, correct. Rejection is deliberately ungated.</td><td>No saving or reviewing profile values.</td></tr>
+  <tr><td><code>applications.preparation</code></td><td>Drafts: values, evidence links, validation, export, packet. The two draft-erasure routes are ungated.</td><td>No draft can be created, edited, exported or completed.</td></tr>
+  <tr><td><code>locker.tracking</code></td><td>Cases and their events: recording what happened after filing.</td><td>No case can be recorded or updated.</td></tr>
+</table>
+
+<h3>The three rules that make withdrawal meaningful</h3>
+<ol>
+  <li><strong>Withdrawal stops the next use, and only the next use.</strong> Data already stored stays until the citizen deletes it. The consent record keeps a withdrawal timestamp, because the history of what was agreed is itself the evidence.</li>
+  <li><strong>Erasure never needs consent.</strong> Deleting a document, deleting a draft, deleting all drafts, and deleting the account are all available without a live grant. A citizen who withdraws preparation can still destroy the draft that preparation created.</li>
+  <li><strong>Rejection is a read-free delete.</strong> A non-confirmed profile value can be removed without re-reading its source or asking for a purpose — so a stale or unwanted value never becomes un-erasable.</li>
+</ol>
+
+<h3>What a grant actually records</h3>
+<p>Purpose, policy version, grant time, withdrawal time, and the account. The UI presents exactly
+four purposes; the API accepts the purpose string it is given, which is a deliberate, documented
+limit rather than a hidden one — the server-side allowlist is a known hardening step, and the
+public compliance documents say so.</p>
+
+<div class="box">
+  <p><strong>Why four and not one.</strong> A single "I agree" would make every withdrawal a
+  choice between losing everything and keeping everything. Four purposes let a citizen keep their
+  documents and stop preparing applications, or keep their history and stop reading documents —
+  which is what people actually want when they change their mind.</p>
+</div>
+</section>
+
+<!-- ===================== 10 ===================== -->
+<section>
+<h2><span class="num">10</span>Documents and extraction</h2>
+
+<p class="lead">The vault is where evidence becomes structured, checkable values — and the only
+place in the product where an uploaded file lives.</p>
+
+<h3>Acceptance</h3>
+<ul>
+  <li><strong>PDF and plain text.</strong> Images are accepted by the uploader but parked as needing attention, because V1 has no OCR. The interface says so rather than failing silently.</li>
+  <li><strong>Size ceiling</strong> of 10 MiB per file, enforced server-side before the body is processed.</li>
+  <li><strong>Type sniffing</strong> from the bytes; the filename's extension is not trusted.</li>
+  <li><strong>Storage</strong> as an opaque blob under the account's own directory; the original filename survives as metadata only.</li>
+</ul>
+
+<h3>Statuses</h3>
+<table>
+  <tr><th style="width:22%">Status</th><th>Meaning</th></tr>
+  <tr><td><code>processed</code></td><td>Parsed; fields extracted with confidence and locators. Usable as evidence.</td></tr>
+  <tr><td><code>needs_attention</code></td><td>Parked with a note: an image awaiting OCR, an unsupported layout, a scan without a text layer, or nothing recognisable. Retryable.</td></tr>
+</table>
+
+<h3>Classification</h3>
+<p>Documents are classified as income, identity or residence evidence, or left unsupported. The
+classification is what the draft's evidence checklist matches against — a group can accept a
+specific class, or accept any processed document at all.</p>
+
+<h3>Extraction, and why it is boring on purpose</h3>
+<p>The extractor is a set of field patterns with normalisers, not a language model. It looks for
+labels such as name, father's name, date of birth, gender, address, annual income and Aadhaar
+number, and it produces three things for each hit: the value, a confidence, and a locator naming
+where it was found. It also tolerates the typographic apostrophe that PDF fonts produce where a
+plain one was typed.</p>
+<p>Deterministic extraction is a trust decision. A citizen can be shown the line a value came
+from; a model's answer cannot be checked the same way. It is also honest about its ceiling: an
+unfamiliar layout is parked for attention rather than guessed at, and OCR or model assistance is
+a future upgrade, not an assumption baked into the current claims.</p>
+
+<h3>The Aadhaar rule</h3>
+<p>If a document contains an Aadhaar number, it is extracted and stored with that document — and
+then filtered out of the profile, drafts, validation, exports and packets. The citizen is told,
+in the privacy notice, that the number stays with the document and that deleting the document
+erases it.</p>
+</section>
+
+<!-- ===================== 11 ===================== -->
+<section>
+<h2><span class="num">11</span>Profile values</h2>
+
+<p class="lead">The profile is the citizen's own set of confirmed facts, and every one of them can
+be traced back to the document that first stated it.</p>
+
+<h3>Lifecycle</h3>
+<table>
+  <tr><th style="width:20%">State</th><th>How a value gets there</th><th>What it means</th></tr>
+  <tr><td><strong>Unconfirmed</strong></td><td>Promoted from an extracted field.</td><td>Proposed by a document; the citizen has not vouched for it. It does not seed drafts.</td></tr>
+  <tr><td><strong>Confirmed</strong></td><td>The citizen confirms it, with or without a correction.</td><td>Usable as the source of truth for drafts. A correction is kept in history.</td></tr>
+  <tr><td><strong>Stale</strong></td><td>The source document was deleted.</td><td>The value survives, but is marked as no longer supported by evidence — and can then be rejected.</td></tr>
+</table>
+
+<h3>The rules</h3>
+<ul>
+  <li><strong>Only documents create values.</strong> There is no way to conjure a profile value without an upload behind it.</li>
+  <li><strong>Confirmation is a deliberate act.</strong> Nothing is treated as true because a parser was confident.</li>
+  <li><strong>Corrections are recorded, not overwritten silently.</strong></li>
+  <li><strong>Deleting the source marks the value stale</strong> rather than deleting it, because the citizen may have corrected it by hand and may still need it.</li>
+  <li><strong>Rejection is final and ungated.</strong> A non-confirmed value can be hard-deleted without a consent check; a confirmed value leaves with the account, or becomes deletable once its source is gone and it goes stale.</li>
+</ul>
+
+<h3>Why the profile exists at all</h3>
+<p>It is the difference between a form filler and a companion. Without a profile, every application
+starts from zero and every correction is local to one draft. With it, the citizen fixes their
+address once, and the fix is available to the next application — while still being able to see
+which document said what, and when a value stopped being supported.</p>
+</section>
+
+<!-- ===================== 12 ===================== -->
+<section>
+<h2><span class="num">12</span>Drafts and preflight</h2>
+
+<p class="lead">A draft is a service pack, a set of values, a set of evidence links and a
+declaration — plus a validator that tells the truth before the citizen opens the portal.</p>
+
+<h3>Creating a draft</h3>
+<p>The citizen picks a service from the catalog. RINAVI snapshots that pack version into the
+draft, seeds the fields it can from <em>confirmed</em> profile values, and shows the evidence
+groups the service requires. Two kinds of value exist in a draft: values that came from the
+profile (and stay linked to it) and values the citizen typed directly. The origin is stored, so
+the preflight can tell the difference between "drifted from the profile" and "typed by hand".</p>
+
+<h3>Preflight</h3>
+<p>Validation is deterministic and runs before export or completion. It reports issues, each with
+a code, a message and the field or group it concerns:</p>
+<table>
+  <tr><th style="width:32%">Code</th><th>What it catches</th></tr>
+  <tr><td><code>field_required</code></td><td>A required field is empty.</td></tr>
+  <tr><td><code>field_format_invalid</code></td><td>A value does not match its declared format (for example a date or a number).</td></tr>
+  <tr><td><code>unknown_format</code></td><td>A pack declares a format the validator does not implement — reported, never a crash.</td></tr>
+  <tr><td><code>value_not_source_linked</code></td><td>A profile-backed field was edited in the draft; the fix belongs in the profile.</td></tr>
+  <tr><td><code>value_diverges_from_profile</code></td><td>A profile value changed since the draft was seeded; refresh it.</td></tr>
+  <tr><td><code>declaration_missing</code></td><td>The declaration has not been confirmed.</td></tr>
+  <tr><td><code>checklist_requirement_unmet</code></td><td>An evidence group requiring at least one document has none.</td></tr>
+  <tr><td><code>document_unavailable</code></td><td>A linked document was deleted or is no longer processed.</td></tr>
+</table>
+
+<h3>The declaration</h3>
+<p>The pack carries the declaration text the official form uses. In RINAVI it is a local boolean:
+the citizen confirms that the particulars are true, and the packet records whether the declaration
+was confirmed. RINAVI never makes that declaration on anyone's behalf, and the portal is where it
+is actually made.</p>
+
+<h3>Export</h3>
+<p>Export builds a plain-text packet: the field values, the evidence linked to each group, the
+official steps, the declaration state, and a prominent <em>not a submission</em> notice. It is
+copy-ready, not machine-submittable. Export is rate-limited, produces an audit event, and writes
+nothing new to the database — the packet is a rendering, not a new record.</p>
+
+<h3>Completion</h3>
+<p>When preflight is clean and the citizen says the application was filed, the draft is completed
+into a case: the packet is frozen, the draft can no longer drift, and the locker takes over
+(chapter 13).</p>
+
+<h3>Erasure</h3>
+<p>One draft, or all drafts at once. Both are ungated by consent, so a citizen who has withdrawn
+preparation can still erase what preparation created — including from the consent screen, via a
+bulk erase that deliberately exposes no listing of the data whose purpose was withdrawn.</p>
+</section>
+
+<!-- ===================== 13 ===================== -->
+<section>
+<h2><span class="num">13</span>The application locker</h2>
+
+<p class="lead">The portal forgets. The citizen should not have to.</p>
+
+<h3>What a case holds</h3>
+<p>A case is created when a completed draft is frozen: the packet snapshot, the packet text, the
+service and pack version, a status, and the fields a citizen fills in after they have been to the
+portal — reference number, acknowledgement number, deadline, outcome notes.</p>
+
+<h3>Statuses</h3>
+<table>
+  <tr><th style="width:26%">Status</th><th>Meaning</th></tr>
+  <tr><td><code>prepared</code></td><td>The packet exists; nothing has been filed yet, as far as RINAVI knows.</td></tr>
+  <tr><td><code>submitted</code></td><td>The citizen says they filed it.</td></tr>
+  <tr><td><code>acknowledged</code></td><td>The portal issued an acknowledgement.</td></tr>
+  <tr><td><code>outcome_received</code></td><td>An outcome arrived, recorded in the citizen's own words.</td></tr>
+  <tr><td><code>abandoned</code></td><td>The application was dropped, deliberately.</td></tr>
+  <tr><td><code>uncertain</code></td><td>The citizen is not sure what happened — an honest state that most trackers do not offer.</td></tr>
+</table>
+
+<h3>The honesty rules</h3>
+<ul>
+  <li><strong>Reference numbers are typed by the citizen.</strong> Nothing parses a portal page or calls a portal endpoint to obtain them; the app tells the citizen it cannot see what happened on the portal.</li>
+  <li><strong>The packet is frozen.</strong> A later catalog update does not rewrite a past application; the case keeps the pack version it was filed against.</li>
+  <li><strong>Events are the citizen's record, not a claim of truth.</strong> They are the timeline of what they reported, with notes.</li>
+</ul>
+
+<h3>Apply again</h3>
+<p>An old case can seed a new draft, so a renewal starts from the previous evidence and details
+instead of from nothing. This is the one action that needs both preparation and tracking consent,
+because it reads a case and writes a draft.</p>
+
+<div class="note">
+  <span class="tag">Known limit</span>
+  <p>A case has no per-case delete route in V1; cases leave with the account. The retention
+  direction is deliberate — a case is the record the locker exists to keep — but it is a limit,
+  and it is on the list in chapter 17 rather than a surprise.</p>
+</div>
+</section>
+
+<!-- ===================== 14 ===================== -->
+<section>
+<h2><span class="num">14</span>The service catalog</h2>
+
+<p class="lead">Services are data, not code. A pack describes one service: what it is, what
+evidence it needs, which fields the form has, and what the citizen must be told.</p>
+
+<h3>Layout</h3>
+<pre>
+catalog/services/&lt;department&gt;/&lt;service&gt;/
+    service.json                     slug, name, geography, department, sources, summary
+    versions/&lt;version&gt;/service_pack.json
+                                     guidance, checklist groups, form template
+</pre>
+<p>The catalog module loads packs from the repository at startup and serves the service list and
+detail endpoints. Packs live in version control, which makes every change to a government-facing
+claim reviewable in a diff — the same property the compliance documents rely on.</p>
+
+<h3>What a pack contains</h3>
+<table>
+  <tr><th style="width:26%">Section</th><th>Content</th></tr>
+  <tr><td><strong>Guidance</strong></td><td>What the certificate is; eligibility notes; the official channel's steps; and the notice that RINAVI's output is not a submission.</td></tr>
+  <tr><td><strong>Checklist groups</strong></td><td>Evidence requirements, each with an id, a label, a requirement (<code>at_least_one</code> or optional) and the document classifications it accepts. The income-certificate pack has identity, residence, income and an optional photograph group; the residence group deliberately accepts any processed document because the official source does not enumerate classes.</td></tr>
+  <tr><td><strong>Form template</strong></td><td>The fields the official form asks for — name, father's or husband's name, date of birth, gender, address, annual income, occupation, purpose — each with a required flag, a format and, where one exists, the profile binding that lets the draft seed it.</td></tr>
+  <tr><td><strong>Declaration</strong></td><td>The declaration text and whether it is required.</td></tr>
+</table>
+
+<h3>Versioning and snapshots</h3>
+<p>Packs are immutable per version. A draft stores the version and a snapshot of the template it
+was created with; a case stores the packet it produced. Updating a pack is therefore safe: new
+drafts use the new version, and nothing already in progress or already filed changes underneath
+the citizen.</p>
+
+<h3>Adding a service</h3>
+<p>A new service means a new pack, an entry in the portal-permission register for its official
+channel, and tests for its validation — not a new module. The narrowness of the current catalog
+is a decision about review capacity, not an architectural limit.</p>
+</section>
+
+<!-- ===================== 15 ===================== -->
+<section>
+<h2><span class="num">15</span>Security</h2>
+
+<p class="lead">Security here is mostly subtraction: fewer accounts, fewer fields, fewer
+dependencies, fewer outbound connections, and one small surface that can be described completely.</p>
+
+<h3>Authentication</h3>
+<ul>
+  <li><strong>Email plus optional passkey.</strong> WebAuthn credentials are verified server-side; only the public key and sign counter are stored.</li>
+  <li><strong>Session tokens are hashed at rest</strong> (SHA-256), expire after seven days, and are revoked on sign-out. The cookie is HttpOnly, SameSite=Lax, and Secure outside development.</li>
+  <li><strong>No passwords, ever</strong> — so there is nothing to reuse, resend, reset or leak.</li>
+  <li><strong>Development sign-in is off unless explicitly enabled</strong>, is refused outside development, and is rate-limited. It exists so a local demo does not need a platform authenticator; the hosted pilot must never enable it.</li>
+</ul>
+
+<h3>Request limits</h3>
+<p>Two layers: a per-IP ceiling and a per-session budget, so one busy citizen cannot exhaust the
+allowance for everyone behind the same address. Individual routes carry tighter budgets —
+uploads, document content, exports, passkey ceremonies and sign-in each have their own — and
+request bodies are capped with headroom above the 10 MiB document ceiling.</p>
+
+<h3>Response hardening</h3>
+<p>Every response carries <code>X-Content-Type-Options: nosniff</code>,
+<code>X-Frame-Options: DENY</code>, <code>Referrer-Policy: no-referrer</code> and a permissions
+policy disabling geolocation, microphone and camera access. Transport security headers are set
+for production, and CORS is an explicit allowlist rather than a wildcard.</p>
+
+<h3>Isolation</h3>
+<p>Every query is scoped to the session's account, enforced in a dependency rather than remembered
+per route. There is no admin role to escalate to and no cross-account read path to protect.</p>
+
+<h3>Redaction</h3>
+<p>Logs and audit details pass through a redactor that removes email addresses, twelve-digit runs
+(Aadhaar-shaped) and ten-digit runs (phone-shaped), while deliberately preserving UUIDs and
+64-character digests, because those are correlation keys and carry no personal data. Document
+content never reaches a log line in the first place.</p>
+
+<h3>The audit trail</h3>
+<p>Events record identity actions (sign-in, sign-out, passkey registration), consent grants and
+withdrawals, document uploads, processing and deletions, profile promotions, confirmations,
+corrections and rejections, draft creation, edits, refreshes, exports and deletions, case
+creation, apply-again and recorded events, and account deletion. Detail fields are non-personal:
+classification, content type, size, purpose, service slug, identifiers, flags. The trail survives
+account deletion with the actor link severed, because the record of how the system was used
+outlives the user's data.</p>
+
+<h3>Storage and failure behaviour</h3>
+<p>Documents sit in a plaintext per-user directory with no backup. Deletion erases the file before
+the row and returns an error if the unlink fails, so the citizen can retry rather than being told
+a document is gone while the file remains. Plaintext-at-rest and no-backup are accepted risks for
+synthetic data, with explicit reopen triggers (chapter 16).</p>
+
+<h3>Supply chain</h3>
+<p>Lockfiles pin the dependency trees; CI runs lint, type checks, tests and a production build on
+every change; static analysis and dependency updates run as separate jobs. Packs and compliance
+documents are reviewed in the same pull request as the code that depends on them.</p>
+
+<h3>How the threat model was built</h3>
+<p>Assets, actors, boundaries, then threats with the control that exists in the code and the
+residue that remains — a control with no file or test behind it counts as missing. The
+facilitator is modelled as an insider, because they are the OS user and there is no admin barrier
+to pretend otherwise. The portal boundary is drawn and left empty, which is the point: the system
+has no connection to it.</p>
+</section>
+
+<!-- ===================== 16 ===================== -->
+<section>
+<h2><span class="num">16</span>Privacy and compliance posture</h2>
+
+<p class="lead">RINAVI is built to be describable to a regulator in a short document and checkable
+by a reviewer in a short session. That is a design goal, not a by-product.</p>
+
+<h3>The framing</h3>
+<p>Under India's Digital Personal Data Protection Act, 2023, the party deciding why and how
+personal data is used is the <em>data fiduciary</em>, and the person it belongs to is the
+<em>data principal</em>. In the pilot the owner is the fiduciary and each volunteer is a
+principal. The four purposes are the consent architecture; the privacy notice is written in plain
+English for a general reader; grievances have a named route; and the retention policy is short
+enough to be true.</p>
+
+<h3>Retention, in one paragraph</h3>
+<p>Keep data while it serves its purpose, and delete it when the citizen says so. In V1 that is
+met by immediate, hard deletion on request rather than by a background schedule: no soft delete,
+no tombstone, no "deleted" flag. The consequence is stated openly — there is no automatic expiry
+for anything a citizen does not delete, and no sweep for leftovers. Retention automation is
+post-gate work.</p>
+
+<h3>What survives an account deletion</h3>
+<p>Only audit events, with the actor link removed and no personal detail inside them. Everything
+else cascades. Rate-limit counters are in memory and vanish on restart; logs are host-dependent
+and will be decided with hosting.</p>
+
+<h3>Portability, stated honestly</h3>
+<p>The account export returns the account record and the consent history. It does not yet include
+documents, profile values or cases. The product says so in the notice rather than letting a
+citizen assume a complete export, and completing it is a precondition for real documents.</p>
+
+<h3>Accepted residuals, and what reopens each</h3>
+<p>These are not oversights waiting to be fixed quietly. Each is accepted for a specific reason
+and each has a trigger that reopens it.</p>
+<table>
+  <tr><th style="width:32%">Residual</th><th style="width:34%">Why acceptable now</th><th>Reopens when</th></tr>
+  <tr><td>Plaintext storage, no encryption at rest</td><td>Specimen documents only, one machine</td><td>A real document, or storage leaves the owner's machine</td></tr>
+  <tr><td>No admin barrier against the facilitator</td><td>One named facilitator who already controls the machine</td><td>Any hosted or multi-operator deployment</td></tr>
+  <tr><td>Audit rows are editable and permanent</td><td>They hold no content; no incident process depends on them yet</td><td>Real documents, or an incident-response requirement</td></tr>
+  <tr><td>No backup, so deletion is also loss</td><td>Fake data, re-creatable by hand</td><td>Any real document, or a promised restore</td></tr>
+  <tr><td>No retention or session sweep</td><td>Small volume, disclosed in the policy</td><td>Real documents</td></tr>
+  <tr><td>Dev sign-in creates accounts for any email</td><td>Disabled by default, refused in production</td><td>Any environment where a participant can reach it</td></tr>
+  <tr><td>Aadhaar survives inside extracted fields</td><td>The pilot's numbers are visibly fake</td><td>Real documents</td></tr>
+  <tr><td>Inline synchronous parsing, single worker</td><td>One participant at a time, supervised</td><td>Concurrent users, or an async worker</td></tr>
+</table>
+
+<h3>Portal permission, as a separate idea</h3>
+<p>"Permission" means three different things, and conflating them is how projects drift. The
+citizen authorises use of their data, per purpose. The portal operator's terms govern what
+software may do with the portal. The law governs what is required. RINAVI records the second in a
+register that assigns each portal an access level: <strong>A0</strong>, no connection at all;
+<strong>A1</strong>, text the citizen copies themselves; <strong>A2</strong>, an assisted fill in
+the citizen's own signed-in browser; <strong>A3</strong>, automated submission.</p>
+<p>Every portal sits at A0. The product's highest level is A1 — a packet — and even that involves
+no network contact. A2 would require an approved register, a security review and a separate
+decision; A3 would require written authorisation from the operator. Nothing has been requested
+from any government body, and nothing here implies permission.</p>
+
+<h3>What is published, and what is held back</h3>
+<p>The repository publishes its compliance drafts: the data map, the retention policy, the
+privacy notice and terms drafts, the recording-consent form, the portal-permission register, a
+redacted threat model, the pilot plan, and a one-page brief for the reviewer. Risk categories are
+public; the detailed residual register and any reviewer identity are held privately. The rule is
+simple: nothing moves from private to public without a redaction pass, and a public version names
+the risk without the exploit.</p>
+
+<div class="box">
+  <p><strong>The standing rule.</strong> Development and demos use synthetic data only. Real
+  identity documents, real Aadhaar numbers and portal credentials must never be sent through the
+  repository, a demo, or a support channel.</p>
+</div>
+</section>
+
+<!-- ===================== 17 ===================== -->
+<section>
+<h2><span class="num">17</span>Deliberate limits</h2>
+
+<p class="lead">A short list of what V1 does not do, kept honest on purpose. Some are permanent
+product decisions; some are gates. The difference matters, and is stated.</p>
+
+<table>
+  <tr><th style="width:27%">Not in V1</th><th style="width:14%">Kind</th><th>Why, and what it means for a user</th></tr>
+  <tr><td>Submitting an application</td><td>Permanent</td><td>The boundary. The citizen files on the portal, always.</td></tr>
+  <tr><td>Storing portal credentials or handling OTP/CAPTCHA</td><td>Permanent</td><td>No field, no flow, no dependency exists to do it.</td></tr>
+  <tr><td>Portal integration or browser extension</td><td>Gated</td><td>Would need an approved register entry and its own security review before any code.</td></tr>
+  <tr><td>OCR and real scans</td><td>Gated</td><td>Images upload but are parked; real proofs usually arrive as photographs, so this is a precondition for real documents.</td></tr>
+  <tr><td>Encryption at rest</td><td>Gated</td><td>Accepted for synthetic data; required before a real document.</td></tr>
+  <tr><td>Retention automation</td><td>Gated</td><td>Deletion is explicit and immediate; nothing expires by itself yet.</td></tr>
+  <tr><td>A complete export</td><td>Gated</td><td>Account and consent history only; documents, values and cases are readable in the app but not exportable.</td></tr>
+  <tr><td>Hosting and TLS</td><td>Gated</td><td>The pilot runs on one machine at loopback; a host becomes a processor and rewrites the threat model.</td></tr>
+  <tr><td>Eligibility decisions</td><td>Permanent</td><td>The portal decides; RINAVI explains and prepares.</td></tr>
+  <tr><td>Advice — legal, financial or tax</td><td>Permanent</td><td>Nothing in the product is advice.</td></tr>
+  <tr><td>Analytics, error reporting, email, notifications</td><td>Gated</td><td>Each would be a new processor and a new outbound path.</td></tr>
+  <tr><td>Admin panel or staff role</td><td>Gated</td><td>No role table exists; the facilitator's power is the OS account's power.</td></tr>
+  <tr><td>Localisation and accessibility design</td><td>Gated</td><td>English-only pilot; a real deployment needs both, and pretending otherwise would be dishonest.</td></tr>
+  <tr><td>More than one service pack</td><td>Gated</td><td>The catalog is built to hold more; review capacity, not architecture, sets the pace.</td></tr>
+  <tr><td>Per-case deletion</td><td>Gated</td><td>Cases leave with the account today; the locker's value is the record, so deleting one needs a deliberate design.</td></tr>
+  <tr><td>A server-side allowlist of purpose strings</td><td>Gated</td><td>The four purposes are a UI convention; the API accepts the string it is given.</td></tr>
+</table>
+</section>
+
+<!-- ===================== 18 ===================== -->
+<section>
+<h2><span class="num">18</span>The decision ladder</h2>
+
+<p class="lead">The order of the gates is itself a design commitment. Each rung makes the next one
+meaningful, and none can be skipped by shipping a feature.</p>
+
+<h3>The rungs</h3>
+<ol>
+  <li><strong>A qualified legal and privacy review of the current documents</strong> — the data map, the retention policy, the notice, the register and the threat model — for the synthetic pilot, plus answers to the open questions the documents raise about consent scope and erasure coverage.</li>
+  <li><strong>Technical preconditions for real documents:</strong> encryption at rest, retention sweeps, a complete export, a host with TLS, and an OCR decision, because most real proofs are photographs.</li>
+  <li><strong>A hosted pilot with real data</strong>, under the same four purposes and the same boundaries, with the threat model rewritten rather than amended.</li>
+  <li><strong>Any portal access at all</strong> — A2 or beyond — which requires an approved register, a security review, and for A3 written authorisation from the operator plus a new architecture decision.</li>
+</ol>
+
+<h3>Why the order cannot be reordered</h3>
+<p>Each rung changes assumptions the previous one made. Hosting adds a processor, a network
+boundary and TLS obligations. Real documents make encryption, retention and OCR meaningful.
+Portal access converts a system with no outbound path into one that needs credential handling,
+which is precisely the thing every prohibition in chapter 5 exists to prevent. Doing the last
+rung first would make the trust claims unverifiable while producing a demo that looks further
+along than it is.</p>
+
+<h3>Triggers that reopen the design</h3>
+<p>Not every change is a feature. These move a boundary, and each one requires the threat model to
+be revisited:</p>
+<ul>
+  <li>A host, domain, TLS terminator or reverse proxy.</li>
+  <li>More than one backend worker, which invalidates in-process rate limiting and inline parsing assumptions.</li>
+  <li>A real document, real Aadhaar number or real portal credential.</li>
+  <li>Encryption at rest, object storage, OCR, email, analytics, error reporting or an AI API — each is a new processor or a new store.</li>
+  <li>A browser extension, portal adapter, or any runtime call to a portal.</li>
+  <li>Authentication changes: passwords, recovery flows, a second factor, or any staff role.</li>
+  <li>A new module or a new route family, which is where cross-account exposure tends to appear.</li>
+  <li>A dependency advisory affecting shipped code, or a re-pinned base image.</li>
+</ul>
+</section>
+
+<!-- ===================== 19 ===================== -->
+<section>
+<h2><span class="num">19</span>Repository and running it</h2>
+
+<p class="lead">One repository, two applications, one catalog, a handful of scripts. Everything
+needed to run the product is checked in.</p>
+
+<h3>Layout</h3>
+<table>
+  <tr><th style="width:22%">Path</th><th>What lives there</th></tr>
+  <tr><td><code>apps/web</code></td><td>The Next.js progressive web app (TypeScript): vault, profile, catalog, drafts, locker, consent.</td></tr>
+  <tr><td><code>backend</code></td><td>The FastAPI application, its modules, Alembic migrations, and the test suites.</td></tr>
+  <tr><td><code>catalog</code></td><td>Versioned service definitions and form templates — data, not code.</td></tr>
+  <tr><td><code>infra/compose</code></td><td>The one-command demo stack: PostgreSQL, backend and web, with every port bound to loopback.</td></tr>
+  <tr><td><code>docs</code></td><td>Architecture decision records, the compliance drafts, evaluation notes, planning records.</td></tr>
+  <tr><td><code>scripts</code></td><td>Bootstrap, development, quality-gate and smoke-test commands.</td></tr>
+</table>
+
+<h3>The three commands that matter</h3>
+<pre>
+scripts/bootstrap.sh    # create the Python environment, install both dependency trees
+scripts/check.sh        # lint, type checks, tests and a production build for both apps
+scripts/dev.sh          # backend on :8000, web on :3000, with dev sign-in enabled
+</pre>
+<p><code>check.sh</code> is the same gate CI runs on every change. It is deliberately one command:
+if a change cannot pass one gate locally, it should not reach a reviewer.</p>
+
+<h3>The demo stack</h3>
+<p><code>infra/compose</code> brings up PostgreSQL, the backend and the web app with a single
+compose command, waits for health, and a smoke script walks the whole citizen flow against it:
+sign in, consent, upload, extraction, promotion, draft, evidence, export, case. The stack is a
+demo, not the pilot: it uses synthetic documents, enables development sign-in so no authenticator
+is needed, and every port is loopback-only.</p>
+
+<h3>Configuration rules</h3>
+<ul>
+  <li>Development sign-in is off unless explicitly enabled, and refused outside development.</li>
+  <li>Session cookies are marked Secure outside development; configuration refuses to start if the two disagree.</li>
+  <li>Limits, session lifetime and CORS origins are configuration, with safe defaults in code.</li>
+  <li>Local development uses SQLite; the compose stack and the pilot use PostgreSQL through the same migrations.</li>
+</ul>
+
+<h3>Contributing safely</h3>
+<p>Changes arrive as small pull requests with a test that fails first, the gate green, and the
+compliance documents updated in the same change if a claim in them became false. Synthetic data
+only, in code, tests, issues and demos. Security findings go through private reporting, not a
+public issue.</p>
+</section>
+
+<!-- ===================== 20 ===================== -->
+<section>
+<h2><span class="num">20</span>How it is evaluated</h2>
+
+<p class="lead">The product is judged by whether a person can finish the packet unaided and trust
+what they see — not by how impressive the demo looks.</p>
+
+<h3>The session design</h3>
+<ol>
+  <li><strong>Interview before demo.</strong> Ask about the participant's last attempt at the same certificate before showing the product, so their account is not anchored by what they just saw.</li>
+  <li><strong>Consent, separately.</strong> Notes, optional recording, and support messages are each their own choice; declining recording does not exclude anyone.</li>
+  <li><strong>The participant drives.</strong> The facilitator does not click. If someone stalls, the stall is recorded before help is offered, because the stall is the finding.</li>
+  <li><strong>Close with the hard questions.</strong> Where would this help, where would it fail, what would you not trust it with, would you use it again, would you pay.</li>
+</ol>
+
+<h3>The four measures</h3>
+<table>
+  <tr><th style="width:26%">Measure</th><th>Definition</th></tr>
+  <tr><td><strong>Unaided completion</strong></td><td>The participant reaches the export screen with no facilitator input.</td></tr>
+  <tr><td><strong>Time on task</strong></td><td>Minutes from sign-in to export, compared against a manual baseline of gathering and filling the same packet by hand.</td></tr>
+  <tr><td><strong>Trust</strong></td><td>Whether they would use it for their own application, and whether they would pay — qualitative, not scored away.</td></tr>
+  <tr><td><strong>The blocker list</strong></td><td>Every stall, misread label and abandoned step, ranked by severity. A session that ends in a blocker is a valid result, not a failure to coach past.</td></tr>
+</table>
+
+<h3>Stop conditions</h3>
+<p>If a real document is offered, the session stops, nothing is uploaded, and anything already
+uploaded for that participant is deleted on request, recorded as an incident without personal
+data. If portal credentials, an OTP or a CAPTCHA are mentioned, RINAVI refuses, explains the
+boundary, and records the request as product feedback — it is a signal about what people want, and
+a reminder of what the product will not do about it.</p>
+
+<h3>What the pilot cannot prove</h3>
+<p>Extraction accuracy on real scans, minutes actually saved on the portal, conversion or
+willingness to pay at scale, and anything about portal behaviour. Those need real documents, which
+need the ladder in chapter 18.</p>
+</section>
+
+<!-- ===================== 21 ===================== -->
+<section>
+<h2><span class="num">21</span>Glossary</h2>
+
+<table>
+  <tr><th style="width:26%">Term</th><th>Meaning in this project</th></tr>
+  <tr><td><strong>Assist-only</strong></td><td>RINAVI prepares; the citizen submits. Not a temporary mode.</td></tr>
+  <tr><td><strong>Purpose</strong></td><td>One of the four consent scopes: documents.processing, profile.storage, applications.preparation, locker.tracking.</td></tr>
+  <tr><td><strong>Vault</strong></td><td>The document store: uploaded files, their metadata and processing status.</td></tr>
+  <tr><td><strong>Extraction</strong></td><td>Deterministic, pattern-based reading of fields from a document, with confidence and a locator.</td></tr>
+  <tr><td><strong>Locator</strong></td><td>Where a value was found — a line reference — so the citizen can verify it.</td></tr>
+  <tr><td><strong>Promotion</strong></td><td>Moving an extracted value into the profile, linked to its source, initially unconfirmed.</td></tr>
+  <tr><td><strong>Stale</strong></td><td>A profile value whose source document has been deleted; kept, but marked as no longer evidenced.</td></tr>
+  <tr><td><strong>Service pack</strong></td><td>A versioned JSON description of one government service: guidance, evidence groups, form fields, declaration.</td></tr>
+  <tr><td><strong>Snapshot</strong></td><td>The pack version and template frozen into a draft, or the packet frozen into a case, so later edits cannot rewrite history.</td></tr>
+  <tr><td><strong>Preflight</strong></td><td>Deterministic validation of a draft before export or completion.</td></tr>
+  <tr><td><strong>Packet</strong></td><td>The copy-ready text RINAVI produces, with a not-a-submission notice; it is never transmitted.</td></tr>
+  <tr><td><strong>Case</strong></td><td>A frozen record of an application the citizen filed: packet, status, reference numbers, timeline.</td></tr>
+  <tr><td><strong>Locker</strong></td><td>The module that holds cases; the product's memory.</td></tr>
+  <tr><td><strong>A0–A3</strong></td><td>Portal access levels: none, citizen-driven copy, assisted fill, automated submission. V1 is A0 for every portal, A1 for its own output.</td></tr>
+  <tr><td><strong>Data fiduciary / principal</strong></td><td>The party deciding why data is used / the person it belongs to, under the DPDP Act, 2023.</td></tr>
+  <tr><td><strong>Residual</strong></td><td>An accepted risk with a stated reason and a trigger that reopens it.</td></tr>
+  <tr><td><strong>Gate</strong></td><td>A precondition — legal, technical or both — that must hold before a class of data or a capability is allowed.</td></tr>
+  <tr><td><strong>Synthetic data</strong></td><td>Obviously fake specimen documents and values, the only kind the system is allowed to hold before the gate.</td></tr>
+</table>
+
+<hr class="soft">
+<p class="small muted">RINAVI is independent and is not affiliated with, endorsed by, or acting for
+any government body, department, or authority. It does not submit applications, store portal
+passwords, or handle OTPs or CAPTCHAs on anyone's behalf. Licensed under the Apache License 2.0;
+third-party dependencies remain under their own licences, as listed in the project manifests.</p>
+</section>
+
+</body>
+</html>
