@@ -144,11 +144,12 @@ require session rotation today.
 
 **Residual:** the parse deadline is PR #67. It bounds time between pages;
 `PdfReader` construction and a single `extract_text()` call remain unbounded, so
-a crafted PDF can still hold a request open up to the page/text caps. Parsing is
-synchronous inside the upload request (readiness ledger item 1), so on a single
-worker a slow document delays every other request — an availability issue that
-also degrades rate-limit fairness. Both reclose with a worker-level timeout and
-an async worker; neither is a confidentiality risk.
+a crafted PDF can still hold a request open up to the page/text caps. Parsing
+still happens inside the upload request, off the event loop in a worker thread
+(readiness ledger item 1), so a slow document ties up a thread and competes for
+CPU with other requests — an availability issue that also degrades rate-limit
+fairness. Both reclose with a worker-level timeout and an async worker; neither
+is a confidentiality risk.
 
 ### 5.4 Leakage through logs, audit and storage
 
@@ -198,8 +199,9 @@ commit — a deliberate choice to keep patch flow, recorded in readiness "Track 
 follow-ups" §4. `npm audit --omit=dev` is 0 on `main`; PR #70 adds the Playwright
 test dependency, whose dev-only advisories do not affect the shipped bundle,
 and the fix is a lockfile bump when patched.
-Container **builds** are covered by the `docker` job in PR #68; until that
-merges, an image regression is caught locally or not at all.
+Container **builds** are covered by the `docker` job added in PR #68, which runs
+on any PR touching `backend/`, `apps/web/`, `infra/compose/` or the workflow
+file. It passed on that PR and is now a required `protect-main` check.
 
 ## 6. Accepted risks (synthetic pilot only)
 
@@ -216,7 +218,7 @@ phase A rather than a launch.
 | 6.5 | No retention or session sweep | Small volume, disclosed in the retention policy | Real documents (item 68) |
 | 6.6 | Dev sign-in creates accounts for any email | Disabled by default, refused in production, and the pilot uses passkeys or the demo stack | Any environment where `RINAVI_DEV_SIGNIN_ENABLED=true` is reachable by a participant |
 | 6.7 | Aadhaar survives in `extracted_fields` | The pilot's Aadhaar values are visibly fake | Real documents (item 35 residual) |
-| 6.8 | Inline synchronous parsing, single worker | One participant at a time, supervised | Concurrent users, or an async worker (ledger item 1) |
+| 6.8 | Parsing inside the upload request (thread-offloaded), single worker | One participant at a time, supervised | Concurrent users, or a job queue with a worker-level kill timeout (ledger item 1) |
 
 ## 7. What this model does not cover
 
