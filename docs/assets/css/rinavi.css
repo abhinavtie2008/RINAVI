@@ -2,6 +2,22 @@
    Colour carries meaning: lavender = identity, mint = income, peach = residence,
    sky = photographs and information, butter = permissions and notices, rose = needs attention. */
 
+/* Fonts are bundled, so pages make no third-party requests. Licences: assets/fonts/OFL-*.txt */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("../fonts/bricolage-grotesque.woff") format("woff");
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  src: url("../fonts/hanken-grotesk.woff") format("woff");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #fbfafe;
   --surface: #ffffff;
@@ -99,7 +115,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 1.35rem; letter-spacing: -0.03em; }
 .brand:hover { color: var(--ink); }
 .brand svg { width: 30px; height: 30px; }
-.nav { display: flex; gap: 4px; flex: 1; overflow-x: auto; scrollbar-width: none; }
+/* The scrollbar is hidden, so a soft shadow on a clipped edge shows there is more to scroll to.
+   The two "local" gradients cover the shadows once the list is scrolled to that end. */
+.nav {
+  display: flex; gap: 4px; flex: 1; overflow-x: auto; scrollbar-width: none;
+  background:
+    linear-gradient(to right, #fbfafe 30%, rgba(251, 250, 254, 0)) left center / 28px 100% no-repeat local,
+    linear-gradient(to left, #fbfafe 30%, rgba(251, 250, 254, 0)) right center / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(75, 63, 160, 0.2), rgba(75, 63, 160, 0)) left center / 14px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(75, 63, 160, 0.2), rgba(75, 63, 160, 0)) right center / 14px 100% no-repeat scroll;
+}
 .nav::-webkit-scrollbar { display: none; }
 .nav a { white-space: nowrap; text-decoration: none; color: var(--ink-2); padding: 7px 14px; border-radius: 999px; font-weight: 500; font-size: 0.95rem; }
 .nav a:hover { background: var(--neutral); color: var(--ink); }

@@ -21,4 +21,7 @@ npm run test -- --run
 npm run build
 cd ..
 
+echo "== demo (docs/) =="
+node scripts/check_demo_sync.mjs
+
 echo "All checks passed."

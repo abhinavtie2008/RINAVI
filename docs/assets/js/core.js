@@ -488,8 +488,10 @@
     return { text: exportText(d) };
   };
   S.completeDraft = (id) => {
+    // Gated on applications.preparation alone, exactly like POST /applications/drafts/{id}/complete.
+    // Whether case creation should also need locker.tracking is open review question 1 in
+    // docs/compliance/data-map.md, so the demo mirrors the API instead of answering it.
     need(PURPOSE.applications);
-    need(PURPOSE.locker); // the packet is frozen into the locker, which tracks it
     const s = state();
     const d = draftRef(id);
     if (validate(d).length) throw new ApiError(409, "Resolve the highlighted issues first.");

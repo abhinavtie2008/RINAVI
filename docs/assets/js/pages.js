@@ -320,7 +320,7 @@
           <div class="drop stack" id="drop">
             <p><strong>Drop a file here</strong> or choose one</p>
             <div class="cluster" style="justify-content:center"><label class="btn btn-soft" for="file">Choose files</label><input id="file" class="sr-only" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.txt"></div>
-            <p class="muted small">PDF, PNG, JPEG or TXT, up to 10 MB. This demo reads text files only.</p>
+            <p class="muted small">PDF, PNG, JPEG or TXT, up to 10 MB. This demo reads text files only. Use made-up or sample documents, never real ones.</p>
           </div>
           <section class="stack-s"><h2 style="font-size:1.3rem">No documents handy? Use a sample</h2>
             <p class="muted small">Synthetic documents for a made-up person. They fill the whole income certificate journey.</p>
@@ -671,7 +671,6 @@
       else if (act === "preview") run(() => { exportText = S.exportDraft(id).text; });
       else if (act === "complete") {
         try {
-          if (!(await ensureConsent(PURPOSE.locker, "Allow and finish"))) return;
           const c = S.completeDraft(id);
           U.go("case.html?id=" + encodeURIComponent(c.id));
         } catch (e) {
@@ -727,7 +726,7 @@
     const id = U.params().get("id");
     const render = () => {
       if (!S.hasConsent(PURPOSE.locker)) {
-        view.innerHTML = backLink("locker.html", "Back to the locker") + U.gate(PURPOSE.locker, "Opening this case needs your permission to track applications.", "Allow application tracking");
+        view.innerHTML = backLink("locker.html", "Back to the locker") + U.gate(PURPOSE.locker, "Your packet is saved. Opening it and keeping notes on what happens next needs your permission to track applications.", "Allow application tracking");
         return;
       }
       let c;
@@ -812,7 +811,7 @@
     const id = U.params().get("id");
     const render = () => {
       if (!S.hasConsent(PURPOSE.locker)) {
-        view.innerHTML = backLink("locker.html", "Back to the locker") + U.gate(PURPOSE.locker, "Opening this packet needs your permission to track applications.", "Allow application tracking");
+        view.innerHTML = backLink("locker.html", "Back to the locker") + U.gate(PURPOSE.locker, "Your packet is saved. Opening it needs your permission to track applications.", "Allow application tracking");
         return;
       }
       let c;
@@ -914,7 +913,7 @@
           </ul></div></section>
         <section class="stack"><h2>About this demo</h2>
           <div class="notice"><strong>Everything here runs in your browser.</strong> This site is static, so there is no server. Your data lives in this browser's local storage and goes nowhere. Use synthetic data only.</div>
-          <ul class="plain"><li>The demo reads <strong>.txt</strong> files. The full app also reads PDFs, and images wait for text recognition.</li><li>Sign-in here is a demo name. The full app uses passkeys.</li><li>Extraction follows simple rules, not AI, and the rules are the same ones the project's backend uses.</li><li>The real RINAVI is independent and is not affiliated with any government body.</li></ul></section>
+          <ul class="plain"><li>The demo reads <strong>.txt</strong> files. The full app also reads PDFs, and images wait for text recognition.</li><li>Sign-in here is a demo name. The full app uses passkeys.</li><li>Extraction follows simple rules, not AI, and the rules are the same ones the project's backend uses.</li><li>This site makes no third-party requests: the fonts are bundled, and there are no analytics, cookies or external scripts. GitHub, which hosts the pages, sees ordinary web request details such as your IP address, as any web host does.</li><li>The real RINAVI is independent and is not affiliated with any government body.</li></ul></section>
         <section class="stack"><h2>Read more</h2>
           <div class="cluster"><a class="btn btn-soft" href="handbook/rinavi-handbook.html">Handbook</a><a class="btn btn-ghost" href="${REPO}" rel="noopener">Source code</a><a class="btn btn-ghost" href="${REPO}/tree/main/docs/compliance" rel="noopener">Compliance notes</a><a class="btn btn-ghost" href="${REPO}/tree/main/docs/architecture" rel="noopener">Architecture decisions</a></div></section>
       </div>`;

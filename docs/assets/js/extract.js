@@ -25,7 +25,9 @@
 
   function isoOrRaw(value, y, m, d) {
     const year = Number(y), month = Number(m), day = Number(d);
-    const dt = new Date(Date.UTC(year, month - 1, day));
+    // setUTCFullYear keeps years 1 to 99 as written; Date.UTC would read them as 19xx.
+    const dt = new Date(0);
+    dt.setUTCFullYear(year, month - 1, day);
     if (year < 1 || dt.getUTCFullYear() !== year || dt.getUTCMonth() !== month - 1 || dt.getUTCDate() !== day) {
       return [value, "low"];
     }
@@ -103,6 +105,10 @@
     });
     return { fields, classification: classify(seen), lines: lines.length };
   }
+
+  // The rule tables are exposed so scripts/check_demo_sync.mjs can compare them with
+  // backend/app/modules/documents/extraction.py. Keep them in step with that file.
+  extract.rules = { PATTERNS, AMOUNT, SCALE_WORD, CURRENCY_PREFIX, PAREN_AMOUNT, ISO_DATE, DAY_FIRST_DATE };
 
   R.extract = extract;
 })();

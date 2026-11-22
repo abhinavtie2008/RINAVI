@@ -52,7 +52,8 @@
         return;
       }
       const dlg = document.createElement("dialog");
-      dlg.innerHTML = `<h3>${U.esc(title)}</h3><p class="muted">${U.esc(body || "")}</p>
+      dlg.setAttribute("aria-labelledby", "dlg-title");
+      dlg.innerHTML = `<h3 id="dlg-title">${U.esc(title)}</h3><p class="muted">${U.esc(body || "")}</p>
         <div class="actions"><button class="btn btn-ghost" value="no">Cancel</button>
         <button class="btn ${danger ? "btn-danger" : ""}" value="yes">${U.esc(confirmLabel || "Confirm")}</button></div>`;
       document.body.appendChild(dlg);
@@ -103,6 +104,12 @@
       <a class="brand" href="${user ? "dashboard.html" : "index.html"}" aria-label="RINAVI home">${LOGO}<span>rinavi</span></a>
       <nav class="nav" aria-label="Main">${items}</nav>
       <div class="bar-right">${right}</div></div></header>`;
+    // On narrow screens the nav scrolls sideways; start with the current page in view.
+    const nav = U.$(".site-header .nav");
+    const current = nav && U.$('[aria-current="page"]', nav);
+    if (current && nav.scrollWidth > nav.clientWidth) {
+      nav.scrollLeft += current.getBoundingClientRect().left - nav.getBoundingClientRect().left - (nav.clientWidth - current.offsetWidth) / 2;
+    }
   };
 
   U.renderFooter = () => {
@@ -160,6 +167,38 @@
     } catch (e) { /* tab storage unavailable */ }
   };
 
+  /* Pages re-render by replacing #view's markup, which drops keyboard focus. Remember what had
+     focus (by id, or by its data- attributes) and give it back to the matching new element. */
+  const attrEsc = (v) => String(v).replace(/["\\]/g, "\\$&");
+  function focusSignature(root) {
+    const el = document.activeElement;
+    if (!el || el === document.body || !root.contains(el)) return null;
+    const sig = { tag: el.tagName.toLowerCase(), id: el.id, label: el.getAttribute("aria-label"), data: [] };
+    for (const a of el.attributes) if (a.name.indexOf("data-") === 0) sig.data.push([a.name, a.value]);
+    return sig;
+  }
+  function restoreFocus(root, sig) {
+    if (!sig) return;
+    let target = sig.id ? root.querySelector(`#${CSS.escape(sig.id)}`) : null;
+    if (!target && sig.data.length) {
+      target = root.querySelector(sig.tag + sig.data.map(([k, v]) => `[${k}="${attrEsc(v)}"]`).join(""));
+    }
+    if (!target && sig.label) target = root.querySelector(`${sig.tag}[aria-label="${attrEsc(sig.label)}"]`);
+    if (target) target.focus({ preventScroll: true });
+  }
+  U.keepFocus = (view) => {
+    const proto = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
+    Object.defineProperty(view, "innerHTML", {
+      configurable: true,
+      get() { return proto.get.call(this); },
+      set(markup) {
+        const sig = focusSignature(this);
+        proto.set.call(this, markup);
+        restoreFocus(this, sig);
+      },
+    });
+  };
+
   /* boot: guard, chrome, then the page controller */
   U.boot = () => {
     const body = document.body;
@@ -172,6 +211,7 @@
     U.renderHeader(page);
     U.renderFooter();
     const view = U.$("#view");
+    U.keepFocus(view);
     const controller = R.pages && R.pages[page];
     if (!controller) return;
     try {

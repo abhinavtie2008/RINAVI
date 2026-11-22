@@ -212,7 +212,8 @@ portal, by the citizen.
 ## 7. Transfers, hosting and retention
 
 - **Storage location:** the facilitator's machine for the pilot; nothing is
-  hosted yet (readiness decision 7).
+  hosted yet (readiness decision 7). The one hosted artifact is the static demo
+  site in §10, which holds no pilot data.
 - **Cross-border transfer:** none today. Host selection is unrecorded, so this
   section must be rewritten before any host is chosen.
 - **Retention:** per-table above; the policy and its gaps are in
@@ -242,3 +243,21 @@ field, no OTP field, no CAPTCHA handling, no portal session, no cookies for any
 government site. No location, contacts, device identifiers, advertising IDs or
 behavioural analytics. No third-party SDK in the web app. No OCR service and no
 inference API. See `pilot-plan.md` §6 for the operational form of this list.
+
+## 10. Public demo site (static, GitHub Pages)
+
+The `docs/` folder also holds a static demo of the web UI (`docs/index.html`,
+`docs/assets/`), published with GitHub Pages. It is **not** the pilot
+deployment, and §2–§9 do not describe it. It is recorded here because a public
+URL is a surface a reviewer will ask about.
+
+| Question | Answer |
+|---|---|
+| What does it store? | Whatever a visitor adds, in that visitor's own browser: `localStorage` key `rinavi.demo.v1` and `sessionStorage` keys `rinavi:suggested-links:*`. Nothing is sent to a server; the demo code contains no `fetch`, `XMLHttpRequest` or `sendBeacon`. |
+| Who controls it? | The visitor. The account page exports everything as JSON and erases it all. |
+| What data is meant to go in? | Synthetic only. The landing page, footer, trust page and vault say so, and the vault offers three made-up sample documents. |
+| Third-party requests? | None. The two typefaces are bundled in `docs/assets/fonts/` under the SIL OFL 1.1, and there are no analytics, cookies or external scripts. |
+| What does the host see? | GitHub, as the host, receives ordinary request metadata (IP address, user agent, path) for each visit, as any web host does. RINAVI has no say in those logs and has not treated this as a processor relationship because no pilot data is involved; the reviewer may see it differently. |
+| Aadhaar? | An Aadhaar line in an uploaded text file is replaced with `[not kept by RINAVI]` before anything is stored or shown. |
+| Where does it differ from the backend? | It reads `.txt` only; sign-in is a display name, not a passkey. Completing a draft needs `applications.preparation` alone, as the API does (§4, question 1), and opening the resulting case then asks for `locker.tracking`. |
+| How is it kept in step with the code? | `scripts/check_demo_sync.mjs`, run by `scripts/check.sh` and by CI, compares the demo's service pack and extraction rules with `catalog/` and `extraction.py`, and runs the same fixtures through both extractors. It does not check the demo's consent or locker logic. |
