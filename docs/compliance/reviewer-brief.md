@@ -18,7 +18,9 @@ credentials, no mobile numbers. One machine, loopback ports, plaintext disk, no 
 chosen, **no portal access at all** (every register row is A0). Adult supervised
 volunteers, one at a time, recorded only under separate consent. Never: submission,
 OTP or CAPTCHA handling, portal calls, outbound transfer of user data, or any claim
-of government affiliation.
+of government affiliation. A static, synthetic-only demo of the web UI is also
+published from `docs/` on GitHub Pages; it stores nothing outside the visitor's own
+browser (`data-map.md` §10).
 
 ## Three questions we cannot answer from inside the repository
 
