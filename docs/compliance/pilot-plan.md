@@ -41,7 +41,7 @@ product; it does not process anyone's actual application.
 | Duration | 2–3 weeks, sessions of 25–30 minutes |
 | Channels | Personal network; an NGO, community group or college; WhatsApp groups and social media |
 | Mix to aim for | Self-applied vs agent-assisted; comfort with English; urban and semi-urban |
-| Language | English only — the UI is not localised, and the script must say so |
+| Language | English is the language of record; a Hindi comprehension layer (ADR-0006) lands before the first non-English session, and the script must say which one is in use |
 | Exclusion | Anyone who wants to process a real application during the pilot |
 
 Recruitment material must not promise approval, faster processing or government
@@ -137,8 +137,9 @@ This plan is superseded when **all** of the following hold:
 2. The full WP2 review (DPDP scope) is complete for real documents.
 3. Encryption at rest, retention sweeps, complete export and a host with TLS
    have landed (checklist items 64, 68, 65, 58, 97, 98).
-4. A decision on OCR and localisation is recorded, because most real proofs
-   arrive as photographs and the UI is English-only.
+4. The localisation decision is recorded (ADR-0006: a Hindi comprehension layer
+   over an English record); the OCR decision is still owed, because most real
+   proofs arrive as photographs.
 
 Until then, any real-document request is out of scope and is handled by §8.
 
