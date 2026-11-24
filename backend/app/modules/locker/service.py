@@ -44,16 +44,24 @@ async def create_case(
     return case
 
 
-async def get_case_by_draft(
-    db: AsyncSession, user: User, draft_id: uuid.UUID
+async def get_case_by_user_and_draft(
+    db: AsyncSession, user_id: uuid.UUID, draft_id: uuid.UUID
 ) -> ApplicationCase | None:
+    # Takes the id rather than the user row so a caller can look the case up
+    # after a rollback expired its loaded instances.
     result = await db.execute(
         select(ApplicationCase).where(
-            ApplicationCase.user_id == user.id,
+            ApplicationCase.user_id == user_id,
             ApplicationCase.draft_id == draft_id,
         )
     )
     return result.scalar_one_or_none()
+
+
+async def get_case_by_draft(
+    db: AsyncSession, user: User, draft_id: uuid.UUID
+) -> ApplicationCase | None:
+    return await get_case_by_user_and_draft(db, user.id, draft_id)
 
 
 async def list_cases(db: AsyncSession, user: User) -> list[ApplicationCase]:

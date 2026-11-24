@@ -31,6 +31,9 @@ async def test_responses_carry_security_headers() -> None:
     assert response.headers["x-frame-options"] == "DENY"
     assert response.headers["referrer-policy"] == "no-referrer"
     assert "geolocation=()" in response.headers["permissions-policy"]
+    # Every API response can hold personal data; none may be reused from a
+    # shared cache or the browser's back/forward store.
+    assert response.headers["cache-control"] == "no-store"
 
 
 async def test_hsts_is_not_sent_outside_production() -> None:

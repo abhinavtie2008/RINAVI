@@ -14,9 +14,42 @@ export class ApiError extends Error {
   }
 }
 
+// FastAPI puts a human-readable reason in `detail`: a string for a deliberate
+// refusal ("Active consent required for documents.processing") or an array of
+// validation objects for a rejected body. The UI showed only "API request
+// failed: 403" before, which told the citizen nothing they could act on.
+function errorDetail(payload: unknown): string | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const detail = (payload as { detail?: unknown }).detail;
+  if (typeof detail === "string" && detail.trim() !== "") return detail;
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((entry) =>
+        typeof entry === "object" && entry !== null
+          ? (entry as { msg?: unknown }).msg
+          : undefined,
+      )
+      .filter((msg): msg is string => typeof msg === "string" && msg !== "");
+    if (messages.length) return messages.join("; ");
+  }
+  return null;
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    throw new ApiError(response.status, `API request failed: ${response.status}`);
+    // The error body is the only place the reason lives, and it may not be
+    // JSON at all (a proxy or an unexpected crash). Never fail while reading it.
+    let payload: unknown = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+    const detail = errorDetail(payload);
+    throw new ApiError(
+      response.status,
+      detail ?? `API request failed: ${response.status}`,
+    );
   }
   if (response.status === 204) {
     return undefined as T;
