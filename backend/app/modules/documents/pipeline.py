@@ -4,6 +4,7 @@ import logging
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.redaction import REDACTED
 from app.modules.documents.extraction import (
     UNSUPPORTED,
     classify,
@@ -89,11 +90,16 @@ async def process_document(
         delete(ExtractedField).where(ExtractedField.document_id == document.id)
     )
     for candidate in candidates:
+        # Classification above still sees the field key, but the number itself
+        # has no use in the database: Aadhaar is entered only at the portal, and
+        # nothing downstream reads this value. Store a marker so the fact that
+        # the line was recognised survives without the twelve digits at rest.
+        value = REDACTED if candidate.field_key == "aadhaar_number" else candidate.value
         db.add(
             ExtractedField(
                 document_id=document.id,
                 field_key=candidate.field_key,
-                value=candidate.value,
+                value=value,
                 confidence=candidate.confidence,
                 locator=candidate.locator,
             )
