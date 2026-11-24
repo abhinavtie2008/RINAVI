@@ -63,10 +63,12 @@ your account, for that.
 ### 5. What we never ask for, and what we never promote
 
 - Your real Aadhaar number as a profile field. If a document you upload happens
-  to contain one, we keep it only as part of that document's stored record: we
-  do not add it to your profile, show it in a draft, put it in your packet or
-  include it in an export. Delete the document to erase it. The pilot uses
-  SPECIMEN numbers only.
+  to contain one, we recognise the line so the document can be sorted, but we
+  do not keep the number: it is replaced with a marker before anything is
+  saved. We do not add it to your profile, show it in a draft, put it in your
+  packet or include it in an export. The number is still inside the file you
+  uploaded, so delete the document to erase it. The pilot uses SPECIMEN numbers
+  only.
 - Portal passwords, OTP codes or CAPTCHA answers.
 - Your location, contact list, photos or files other than the two you upload.
 - Advertising or tracking identifiers. There is no analytics or advertising

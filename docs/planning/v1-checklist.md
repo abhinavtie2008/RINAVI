@@ -65,7 +65,7 @@ Status legend:
 - [x] **13. Audit log with redaction** — document contents and PII never reach logs; SHA-256 digests preserved. *Status: DONE, with a gap fixed on PR #54:* consent grant/withdraw and identity sign-in/out/passkey routes emitted no audit events; `9c081a5` adds them with tests; merged via PR #54 (`059f678`, item 78).
 - [x] **14. Consent, deny-by-default** — four purposes (`documents.processing`, `profile.storage`, `applications.preparation`, `locker.tracking`) enforced as dependencies on the routes that need them. *Status: DONE.*
 - [x] **15. Consent withdrawal** — `/consent` page lists all four purposes and withdraws an active grant; re-grant withdraws prior active grants. *Status: DONE.*
-- [x] **16. Authentication** — dev sign-in (dev only), passkey (WebAuthn) sign-up and sign-in, secure session cookie with TTL, sign-out. *Status: DONE.*
+- [x] **16. Authentication** — dev sign-in (dev only), passkey (WebAuthn) enrolment for an existing account and passkey sign-in, secure session cookie with TTL, sign-out. *Status: DONE. Note:* no route creates an account: `register/begin` requires a signed-in user, so passkey "sign-up" here means adding a passkey to an account, not opening one.*
 - [x] **17. Consent purpose validation** — an empty `purpose` string was accepted (201) because the schema had `max_length` but no `min_length`. *Status: DONE — PR #54 (`642e140`) merged (`059f678`, 2026-11-17): `strip_whitespace=True, min_length=1`; tests reject both `""` and `"   "`.*
 
 ---
@@ -75,7 +75,7 @@ Status legend:
 ### 3.1 identity
 
 - [x] **18. Session management** — cookie session, `get_current_user` dependency, `/auth/me`. *Status: DONE.*
-- [x] **19. Passkey flows** — sign-up, login begin/finish, user verification required. *Status: DONE. Note:* the pending-challenge store is per-process — fine for a single worker.*
+- [x] **19. Passkey flows** — passkey registration (enrolment, `register/begin` requires a session), login begin/finish, user verification required. *Status: DONE. Note:* the pending-challenge store is per-process and capped at 10,000 entries — fine for a single worker. There is no account-creation route in V1.*
 - [ ] **20. Account export completeness** — `/auth/export` returns only `user` + consent records; document metadata and profile values are missing, so "take your data with you" is not yet true. *Status: DEFERRED — accepted as a pilot limitation; trigger: before the public promise "export your data" is made.*
 
 ### 3.2 consent
@@ -103,7 +103,7 @@ Status legend:
 ### 3.5 profile
 
 - [x] **34. Value lifecycle** — promote from documents, confirm / correct / reject, stale marking when a source document is deleted. *Status: DONE.*
-- [x] **35. A1 — Aadhaar portal-only** — restricted fields stay out of profiles, drafts, packets, logs and UI (extraction/redaction untouched): `app/core/privacy.py`, profile read-filters, applications snapshot/value/validation/export/packet filters, vault `/fields` filter, fields with `format: "aadhaar"` hidden even without a profile binding (commit `5747e82`), UI label removed, and the **irreversible Alembic migration** `b7e4f1a2c9d3` deleting legacy `aadhaar_number` profile rows. *Status: DONE — PR #52 merged (`5343719`, 2026-11-16). Verified: `restricted_field` → 422; no phantom required-field issues; 7 new tests (225 total); CI green; web app has zero Aadhaar references. Known residual: legacy draft JSON may retain restricted values written before A1 — never exposed and not clearable via the API; accepted for the synthetic pilot (no current pack emits an Aadhaar field), tracked at item 81.*
+- [x] **35. A1 — Aadhaar portal-only** — restricted fields stay out of profiles, drafts, packets, logs and UI (extraction/redaction untouched): `app/core/privacy.py`, profile read-filters, applications snapshot/value/validation/export/packet filters, vault `/fields` filter, fields with `format: "aadhaar"` hidden even without a profile binding (commit `5747e82`), UI label removed, and the **irreversible Alembic migration** `b7e4f1a2c9d3` deleting legacy `aadhaar_number` profile rows. *Status: DONE — PR #52 merged (`5343719`, 2026-11-16). Verified: `restricted_field` → 422; no phantom required-field issues; 7 new tests (225 total); CI green; web app has zero Aadhaar references. Known residual: legacy draft JSON may retain restricted values written before A1 — never exposed and not clearable via the API; accepted for the synthetic pilot (no current pack emits an Aadhaar field), tracked at item 81. Follow-up (PR #89): `documents/pipeline.py` now stores the literal marker `[REDACTED]` instead of the digits, so the earlier residual "extraction still writes Aadhaar to `extracted_fields`" is closed; the number remains only in the uploaded blob and in legacy draft JSON (item 81).*
 - [ ] **36. Aadhaar Verhoeff checksum** — extraction accepts any 12 digits. *Status: DEFERRED — moot under A1 (values never reach profiles); trigger: if Aadhaar handling ever returns to RINAVI.*
 
 ### 3.6 catalog
@@ -173,7 +173,7 @@ With reopen triggers:
 - [ ] **69. Async worker / threadpool offload** — trigger: real documents or slow uploads (item 33).
 - [ ] **70. OCR implementation** — trigger: image-evidence requirement (item 32).
 - [ ] **71. Pagination, fetch timeouts, delete confirmations, new features** — trigger: named by a future work package.
-- [ ] **72. Aadhaar extraction/redaction changes** — explicitly untouched; A1 only removes propagation, and the Verhoeff checksum stays deferred (item 36).
+- [ ] **72. Aadhaar extraction/redaction changes** — A1 only removed propagation; the Verhoeff checksum stays deferred (item 36). *Partly done (PR #89, PR #95):* the extracted value is stored as `[REDACTED]`, and grouped 12-digit runs are caught by redaction; extraction and the checksum item are otherwise unchanged.
 - [ ] **81. Legacy draft JSON scrub** — drafts written before A1 may retain restricted values in `application_drafts.values`; they are never exposed and cannot be cleared via the API. Accepted for the synthetic pilot (no current pack emits an Aadhaar field). Trigger: real documents or an Aadhaar-bearing pack → add an irreversible scrub migration.
 
 ---

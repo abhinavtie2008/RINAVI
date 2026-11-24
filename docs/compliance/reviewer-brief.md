@@ -1,7 +1,7 @@
 # Reviewer brief — WP2 legal/privacy review
 
-**To:** the qualified legal/privacy reviewer engaged by the pilot owner ·
-**From:** the pilot owner · **Date:** 2026-11-19 · **Against:** `main` @ `ac8aa27`
+**To:** the qualified legal/privacy reviewer (not yet engaged) ·
+**From:** the pilot owner · **Date:** 2026-11-23 · **Against:** `main` @ `5c255e7`
 
 The reviewer's identity and engagement terms are held privately, not in this
 repository; the note in `docs/compliance/README.md` records what is public and
@@ -65,7 +65,7 @@ each names what reopens it.
 | 6.4 | No backup, so deletion is also loss | Any real document, or a promised restore |
 | 6.5 | No retention or session sweep | Real documents (item 68) |
 | 6.6 | Dev sign-in creates accounts for any email | Any environment where a participant can reach it |
-| 6.7 | Aadhaar survives in `extracted_fields` | Real documents (item 35 residual) |
+| 6.7 | An Aadhaar line is still recognised, though the value is stored as `[REDACTED]` | Real documents (item 35 residual) |
 | 6.8 | Parsing inside the upload request (thread-offloaded), single worker | Concurrent users, or a job queue with a worker-level timeout |
 
 **Outside this review:** hosting, TLS, proxy, WAF; encryption at rest; object

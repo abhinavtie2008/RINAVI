@@ -48,7 +48,7 @@ want to test.
 |---|---|---|---|---|---|---|
 | R-01 | e-District Delhi — Income Certificate | Revenue Department, Government of NCT of Delhi (e-District programme) | `https://edistrict.delhigovt.nic.in/` | **A0** for the portal; the citizen acts at **A1** using RINAVI's text | Nothing. RINAVI never opens a connection to this host. The citizen registers with their own mobile number, fills the form, declares and submits in their own browser | None. Reading a public page and quoting a service's steps into a pack is the only contact, and it happened at authoring time, not at runtime |
 | R-02 | Revenue Department, GNCTD — Income Certificate information page | Revenue Department, GNCTD | `https://revenue.delhi.gov.in/revenue/income-certificate` | **A0** | Cited as an official source in `catalog/services/edistrict/income-certificate/service.json`. No runtime access | None for citation; confirm the page may be quoted and linked (§8) |
-| R-03 | UIDAI / Aadhaar | UIDAI | — | **A0** | No Aadhaar number is stored outside `extracted_fields`, and none is promoted, drafted, exported or packed (A1, item 35) | None; Aadhaar is entered only at the portal by the citizen |
+| R-03 | UIDAI / Aadhaar | UIDAI | — | **A0** | No Aadhaar number is stored: an uploaded line is recognised and the value is written as `[REDACTED]`, and nothing is promoted, drafted, exported or packed (A1, item 35) | None; Aadhaar is entered only at the portal by the citizen |
 | R-04 | DigiLocker | MeitY / NeGD | — | **A0** | Not integrated. No OAuth client, no fetcher | **Would require partner approval** — item 89, blocked on it |
 | R-05 | National Scholarship Portal (NSP) | Ministry of Education | — | **A0** | Not in the catalog; no pack exists | Not applicable until a pack exists — item 86 |
 | R-06 | CPGRAMS | DARPG | — | **A0** | Not in the catalog; no pack exists | Not applicable until a pack exists — item 86 |
@@ -76,6 +76,14 @@ Steps 1 and 2 are offline. Step 3 involves no RINAVI component: there is no
 extension, no injected script, no bookmarklet, no proxy. Step 4 stores what the
 citizen tells us, typed by hand.
 
+**Open source question — attestation wording.** Step 1 says "self-attested".
+The Revenue Department information page (R-02) instead says "All documents needs
+to be attested by Gazetted Officer", while some 2018 e-District material
+describes online self-attestation. The pack is deliberately unchanged until the
+current portal instructions are checked: whichever answer holds must land in the
+pack, the demo copy and this register together, and the pilot script must not
+quote either wording until then.
+
 **Reference numbers are citizen-entered data, never fetched.** `application_cases.reference_number`
 and `acknowledgement_number` come from a request body the citizen fills
 (`locker` module); no code parses a portal page or calls a portal endpoint to
@@ -96,7 +104,7 @@ distinction the review needs: an absent field cannot leak.
 | P5 | Never submits an application or declaration | No `execution` module, no outbound HTTP client in the runtime dependency set, no submission route; the declaration is a local boolean the citizen sets | ADR-0003; `pyproject.toml` (runtime deps only); `applications/routes.py` |
 | P6 | Never scrapes a portal | No HTML parser for portal pages, no crawling, no scheduled fetch; nothing runs on a timer at all | No scheduler or worker package exists (readiness ledger item 1/6) |
 | P7 | Never bulk-collects other people's applications | Every query is scoped by the session's `user_id`; there is no admin or staff role, and no cross-account read route | `data-map.md` §6; `tests/integration/test_locker_api.py`, `test_documents_api.py` |
-| P8 | Never stores an Aadhaar number outside the parsed document | Aadhaar is filtered from profile reads, promotions, draft snapshots, values, validation, export, packets and the `/fields` response | `core/privacy.py`, PR #52; residual in `data-map.md` §3.3 |
+| P8 | Never stores an Aadhaar number | The value of an `aadhaar_number` line is written as `[REDACTED]`, and Aadhaar is filtered from profile reads, promotions, draft snapshots, values, validation, export, packets and the `/fields` response | `core/privacy.py`, `documents/pipeline.py`, PR #52, PR #89; residual in `data-map.md` §3.3 |
 
 P5 deserves a note, because it is the claim the whole register rests on. The
 backend has no HTTP client in its runtime dependencies — `httpx` appears only in

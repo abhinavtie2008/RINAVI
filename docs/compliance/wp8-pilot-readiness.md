@@ -105,11 +105,13 @@ unowned gaps.
    filters every API path, omits restricted bindings from new draft snapshots,
    rejects field updates for a restricted binding, and deletes legacy
    `profile_values` rows with migration `b7e4f1a2c9d3`. The extraction code
-   still reads and stores Aadhaar in `extracted_fields`; the owner-only `/fields`
-   response hides it, and audit logging already redacts 12-digit values. The
-   checksum item is moot because the portal is the only entry point. This
-   reopens if extracted fields are exposed beyond `/fields`, included in an
-   export, or a pack requires Aadhaar as an input.
+   still recognises an Aadhaar line so the document classifies, but
+   `documents/pipeline.py` now stores the literal marker `[REDACTED]` instead
+   of the digits; the owner-only `/fields` response hides the row, and audit
+   logging already redacts 12-digit values. The checksum item is moot because
+   the portal is the only entry point. This reopens if extracted fields are
+   exposed beyond `/fields`, included in an export, or a pack requires Aadhaar
+   as an input.
 6. **The minimatch advisory is cleared.** PR #50 moves `eslint` to 10.15 and
    forces `@typescript-eslint/typescript-estree` onto `minimatch` 11 through a
    scoped override; the override did not break lint. `npm audit` reports 0
@@ -131,11 +133,19 @@ unowned gaps.
 | 3 | PostgreSQL cutover | Parity cleared (PR #64: `asyncpg`, `backend-postgres` CI job, 268 passed against PostgreSQL 16, Alembic verified); the production cutover itself stays deferred per ADR-0002. | Real documents or a chosen pilot host; the cutover must land before either. |
 | 4 | Compliance resolver | Assist-only in V1; resolver is post-pilot and additive; portal decides eligibility. | A resolver is scheduled; it must stay advisory and needs a new ADR or an ADR-0003 update. |
 | 5 | Export completeness | Accept user + consent records as the pilot export. | RINAVI promises "take your data with you" or accepts real documents; then document metadata and profile values must be included. |
-| 6 | Aadhaar handling | Portal-only. A1 cleared profile, draft, packet and UI propagation; legacy profile rows are deleted; extraction remains but is hidden from the API; checksum is moot. | Aadhaar becomes a pack input or extracted rows are exposed beyond `/fields`. |
+| 6 | Aadhaar handling | Portal-only. A1 cleared profile, draft, packet and UI propagation; legacy profile rows are deleted; extraction still recognises the line but stores `[REDACTED]`, never the digits; checksum is moot. | Aadhaar becomes a pack input, extracted rows carry the number again, or they are exposed beyond `/fields`. |
 | 7 | Deployment topology | App images and a working compose demo stack exist (PR #65); host selection stays deferred; single worker with `memory://` rate limits. | Pilot launch; a host must be chosen and the app deployed before launch. |
 | 8 | OCR scope | Accept PDF/TXT only; the pilot script must say image uploads are unsupported. | Image evidence is required; OCR then enters scope. |
 | 9 | Concurrent workers | Accept a single worker with `memory://` rate-limit storage. | Multi-worker or autoscaling; a shared rate-limit backend is required. |
 | 10 | Dependency advisory | Cleared by the eslint 10.15 + scoped `minimatch` 11 override; no fallback was needed. | The override is removed or a new advisory affects shipped code. |
+
+**Dependency lock.** `backend/requirements.lock` pins every runtime and dev
+requirement with hashes for Python 3.12+, resolved from `backend/pyproject.toml`
+with `uv pip compile pyproject.toml --extra dev --python-version 3.12 --universal
+--generate-hashes`. `pyproject.toml` stays the source of truth; refresh the lock
+in the same commit as any dependency change. CI still installs from
+`pyproject.toml`, so the next step is to install from the lock and add a
+freshness check — recorded here rather than wired in untested.
 
 ## Pilot phase A artefacts
 
@@ -160,11 +170,11 @@ conditional on that review, so real documents and any hosted pilot stay blocked.
 
 What the mapping surfaced, for the reviewer rather than for a code change:
 
-1. **Aadhaar is still written to `extracted_fields`.** A1 stops it reaching a
-   profile, draft, packet, export or the `/fields` response, but the extracted
-   value is stored and readable with database access. Fine for SPECIMEN
-   numbers; needs a decision (drop on write, or encrypt) before any real
-   document.
+1. **Aadhaar is recognised but no longer written.** `documents/pipeline.py`
+   stores `[REDACTED]` for the `aadhaar_number` field instead of the digits, so
+   a database reader sees that the line existed but not its value. The field
+   key still classifies the document as identity. Reopens if a pack needs the
+   number or a reader starts depending on the stored value.
 2. **Two consent-scope questions.** `POST /applications/drafts/{id}/complete`
    snapshots draft values and evidence under `applications.preparation` alone;
    `apply-again` requires both `locker.tracking` and `applications.preparation`.
@@ -216,6 +226,26 @@ owns it where no reopen condition applies.
    manually (`docker volume rm compose_postgres_data`) once its data is
    unwanted. Reopens if the old compose project is ever restarted or the
    volume reappears on this machine.
+6. **PDF parsing has a soft, not hard, wall-clock bound.**
+   `extract_text_from_pdf` checks a 20-second deadline between pages and
+   returns the text read so far, so a single hostile page can still outlast
+   it. Uploads run inside the request on one worker
+   (threat-model.md §6.8). A hard bound needs a separate process or a job queue
+   that can be killed; until then the page and text limits bound the work and
+   the pilot is supervised. Reopens with concurrent users, a real document set
+   or a job queue.
+7. **No reverse proxy, so no proxy-level timeouts.** The compose stack exposes
+   the backend and web servers directly; the only client-side bounds are the
+   web app's 30-second request and 120-second upload timeouts
+   (`apps/web/src/lib/api.ts`). A host with a proxy must set read/send
+   timeouts at least as long as those, and the threat model must be redone
+   (review trigger 1). Reopens at host selection.
+8. **GitHub Pages publishes the whole `docs/` tree, not just the demo.**
+   `docs/index.html` and `docs/assets/` are the static demo, but the same site
+   also serves this readiness document, the pilot plan, the handbook and the
+   dated planning snapshot. They contain no pilot data, but they are public and
+   some are dated; treat publication of anything under `docs/` as publication
+   to the internet (`data-map.md` §10).
 
 ## What this pass did not verify
 

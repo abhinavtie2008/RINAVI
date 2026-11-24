@@ -17,9 +17,10 @@ an oversight — see §2.
 
 Three facts in the current build force this shape:
 
-1. A draft cannot be completed without **two evidence documents** (identity and
-   income). The pack's residence group has an empty `accepted_classifications`
-   list, so it accepts any processed document; the flow links the income
+1. A draft cannot be completed without **three evidence groups** (identity,
+   residence and income). The residence group accepts `residence` and
+   `identity` documents — an Aadhaar line carries the address, and extraction
+   classifies such a document as identity — so the flow links the identity
    document there as well. Profile values can only be created by promoting a
    document.
 2. Images are parked as `needs_attention` because **OCR is not implemented**, so
