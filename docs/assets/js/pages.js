@@ -449,7 +449,7 @@
       }
       const values = S.listProfile();
       const docs = S.listDocuments().filter((d) => d.status === "processed" && d.fields.length);
-      view.innerHTML = `${head("Profile", "Every value keeps its source. Confirm what is right, correct what is not, and remove what you don't want. Only confirmed values fill a draft.")}
+      view.innerHTML = `${head("Profile", "Values show where they came from until you correct them. Confirm what is right, correct what is not, and remove what you don't want. Only confirmed values fill a draft.")}
         <div class="stack-l">
           ${docs.length ? `<section class="stack-s"><h2 style="font-size:1.3rem">Add values from a document</h2>
             <div class="list-panel"><ul class="list">${docs.map((d) => `<li class="row"><div class="row-main"><a class="row-title" href="document.html?id=${encodeURIComponent(d.id)}">${esc(d.original_filename)}</a><span>${U.chip(L.classification[d.classification], H.classification[d.classification])}</span></div>
@@ -460,7 +460,7 @@
               return `<li class="row" data-id="${esc(v.id)}">
                 <div class="row-main"><span class="muted small">${esc(label)}</span><span class="row-title">${esc(v.value)}</span>
                   <span class="cluster">${U.chip(L.profileStatus[v.status], H.profileStatus[v.status], true)}${v.confidence === "low" && v.status === "unconfirmed" ? U.chip("Low confidence", "h-butter") : ""}${v.corrected ? U.chip("Corrected by you", "h-neutral") : ""}
-                  <span class="muted small">${v.status === "stale" ? esc("Source changed: " + (v.stale_reason || "source document deleted")) : "From " + esc(v.source_locator)}</span></span>
+                  <span class="muted small">${v.status === "stale" ? esc("Source changed: " + (v.stale_reason || "source document deleted")) : (v.source_locator ? "From " + esc(v.source_locator) : "Added by you")}</span></span>
                   ${correcting === v.id ? `<form class="inline-form" data-form="correct" data-id="${esc(v.id)}" style="margin-top:8px"><input type="text" aria-label="Correct ${esc(label)}" value="${esc(v.value)}" maxlength="500"><button class="btn btn-sm" type="submit">Save</button><button class="btn btn-ghost btn-sm" type="button" data-act="cancel">Cancel</button></form>` : ""}</div>
                 <div class="row-actions">${v.status === "unconfirmed" ? `<button class="btn btn-sm" data-act="confirm" data-id="${esc(v.id)}">Confirm</button>` : ""}
                   <button class="btn btn-ghost btn-sm" data-act="correct" data-id="${esc(v.id)}">Correct</button>
@@ -906,7 +906,7 @@
         <section class="stack"><h2>How you stay in control</h2>
           <div class="list-panel"><ul class="list">
             <li class="row"><div class="row-main"><span class="row-title">Permissions are off until you allow them</span><span class="muted">Four purposes, each asked for separately, each withdrawable at any time.</span></div>${U.chip("Consent", "h-butter", true)}</li>
-            <li class="row"><div class="row-main"><span class="row-title">Every value shows its source</span><span class="muted">If the source document is deleted, the value is marked for a re-check.</span></div>${U.chip("Provenance", "h-lav", true)}</li>
+            <li class="row"><div class="row-main"><span class="row-title">Values show their source until you correct them</span><span class="muted">If the source document is deleted, an untouched value is marked for a re-check; a value you corrected yourself is kept.</span></div>${U.chip("Provenance", "h-lav", true)}</li>
             <li class="row"><div class="row-main"><span class="row-title">Erasure always works</span><span class="muted">Deleting a document or your account works even after permissions are withdrawn.</span></div>${U.chip("Erasure", "h-rose", true)}</li>
             <li class="row"><div class="row-main"><span class="row-title">The activity log is redacted</span><span class="muted">It records what happened, never document contents or personal details.</span></div>${U.chip("Audit", "h-sky", true)}</li>
             <li class="row"><div class="row-main"><span class="row-title">Aadhaar stays on the portal</span><span class="muted">Aadhaar numbers never enter profiles, drafts, packets or logs.</span></div>${U.chip("Restricted", "h-peach", true)}</li>
