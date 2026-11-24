@@ -93,6 +93,17 @@ A `confirmed` value has no per-value delete route of its own; deleting its
 source document marks it `stale` (after which reject removes it), and account
 deletion removes it regardless.
 
+A correction makes the value the citizen's own rather than the document's:
+`POST /profile/values/{id}/correct` clears `source_document_id`,
+`source_locator` and `confidence`, records the old value in
+`correction_history`, and clears `stale_reason`. A corrected value therefore
+survives deletion of the document it was read from, and it is the only profile
+value with no provenance pointer — by design, because the citizen is now the
+source. The cost is recorded rather than hidden: the pointer to the document a
+corrected value was read from is not kept — `correction_history` holds the old
+value and the time, and the `profile.value_corrected` audit event holds the
+field key, so the link back to the source document is gone by design.
+
 ### 3.5 Preparation and tracking
 
 | Table | Holds | Personal data | Retention |
