@@ -38,7 +38,7 @@ Ordered by what the pilot would have to stop for.
 | # | Asset | Where | Impact if disclosed | Impact if lost or altered |
 |---|---|---|---|---|
 | A1 | Document bytes | `<storage_dir>/<user_id>/<document_id>.bin`, plaintext | Total for that participant: the whole document | Unrecoverable; no backup |
-| A2 | Extracted field values, including `aadhaar_number` when present | `extracted_fields` | High: structured identity data, and the one place Aadhaar survives | Re-derivable from A1 |
+| A2 | Extracted field values; an `aadhaar_number` line is stored as `[REDACTED]` | `extracted_fields` | High: structured identity data; no Aadhaar digits survive here | Re-derivable from A1 |
 | A3 | Profile values and draft values | `profile_values`, `application_drafts` | High: name, address, income, date of birth, father's name | Participant re-enters by hand |
 | A4 | Case packets and reference numbers | `application_cases.packet_text`, `case_events` | High: the assembled application plus portal references | Tracking history lost |
 | A5 | Accounts and sessions | `users`, `sessions` | Medium-high: email + a working session is the account | Participant re-enrolls |
@@ -165,8 +165,10 @@ by the user running the backend, readable by anything on the machine with that
 account (§6.1). T17 is content-blind: it recognises shapes, not meaning, so a
 name, an address or a free-text note is not redacted, and a parser exception
 message is covered only insofar as it contains an email or a digit run. T19
-leaves the extracted value in `extracted_fields`, which is the honest edge
-recorded in `data-map.md` §3.3.
+now leaves only a marker: the `aadhaar_number` value is stored as `[REDACTED]`,
+so a database reader learns that the line existed and where, not what it said.
+The number still survives in the document bytes, which is why A2 is listed as
+re-derivable from A1 and why `data-map.md` §3.3 still calls the blob the edge.
 
 ### 5.5 Availability, integrity of records, and the insider
 
@@ -269,4 +271,4 @@ rather than adding a feature:
 |---|---|---|
 | 0.1 | 2026-11-19 | First draft: 31 threats across six groups, eight accepted risks, review triggers tied to the readiness decisions |
 | 0.2 | 2026-11-19 | Public copy redacted: residual paragraphs kept at risk-category level; exploit-level detail moved to the private review material; pending branch names replaced with PR numbers |
-| 0.3 | 2026-11-23 | Scoped the public GitHub Pages demo and the rest of `docs/` out of §7; corrected risk 6.7, since the extracted Aadhaar value is now stored as `[REDACTED]` |
+| 0.3 | 2026-11-23 | Scoped the public GitHub Pages demo and the rest of `docs/` out of §7; corrected risk 6.7, asset A2, the T19 residual and the handbook's Aadhaar passages, since the extracted Aadhaar value is now stored as `[REDACTED]` |

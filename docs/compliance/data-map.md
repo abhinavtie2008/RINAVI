@@ -68,15 +68,18 @@ proof of what was consented to when.
 | Table | Holds | Personal data | Retention |
 |---|---|---|---|
 | `documents` | `original_filename` (255), `content_type`, `size_bytes`, `status`, `classification`, `note`, `created_at`, `processed_at` | The filename can contain a name and a document type | Until the document is deleted or the account is deleted |
-| `extracted_fields` | `field_key`, `value`, `confidence`, `locator` per document | Field values read from the document, **including `aadhaar_number` when present** | Cascade-deleted with the document |
+| `extracted_fields` | `field_key`, `value`, `confidence`, `locator` per document | Field values read from the document; an `aadhaar_number` line is stored as the literal marker `[REDACTED]`, not the digits | Cascade-deleted with the document |
 | blob store | The uploaded bytes, unmodified | The whole document | Deleted before the row; account deletion purges the user's directory |
 
-`extracted_fields` is the honest edge in this map: A1 (item 35) stops Aadhaar
-from reaching a profile, draft, packet, export or the `/fields` response, but
-the extracted value itself is still written to this table and still readable by
-anyone with database access. Under the pilot that value is a fake SPECIMEN
-number; with real documents this row would need a decision (drop on write, or
-encrypt).
+A1 (item 35) stops Aadhaar from reaching a profile, draft, packet, export or
+the `/fields` response, and `documents/pipeline.py` stops it reaching this
+table: the line is still recognised, so the document classifies as identity,
+but what is written is the literal marker `[REDACTED]`. A reader with database
+access learns that a document carried an Aadhaar line, not what the number was.
+What remains is structural — `field_key`, `confidence` and `locator` say where
+in the document the line was — and the number itself still sits in the document
+bytes (§3.2, asset A1) until the document is deleted. Real documents still need
+the encryption-at-rest decision; the extracted-value half of that gap is closed.
 
 ### 3.4 Profile
 
@@ -229,7 +232,7 @@ surprise found here for the first time.
 | Gap | Effect | Owner |
 |---|---|---|
 | Blobs are plaintext on local disk | Anyone with the disk has the documents | Item 64, accepted for synthetic only |
-| `extracted_fields` keeps Aadhaar when present | A hidden but stored identifier | Item 35 residual; pilot uses fake numbers |
+| An Aadhaar line is still recognisable, and the number is still in the blob | The fact and the location of the line survive; the digits survive in the uploaded bytes | Item 35 residual; the extracted value itself is `[REDACTED]` |
 | Export returns only `user` + `consent_records` | A citizen cannot take documents or profile values with them | Item 65, accepted for the pilot |
 | No retention sweep, no session sweep, no audit sweep | Expired sessions and old audit rows accumulate | Item 68 |
 | Cases have no delete route | A recorded case can only be removed by deleting the account | Part 6, accepted |

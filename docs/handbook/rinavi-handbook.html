@@ -500,7 +500,7 @@ of code, not by a sentence in a policy. These are the prohibitions, and where ea
   <tr><td>P5</td><td><strong>Never submits an application or declaration</strong></td><td>There is no submission module and no outbound HTTP client in the runtime dependencies. The declaration is a local boolean the citizen sets for their own packet.</td></tr>
   <tr><td>P6</td><td><strong>Never scrapes a portal</strong></td><td>No HTML parser for portal pages, no crawler, no scheduler: nothing in the system runs on a timer.</td></tr>
   <tr><td>P7</td><td><strong>Never bulk-collects other people's applications</strong></td><td>Every query is scoped to the signed-in account. There is no admin role, no staff login, and no cross-account read route.</td></tr>
-  <tr><td>P8</td><td><strong>Never spreads an Aadhaar number</strong></td><td>If one appears in a document it stays inside that document's extracted record; it is filtered out of profile reads, promotions, drafts, validation, exports and packets.</td></tr>
+  <tr><td>P8</td><td><strong>Never stores or spreads an Aadhaar number</strong></td><td>If one appears in a document the line is recognised but the value is replaced with <code>[REDACTED]</code> before anything is saved; it is also filtered out of profile reads, promotions, drafts, validation, exports and packets.</td></tr>
 </table>
 
 <h3>Three more things it does not do</h3>
@@ -651,7 +651,7 @@ is what is missing from it.</p>
   <tr><td><code>credentials</code></td><td>Passkey public key and sign counter only.</td><td>Account deleted.</td></tr>
   <tr><td><code>consent_records</code></td><td>Purpose, policy version, granted and withdrawn timestamps.</td><td>Account deleted; withdrawal keeps the row as proof.</td></tr>
   <tr><td><code>documents</code></td><td>Filename, content type, size, status, classification, note.</td><td>Document or account deleted.</td></tr>
-  <tr><td><code>extracted_fields</code></td><td>Field key, value, confidence, locator — including an Aadhaar number when one is present.</td><td>Cascades with the document.</td></tr>
+  <tr><td><code>extracted_fields</code></td><td>Field key, value, confidence, locator. For an Aadhaar line the value is the marker <code>[REDACTED]</code>, never the number.</td><td>Cascades with the document.</td></tr>
   <tr><td><code>profile_values</code></td><td>Field key, value, status, source document and locator, confidence, correction history.</td><td>Account deletion, or rejection of a non-confirmed value.</td></tr>
   <tr><td><code>application_drafts</code></td><td>Service and pack version, template snapshot, field values, evidence links, declaration flag.</td><td>Draft or account deleted.</td></tr>
   <tr><td><code>application_cases</code></td><td>Frozen packet snapshot and text, status, reference and acknowledgement numbers, deadline, notes.</td><td>Account deletion; no per-case delete route.</td></tr>
@@ -670,11 +670,14 @@ is what is missing from it.</p>
 </ul>
 
 <h3>The one exception, stated plainly</h3>
-<p>An Aadhaar number found inside an uploaded document is stored with that document's extracted
-fields, because it is part of what the document says. It is then excluded from every path that
-would spread it: it is not promoted to the profile, not shown in drafts, not validated, not
-exported and not packed. Deleting the document erases it. This is a recorded residual, not an
-oversight, and chapter 18 names what would reopen it.</p>
+<p>An Aadhaar number found inside an uploaded document is recognised, but not kept. The line is
+read, so the document can be classified as identity proof; what is then written to the extracted
+record is the marker <code>[REDACTED]</code>, not the twelve digits. It is also excluded from
+every path that would spread it: it is not promoted to the profile, not shown in drafts, not
+validated, not exported and not packed. The number does stay inside the file the citizen
+uploaded, so deleting the document is what erases it. What survives in the database is the fact
+that the line existed and where — a recorded residual, not an oversight — and chapter 18 names
+what would reopen it.</p>
 
 <h3>Deletion mechanics</h3>
 <p><strong>A document:</strong> the file is erased first, then the row is deleted. If the erase
@@ -764,10 +767,11 @@ unfamiliar layout is parked for attention rather than guessed at, and OCR or mod
 a future upgrade, not an assumption baked into the current claims.</p>
 
 <h3>The Aadhaar rule</h3>
-<p>If a document contains an Aadhaar number, it is extracted and stored with that document — and
-then filtered out of the profile, drafts, validation, exports and packets. The citizen is told,
-in the privacy notice, that the number stays with the document and that deleting the document
-erases it.</p>
+<p>If a document contains an Aadhaar number, the line is recognised so the document can be
+classified, and the value is then written as the marker <code>[REDACTED]</code> — so it is never
+stored, and is filtered out of the profile, drafts, validation, exports and packets. The citizen
+is told, in the privacy notice, that the number itself stays only in the file they uploaded and
+that deleting the document erases it.</p>
 </section>
 
 <!-- ===================== 11 ===================== -->
@@ -1042,7 +1046,7 @@ and each has a trigger that reopens it.</p>
   <tr><td>No backup, so deletion is also loss</td><td>Fake data, re-creatable by hand</td><td>Any real document, or a promised restore</td></tr>
   <tr><td>No retention or session sweep</td><td>Small volume, disclosed in the policy</td><td>Real documents</td></tr>
   <tr><td>Dev sign-in creates accounts for any email</td><td>Disabled by default, refused in production</td><td>Any environment where a participant can reach it</td></tr>
-  <tr><td>Aadhaar survives inside extracted fields</td><td>The pilot's numbers are visibly fake</td><td>Real documents</td></tr>
+  <tr><td>An Aadhaar line is still recognisable, though the value is stored as <code>[REDACTED]</code></td><td>The pilot's numbers are visibly fake, and no number is stored</td><td>Real documents</td></tr>
   <tr><td>Inline synchronous parsing, single worker</td><td>One participant at a time, supervised</td><td>Concurrent users, or an async worker</td></tr>
 </table>
 
