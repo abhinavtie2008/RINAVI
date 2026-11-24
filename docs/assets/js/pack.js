@@ -43,7 +43,7 @@
     },
     checklist_groups: [
       { id: "identity_proof", label: "Identity proof", requirement: "at_least_one", accepted_classifications: ["identity"] },
-      { id: "residence_proof", label: "Residence proof", requirement: "at_least_one", accepted_classifications: [] },
+      { id: "residence_proof", label: "Residence proof", requirement: "at_least_one", accepted_classifications: ["residence", "identity"] },
       { id: "income_evidence", label: "Income evidence", requirement: "at_least_one", accepted_classifications: ["income"] },
       { id: "photograph", label: "Photograph", requirement: "optional", accepted_classifications: [] },
     ],

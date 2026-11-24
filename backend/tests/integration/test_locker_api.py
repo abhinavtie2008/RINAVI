@@ -279,9 +279,11 @@ async def test_apply_again_creates_draft_with_suggested_links() -> None:
         body = response.json()
         assert body["draft"]["service_slug"] == "delhi-income-certificate"
         assert body["draft"]["validation"]
-        # residence_proof accepts any processed document, so walking the groups
-        # in pack order swallowed the income certificate as residence proof and
-        # left income evidence empty. A group that names the classification wins.
+        # residence_proof names only `residence` and `identity`, so the income
+        # certificate does not match it at all. Groups that name the
+        # classification are tried before groups that accept anything (the
+        # optional photograph group), which is what keeps the income certificate
+        # on income_evidence.
         assert body["suggested_links"] == [
             {"document_id": income_id, "group_id": "income_evidence"},
             {"document_id": identity_id, "group_id": "identity_proof"},

@@ -27,7 +27,7 @@
       "id": "residence_proof",
       "label": "Residence proof",
       "requirement": "at_least_one",
-      "accepted_classifications": []
+      "accepted_classifications": ["residence", "identity"]
     },
     {
       "id": "income_evidence",
