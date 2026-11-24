@@ -13,6 +13,10 @@ CATALOG_ROOT = Path(__file__).resolve().parents[4] / "catalog" / "services"
 # separator or a parent reference must never be joined into a path.
 _VERSION_PATTERN = re.compile(r"[0-9A-Za-z][0-9A-Za-z._-]*")
 
+# `validate_draft` treats anything other than "at_least_one" as optional, so an
+# unrecognised value would silently switch a mandatory evidence group off.
+_REQUIREMENTS = {"at_least_one", "optional"}
+
 
 class CatalogError(ValueError):
     pass
@@ -112,6 +116,11 @@ def _checklist_group(data: dict[str, Any]) -> ChecklistGroup:
         raise CatalogError(
             f"Checklist group {group.id} accepts unknown classifications: "
             f"{', '.join(map(str, unknown))}"
+        )
+    if group.requirement not in _REQUIREMENTS:
+        raise CatalogError(
+            f"Checklist group {group.id} has unknown requirement "
+            f"{group.requirement!r}; use one of {sorted(_REQUIREMENTS)}"
         )
     return group
 
