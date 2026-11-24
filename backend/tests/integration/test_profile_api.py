@@ -152,6 +152,12 @@ async def test_correction_confirms_and_records_history() -> None:
         body = corrected.json()
         assert body["value"] == "Asha Devi Sharma"
         assert body["status"] == "confirmed"
+        # The value is now the citizen's own, so it keeps no source provenance
+        # and carries no stale reason from before the correction.
+        assert body["source_document_id"] is None
+        assert body["source_locator"] is None
+        assert body["confidence"] is None
+        assert body["stale_reason"] is None
         assert body["correction_history"] == [
             {
                 "old_value": "Asha Devi",
