@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import ConsentRequired, CurrentUser, DbSession
@@ -259,16 +260,34 @@ async def complete_draft(
             detail="Draft has unresolved issues",
         )
     snapshot, text = await service.build_packet(db, user, draft)
-    case = await locker_service.create_case(db, user, draft, snapshot, text)
-    await emit_audit(
-        db,
-        actor_user_id=user.id,
-        action="application.case_created",
-        resource_type="application_case",
-        resource_id=str(case.id),
-        details={"service_slug": draft.service_slug},
-    )
-    await db.commit()
+    user_id, draft_id, service_slug = user.id, draft.id, draft.service_slug
+    try:
+        case = await locker_service.create_case(db, user, draft, snapshot, text)
+        await emit_audit(
+            db,
+            actor_user_id=user.id,
+            action="application.case_created",
+            resource_type="application_case",
+            resource_id=str(case.id),
+            details={"service_slug": service_slug},
+        )
+        await db.commit()
+    except IntegrityError as exc:
+        # draft_id is unique: when two completes race, the check above can
+        # miss and the flush fails. The loser returns the winner's case rather
+        # than a 500, and both callers see the same packet.
+        await db.rollback()
+        # The rollback expires every loaded instance, so neither user nor draft
+        # may be touched again here; the ids were captured before the flush.
+        existing = await locker_service.get_case_by_user_and_draft(
+            db, user_id, draft_id
+        )
+        if existing is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Case could not be created; try again",
+            ) from exc
+        return await locker_service.case_out(db, existing)
     return await locker_service.case_out(db, case)
 
 
