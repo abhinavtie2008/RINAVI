@@ -188,6 +188,44 @@ async def test_complete_is_idempotent() -> None:
         assert [event["type"] for event in second.json()["events"]] == ["created"]
 
 
+async def test_complete_returns_the_winning_case_after_a_race(
+    monkeypatch,
+) -> None:
+    # Two completes for one draft can both pass the "no case yet" check; the
+    # unique draft_id then makes the second flush fail. The loser must return
+    # the winner's case, not a 500.
+    from app.modules.applications import routes as applications_routes
+
+    async with make_client() as client:
+        await sign_in(client)
+        await allow(client, "applications.preparation")
+        draft = await make_completable_draft(client)
+        first = await client.post(
+            f"{API}/applications/drafts/{draft['id']}/complete"
+        )
+        assert first.status_code == 200
+
+        original = applications_routes.locker_service.get_case_by_draft
+        calls = {"n": 0}
+
+        async def miss_once(db, user, draft_id):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return None
+            return await original(db, user, draft_id)
+
+        monkeypatch.setattr(
+            applications_routes.locker_service, "get_case_by_draft", miss_once
+        )
+
+        second = await client.post(
+            f"{API}/applications/drafts/{draft['id']}/complete"
+        )
+
+        assert second.status_code == 200
+        assert second.json()["id"] == first.json()["id"]
+
+
 async def test_case_survives_draft_deletion() -> None:
     async with make_client() as client:
         await sign_in(client)

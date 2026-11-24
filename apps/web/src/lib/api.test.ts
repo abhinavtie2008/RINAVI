@@ -42,6 +42,54 @@ describe("apiFetch", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("surfaces the API's detail string instead of a bare status", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ detail: "Draft has unresolved issues" }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    await expect(apiFetch("/applications/drafts/1/export")).rejects.toMatchObject({
+      name: "ApiError",
+      status: 409,
+      message: "Draft has unresolved issues",
+    });
+  });
+
+  it("joins FastAPI validation messages", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            detail: [{ msg: "Field required" }, { msg: "String too long" }],
+          }),
+          { status: 422, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    await expect(apiFetch("/consent/grants", { method: "POST" })).rejects.toMatchObject(
+      { status: 422, message: "Field required; String too long" },
+    );
+  });
+
+  it("falls back to the status when the error body is not JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("<html>gateway</html>", { status: 502 })),
+    );
+
+    await expect(apiFetch("/health")).rejects.toMatchObject({
+      status: 502,
+      message: "API request failed: 502",
+    });
+  });
+
   it("respects a caller-supplied abort signal", async () => {
     vi.useFakeTimers();
     vi.stubGlobal("fetch", abortableFetchMock());
