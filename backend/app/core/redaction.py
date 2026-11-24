@@ -10,6 +10,15 @@ _DOMAIN_PATTERN = re.compile(
 )
 DIGITS_12_PATTERN = re.compile(r"\d{12}")
 DIGITS_10_PATTERN = re.compile(r"\d{10}")
+# Extraction accepts an Aadhaar number written in the groups printed on the
+# card ("1234 5678 9012"), so the same form can reach a log through a field
+# value or an exception message. Redacting only the unbroken run left it in
+# clear.
+# A longer run of space-separated digits ("1234 5678 9012 34") is not an
+# Aadhaar number, so the pattern must not match three groups out of four.
+GROUPED_12_PATTERN = re.compile(
+    r"(?<!\d)(?<!\d[ -])\d{4}[ -]\d{4}[ -]\d{4}(?![ -]?\d)"
+)
 # Resource identifiers (case/audit IDs) are canonical UUIDs. Their final
 # group can be all digits, which must not be mistaken for an Aadhaar or phone
 # number: redacting it breaks correlation between API responses, audit rows,
@@ -50,6 +59,7 @@ def _redact_emails(value: str) -> str:
 
 
 def _redact_digit_runs(value: str) -> str:
+    value = GROUPED_12_PATTERN.sub(REDACTED, value)
     value = DIGITS_12_PATTERN.sub(REDACTED, value)
     return DIGITS_10_PATTERN.sub(REDACTED, value)
 
