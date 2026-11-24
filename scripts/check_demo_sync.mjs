@@ -173,7 +173,10 @@ function runPython(texts) {
     const probe = spawnSync(exe, ["--version"], { encoding: "utf8" });
     const version = /^Python 3\.(\d+)/.exec(`${probe.stdout || ""}${probe.stderr || ""}`);
     if (probe.error || probe.status !== 0 || !version || Number(version[1]) < 10) continue;
-    const result = spawnSync(exe, ["-I", "-c", program, EXTRACTION_PY], { input: JSON.stringify(texts), encoding: "utf8" });
+    // -X utf8 forces UTF-8 for stdin/stdout even under -I: isolated mode ignores
+    // PYTHONUTF8, and on Windows the locale would otherwise read the fixture
+    // JSON as cp1252 and mangle curly apostrophes before they reach Python.
+    const result = spawnSync(exe, ["-I", "-X", "utf8", "-c", program, EXTRACTION_PY], { input: JSON.stringify(texts), encoding: "utf8" });
     if (result.status !== 0) throw new Error(`${exe} failed:\n${result.stderr}`);
     return JSON.parse(result.stdout);
   }

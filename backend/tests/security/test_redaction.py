@@ -24,6 +24,17 @@ def test_redact_text_scrubs_email_and_digit_runs() -> None:
     assert redact_text("aadhaar id123456789012 end") == "aadhaar id[REDACTED] end"
 
 
+def test_redact_text_scrubs_grouped_aadhaar_numbers() -> None:
+    # The extraction rules accept the grouped form printed on the card, so the
+    # same form can reach a log through a field value or an exception.
+    assert redact_text("aadhaar 1234 5678 9012 end") == "aadhaar [REDACTED] end"
+    assert redact_text("aadhaar 1234-5678-9012 end") == "aadhaar [REDACTED] end"
+    assert (
+        redact_text("aadhaar 1234 5678 9012 34 end")
+        == "aadhaar 1234 5678 9012 34 end"
+    )
+
+
 def test_redact_text_preserves_uuids_with_numeric_tails() -> None:
     # The final UUID group is 12 hex characters and can be all digits. Treating
     # it as an Aadhaar number made locker audit assertions flaky (~1 in 140).

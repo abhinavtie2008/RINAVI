@@ -1,6 +1,7 @@
 import base64
 import json
 
+import pytest
 from httpx import ASGITransport, AsyncClient, Cookies
 
 from app.main import app
@@ -223,6 +224,68 @@ async def test_login_finish_emits_audit_event(monkeypatch) -> None:
         assert len(passkey_signins) == 1
         assert str(passkey_signins[0].actor_user_id) == str(user_id)
         assert passkey_signins[0].resource_id == str(user_id)
+
+
+async def test_register_finish_reports_a_duplicate_credential(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A retried or racing finish hits the unique credential_id. It is a 409,
+    # not a 500, and the registration is not audited twice.
+    import types
+    import uuid as uuidlib
+
+    from sqlalchemy import select
+
+    from app.core.db import async_session_factory
+    from app.modules.audit.models import AuditEvent
+    from app.modules.identity import webauthn
+    from app.modules.identity.models import Credential
+
+    async with make_client() as client:
+        signin = await client.post(
+            "/api/v1/auth/dev-signin", json={"email": "citizen@example.com"}
+        )
+        user_id = uuidlib.UUID(signin.json()["id"])
+
+    async with async_session_factory() as db:
+        db.add(
+            Credential(
+                user_id=user_id,
+                credential_id=b64url(b"duplicate-credential"),
+                public_key="public-key",
+                sign_count=0,
+            )
+        )
+        await db.commit()
+
+    monkeypatch.setattr(
+        webauthn,
+        "verify_registration",
+        lambda challenge_id, credential: types.SimpleNamespace(
+            credential_id=b"duplicate-credential",
+            credential_public_key=b"public-key",
+            sign_count=0,
+        ),
+    )
+
+    async with make_client() as client:
+        await sign_in(client, "citizen@example.com")
+        begin = await client.post("/api/v1/auth/passkey/register/begin")
+        response = await client.post(
+            "/api/v1/auth/passkey/register/finish",
+            json={
+                "challenge_id": begin.json()["challenge_id"],
+                "credential": "{}",
+            },
+        )
+        assert response.status_code == 409
+
+    async with async_session_factory() as db:
+        events = (await db.execute(select(AuditEvent))).scalars().all()
+        registered = [
+            e for e in events if e.action == "identity.passkey_registered"
+        ]
+        assert registered == []
 
 
 async def test_login_finish_rejects_oversized_challenge_id() -> None:
