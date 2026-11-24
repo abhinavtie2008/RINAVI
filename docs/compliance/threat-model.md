@@ -213,7 +213,7 @@ phase A rather than a launch.
 
 | # | Risk | Why it is acceptable now | Reopens when |
 |---|---|---|---|
-| 6.1 | Plaintext storage and no encryption at rest | SPECIMEN documents only; one machine | The first real document, or storage leaves the founder's machine (readiness decision 2) |
+| 6.1 | Plaintext storage and no encryption at rest | SPECIMEN documents only; one machine. **Decided 2026-11-24 (D2):** accepted for the synthetic pilot, against a pre-commitment that document blobs are encrypted at rest before the first real document — the whole file, not the extracted fields, because the Aadhaar number is inside the upload; encrypting the parsed values would leave it readable on disk | The first real document, or storage leaves the founder's machine (readiness decision 2). Either way the remedy is already named — item 92 — not a fresh decision |
 | 6.2 | No admin barrier against the facilitator | One facilitator, named in the notice, who already controls the machine | Any hosted or multi-operator deployment |
 | 6.3 | Audit rows editable and permanent | They hold no content, and no incident process exists yet to need them as evidence | Real documents, or an incident-response requirement (item 85) |
 | 6.4 | No backup, so deletion is also loss | Fake data, re-creatable by hand | Any real document, or a promised restore (item 85) |

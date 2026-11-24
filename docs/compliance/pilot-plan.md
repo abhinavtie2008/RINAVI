@@ -101,6 +101,11 @@ identifiers. No third-party analytics or error-reporting SDK is installed.
 | Trust | Answers to "would you use this for your own application?" and "would you pay?" | Qualitative; ≥ half positive |
 | Blocker list | Every stall, misread label and abandoned step, with the screen | Ranked, not counted |
 
+The export screen these first two measures depend on is item 102: it does not exist
+yet — `GET /auth/export` is reachable only through the API — so neither measure
+can be collected until that lands. D7 (2026-11-24) makes building it a
+pre-pilot task rather than a nicety.
+
 A session that ends in a blocker is a valid result. Do not coach a participant
 through a step to make a measure look better; record the stall.
 
@@ -135,8 +140,9 @@ This plan is superseded when **all** of the following hold:
 1. The narrow review in this folder has been signed off and any required product
    changes have landed.
 2. The full WP2 review (DPDP scope) is complete for real documents.
-3. Encryption at rest, retention sweeps, complete export and a host with TLS
-   have landed (checklist items 64, 68, 65, 58, 97, 98).
+3. Encryption at rest (blob-level, item 101), retention sweeps, a reachable
+   account export screen (item 102), the complete export (item 65) and a host with
+   TLS have landed (checklist items 64, 68, 58, 97, 98).
 4. The localisation decision is recorded (ADR-0006: a Hindi comprehension layer
    over an English record); the OCR decision is still owed, because most real
    proofs arrive as photographs.

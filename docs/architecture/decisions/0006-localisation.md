@@ -53,7 +53,7 @@ misdeclaration.
 - `reviewer-brief.md` gains the Hindi artefacts and the qualification
   requirement: the engagement needs a Hindi-fluent reader as well as the WP2
   reviewer.
-- Checklist item 91 tracks the build. The sequencing rule is the gate, not a
+- Checklist item 100 tracks the build. The sequencing rule is the gate, not a
   date.
 - Once the layer is on, a screen in the comprehension scope without Hindi is a
   defect in the same way a broken trust-page promise is (D8) — partial coverage
