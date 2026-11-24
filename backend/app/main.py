@@ -18,6 +18,12 @@ from app.core.rate_limit import (
 
 # Safe to send in every environment.
 SECURITY_HEADERS = {
+    # Every API response can carry personal data (profile values, drafts,
+    # grants, cases), so none of it may be reused from a shared cache or the
+    # browser's back/forward store. Routes that say something more specific
+    # ("no-store, private" on exports and document content) keep their value
+    # because the middleware uses setdefault.
+    "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",

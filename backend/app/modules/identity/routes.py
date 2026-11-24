@@ -2,6 +2,7 @@ import json
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from webauthn.helpers import bytes_to_base64url, parse_authentication_credential_json
 
 from app.api.deps import CurrentUser, DbSession
@@ -153,15 +154,27 @@ async def passkey_register_finish(
         public_key=bytes_to_base64url(verification.credential_public_key),
         sign_count=verification.sign_count,
     )
-    db.add(credential)
-    await emit_audit(
-        db,
-        actor_user_id=user.id,
-        action="identity.passkey_registered",
-        resource_type="credential",
-        resource_id=credential.credential_id,
-    )
-    await db.commit()
+    try:
+        # The unique credential_id can fail on any flush, and emit_audit flushes
+        # before the commit, so the insert and the audit stay inside the try.
+        db.add(credential)
+        await emit_audit(
+            db,
+            actor_user_id=user.id,
+            action="identity.passkey_registered",
+            resource_type="credential",
+            resource_id=credential.credential_id,
+        )
+        await db.commit()
+    except IntegrityError as exc:
+        # Two finishes for the same authenticator race on the unique
+        # credential_id; the loser must not become a 500 (and the audit row is
+        # rolled back with it, since nothing was registered).
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This passkey is already registered",
+        ) from exc
     return {"status": "registered"}
 
 
