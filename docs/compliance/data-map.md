@@ -254,10 +254,11 @@ URL is a surface a reviewer will ask about.
 | Question | Answer |
 |---|---|
 | What does it store? | Whatever a visitor adds, in that visitor's own browser: `localStorage` key `rinavi.demo.v1` and `sessionStorage` keys `rinavi:suggested-links:*`. Nothing is sent to a server; the demo code contains no `fetch`, `XMLHttpRequest` or `sendBeacon`. |
-| Who controls it? | The visitor. The account page exports everything as JSON and erases it all. |
+| Who controls it? | The visitor. The account page exports the demo's records and metadata as JSON (document text is deliberately left out and stays in the browser) and can erase everything. |
 | What data is meant to go in? | Synthetic only. The landing page, footer, trust page and vault say so, and the vault offers three made-up sample documents. |
 | Third-party requests? | None. The two typefaces are bundled in `docs/assets/fonts/` under the SIL OFL 1.1, and there are no analytics, cookies or external scripts. |
 | What does the host see? | GitHub, as the host, receives ordinary request metadata (IP address, user agent, path) for each visit, as any web host does. RINAVI has no say in those logs and has not treated this as a processor relationship because no pilot data is involved; the reviewer may see it differently. |
 | Aadhaar? | An Aadhaar line in an uploaded text file is replaced with `[not kept by RINAVI]` before anything is stored or shown. |
 | Where does it differ from the backend? | It reads `.txt` only; sign-in is a display name, not a passkey. Completing a draft needs `applications.preparation` alone, as the API does (§4, question 1), and opening the resulting case then asks for `locker.tracking`. |
+| What else does the published site serve? | GitHub Pages publishes the whole `docs/` folder, not only the demo: the handbook and the documents in `docs/compliance/` and `docs/planning/` are public at the same origin. None of them contains pilot data, but publication of anything under `docs/` is publication to the internet, and dated snapshots should say so on their face. |
 | How is it kept in step with the code? | `scripts/check_demo_sync.mjs`, run by `scripts/check.sh` and by CI, compares the demo's service pack and extraction rules with `catalog/` and `extraction.py`, and runs the same fixtures through both extractors. It does not check the demo's consent or locker logic. |

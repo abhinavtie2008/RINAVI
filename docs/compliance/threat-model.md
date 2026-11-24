@@ -217,7 +217,7 @@ phase A rather than a launch.
 | 6.4 | No backup, so deletion is also loss | Fake data, re-creatable by hand | Any real document, or a promised restore (item 85) |
 | 6.5 | No retention or session sweep | Small volume, disclosed in the retention policy | Real documents (item 68) |
 | 6.6 | Dev sign-in creates accounts for any email | Disabled by default, refused in production, and the pilot uses passkeys or the demo stack | Any environment where `RINAVI_DEV_SIGNIN_ENABLED=true` is reachable by a participant |
-| 6.7 | Aadhaar survives in `extracted_fields` | The pilot's Aadhaar values are visibly fake | Real documents (item 35 residual) |
+| 6.7 | An Aadhaar line is still recognised in `extracted_fields` (stored as `[REDACTED]`, never the digits) | The pilot's Aadhaar values are visibly fake, and no number is stored | Real documents (item 35 residual) |
 | 6.8 | Parsing inside the upload request (thread-offloaded), single worker | One participant at a time, supervised | Concurrent users, or a job queue with a worker-level kill timeout (ledger item 1) |
 
 ## 7. What this model does not cover
@@ -226,6 +226,14 @@ phase A rather than a launch.
   provider becomes a processor, adds a network boundary at B1, and makes TLS,
   browser-session hardening, log retention and possibly a WAF in scope. This
   document must be rewritten, not amended, at that point.
+- **The public static demo and the rest of `docs/`.** GitHub Pages publishes
+  `docs/`, including a synthetic-only demo that stores data in the visitor's own
+  browser and never calls the API or any server (`data-map.md` §10), alongside
+  the handbook and these compliance documents. It shares no code path, no
+  store and no credential with the pilot deployment, and it accepts no
+  document bytes on any server, so it is outside this model. Reopens if the
+  demo gains a server, an upload path, analytics or any link to the pilot's
+  data, or if anything published under `docs/` starts carrying pilot data.
 - **Real documents.** OCR, real scans, real Aadhaar numbers, encryption at rest
   and retention are all post-gate.
 - **The portal side.** What the citizen does in their own browser is outside the
@@ -261,3 +269,4 @@ rather than adding a feature:
 |---|---|---|
 | 0.1 | 2026-11-19 | First draft: 31 threats across six groups, eight accepted risks, review triggers tied to the readiness decisions |
 | 0.2 | 2026-11-19 | Public copy redacted: residual paragraphs kept at risk-category level; exploit-level detail moved to the private review material; pending branch names replaced with PR numbers |
+| 0.3 | 2026-11-23 | Scoped the public GitHub Pages demo and the rest of `docs/` out of §7; corrected risk 6.7, since the extracted Aadhaar value is now stored as `[REDACTED]` |

@@ -1,7 +1,7 @@
 # Reviewer brief — WP2 legal/privacy review
 
-**To:** the qualified legal/privacy reviewer engaged by the pilot owner ·
-**From:** the pilot owner · **Date:** 2026-11-19 · **Against:** `main` @ `ac8aa27`
+**To:** the qualified legal/privacy reviewer (not yet engaged) ·
+**From:** the pilot owner · **Date:** 2026-11-23 · **Against:** `main` @ `5c255e7`
 
 The reviewer's identity and engagement terms are held privately, not in this
 repository; the note in `docs/compliance/README.md` records what is public and

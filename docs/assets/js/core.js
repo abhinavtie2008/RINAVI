@@ -626,7 +626,14 @@
   S.exportAll = () => {
     const s = clone(state());
     s.documents.forEach((d) => { if (d.text !== null) d.text = "(text kept in your browser)"; });
-    return { exported_at: now(), note: "Everything this demo holds in your browser.", data: s };
+    return {
+      exported_at: now(),
+      // Document text is deliberately left out of the download, so the note
+      // must not promise it: the records and metadata are complete, the file
+      // contents are not.
+      note: "This demo's records and metadata. Document text is kept in your browser and is not included in this export.",
+      data: s,
+    };
   };
   S.eraseAll = () => {
     mem = blank();

@@ -76,6 +76,14 @@ Steps 1 and 2 are offline. Step 3 involves no RINAVI component: there is no
 extension, no injected script, no bookmarklet, no proxy. Step 4 stores what the
 citizen tells us, typed by hand.
 
+**Open source question — attestation wording.** Step 1 says "self-attested".
+The Revenue Department information page (R-02) instead says "All documents needs
+to be attested by Gazetted Officer", while some 2018 e-District material
+describes online self-attestation. The pack is deliberately unchanged until the
+current portal instructions are checked: whichever answer holds must land in the
+pack, the demo copy and this register together, and the pilot script must not
+quote either wording until then.
+
 **Reference numbers are citizen-entered data, never fetched.** `application_cases.reference_number`
 and `acknowledgement_number` come from a request body the citizen fills
 (`locker` module); no code parses a portal page or calls a portal endpoint to

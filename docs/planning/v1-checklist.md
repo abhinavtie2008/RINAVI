@@ -65,7 +65,7 @@ Status legend:
 - [x] **13. Audit log with redaction** — document contents and PII never reach logs; SHA-256 digests preserved. *Status: DONE, with a gap fixed on PR #54:* consent grant/withdraw and identity sign-in/out/passkey routes emitted no audit events; `9c081a5` adds them with tests; merged via PR #54 (`059f678`, item 78).
 - [x] **14. Consent, deny-by-default** — four purposes (`documents.processing`, `profile.storage`, `applications.preparation`, `locker.tracking`) enforced as dependencies on the routes that need them. *Status: DONE.*
 - [x] **15. Consent withdrawal** — `/consent` page lists all four purposes and withdraws an active grant; re-grant withdraws prior active grants. *Status: DONE.*
-- [x] **16. Authentication** — dev sign-in (dev only), passkey (WebAuthn) sign-up and sign-in, secure session cookie with TTL, sign-out. *Status: DONE.*
+- [x] **16. Authentication** — dev sign-in (dev only), passkey (WebAuthn) enrolment for an existing account and passkey sign-in, secure session cookie with TTL, sign-out. *Status: DONE. Note:* no route creates an account: `register/begin` requires a signed-in user, so passkey "sign-up" here means adding a passkey to an account, not opening one.*
 - [x] **17. Consent purpose validation** — an empty `purpose` string was accepted (201) because the schema had `max_length` but no `min_length`. *Status: DONE — PR #54 (`642e140`) merged (`059f678`, 2026-11-17): `strip_whitespace=True, min_length=1`; tests reject both `""` and `"   "`.*
 
 ---
@@ -75,7 +75,7 @@ Status legend:
 ### 3.1 identity
 
 - [x] **18. Session management** — cookie session, `get_current_user` dependency, `/auth/me`. *Status: DONE.*
-- [x] **19. Passkey flows** — sign-up, login begin/finish, user verification required. *Status: DONE. Note:* the pending-challenge store is per-process — fine for a single worker.*
+- [x] **19. Passkey flows** — passkey registration (enrolment, `register/begin` requires a session), login begin/finish, user verification required. *Status: DONE. Note:* the pending-challenge store is per-process and capped at 10,000 entries — fine for a single worker. There is no account-creation route in V1.*
 - [ ] **20. Account export completeness** — `/auth/export` returns only `user` + consent records; document metadata and profile values are missing, so "take your data with you" is not yet true. *Status: DEFERRED — accepted as a pilot limitation; trigger: before the public promise "export your data" is made.*
 
 ### 3.2 consent
