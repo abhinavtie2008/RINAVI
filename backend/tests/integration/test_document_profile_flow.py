@@ -72,6 +72,10 @@ async def test_citizen_document_profile_flow() -> None:
         )
         assert corrected.json()["status"] == "confirmed"
         assert corrected.json()["correction_history"][0]["old_value"] == "Asha Devi"
+        # The corrected value is the citizen's own: it keeps no source pointer.
+        assert corrected.json()["source_document_id"] is None
+        assert corrected.json()["source_locator"] is None
+        assert corrected.json()["confidence"] is None
 
         dob = next(v for v in values if v["field_key"] == "date_of_birth")
         confirmed = await client.post(f"{API}/profile/values/{dob['id']}/confirm")
@@ -88,8 +92,16 @@ async def test_citizen_document_profile_flow() -> None:
 
         remaining = (await client.get(f"{API}/profile/values")).json()
         assert len(remaining) == 6
-        assert {v["status"] for v in remaining} == {"stale"}
-        assert {v["stale_reason"] for v in remaining} == {
+        by_key = {v["field_key"]: v for v in remaining}
+        # A corrected value no longer depends on the document, so deleting it
+        # must not invalidate what the citizen typed. Every value still sourced
+        # from that document is marked stale.
+        assert by_key["full_name"]["status"] == "confirmed"
+        assert by_key["full_name"]["stale_reason"] is None
+        assert by_key["full_name"]["value"] == "Asha Devi Sharma"
+        others = [v for v in remaining if v["field_key"] != "full_name"]
+        assert {v["status"] for v in others} == {"stale"}
+        assert {v["stale_reason"] for v in others} == {
             "source_document_deleted"
         }
 

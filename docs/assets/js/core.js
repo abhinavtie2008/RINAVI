@@ -263,7 +263,12 @@
     if (clean.length > MAX_VALUE) throw new ApiError(422, "That value is too long.");
     v.value = clean;
     v.status = "confirmed";
-    v.confidence = "high";
+    // The confirmed value is the citizen's now, not the document's. Mirrors
+    // profile service correct_value: drop the source pointer so deleting the
+    // document cannot mark a value they typed themselves as stale.
+    v.source_document_id = null;
+    v.source_locator = null;
+    v.confidence = null;
     v.corrected = true;
     v.stale_reason = null;
     audit("profile.corrected", v.field_key);
