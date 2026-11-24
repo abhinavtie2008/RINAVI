@@ -59,10 +59,15 @@ async def get_own_grant(
 
 
 async def has_active_consent(db: AsyncSession, user: User, purpose: str) -> bool:
+    # The policy version is part of the grant, not just a record of what was
+    # shown: a grant made under an older notice must not authorise the current
+    # processing. Bumping `consent_policy_version` therefore asks everyone to
+    # consent again instead of silently reusing the old permission.
     result = await db.execute(
         select(ConsentRecord).where(
             ConsentRecord.user_id == user.id,
             ConsentRecord.purpose == purpose,
+            ConsentRecord.policy_version == get_settings().consent_policy_version,
             ConsentRecord.withdrawn_at.is_(None),
         )
     )
