@@ -12,6 +12,9 @@ export function SiteNav() {
       <Link href="/consent" className="underline">
         Consent
       </Link>
+      <Link href="/account" className="underline">
+        Your data
+      </Link>
     </nav>
   );
 }
