@@ -166,10 +166,11 @@ test("a citizen prepares a complete packet through the web app", async ({
     .getByRole("button", { name: "Save" })
     .click();
 
-  // residence_proof accepts any classification; income.pdf is a valid stand-in.
+  // residence_proof accepts residence and identity documents (an Aadhaar line
+  // carries the address), but not an income-only document.
   await attachEvidence(page, "identity_proof", "identity.pdf", 1);
   await attachEvidence(page, "income_evidence", "income.pdf", 2);
-  await attachEvidence(page, "residence_proof", "income.pdf", 3);
+  await attachEvidence(page, "residence_proof", "identity.pdf", 3);
 
   // The checkbox is controlled: it flips only after the declaration request
   // succeeds, so click and then poll rather than assert synchronously.
