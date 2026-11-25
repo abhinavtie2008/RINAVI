@@ -18,6 +18,7 @@ def _production_app(monkeypatch: pytest.MonkeyPatch):
         dev_signin_enabled=False,
         cookie_secure=True,
         webauthn_origin="https://rinavi.example",
+        storage_encryption_key="MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY",
     )
     monkeypatch.setattr(main_module, "get_settings", lambda: production)
     return main_module.create_app()

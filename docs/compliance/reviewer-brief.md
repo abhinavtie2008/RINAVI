@@ -16,8 +16,9 @@ this page states what we need you to decide. Not legal advice.
 **Scope.** Assist-only income-certificate assistant: nine backend modules, one
 service pack, a Next.js PWA — RINAVI prepares, the citizen submits on the official
 portal. Synthetic `SPECIMEN` documents only: no real Aadhaar, no portal
-credentials, no mobile numbers. One machine, loopback ports, plaintext disk, no host
-chosen, **no portal access at all** (every register row is A0). Adult supervised
+credentials, no mobile numbers. One machine, loopback ports, an unencrypted
+database with encrypted document files, no host chosen, **no portal access at
+all** (every register row is A0). Adult supervised
 volunteers, one at a time, recorded only under separate consent. Never: submission,
 OTP or CAPTCHA handling, portal calls, outbound transfer of user data, or any claim
 of government affiliation. A static, synthetic-only demo of the web UI is also

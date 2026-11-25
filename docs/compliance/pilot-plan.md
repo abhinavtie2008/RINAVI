@@ -25,12 +25,13 @@ Three facts in the current build force this shape:
    document.
 2. Images are parked as `needs_attention` because **OCR is not implemented**, so
    only PDF/TXT can become evidence — and most people photograph their proofs.
-3. Storage is **plaintext local disk**, there is **no retention scheduler**, and
-   `/auth/export` returns only the account and consent records. Those are
-   accepted only for synthetic data, by recorded decision (items 52, 54, 65).
+3. Storage is **encrypted document files over a plaintext database**, there is
+   **no retention scheduler**, and `/auth/export` returns only the account and
+   consent records. Those are accepted only for synthetic data, by recorded
+   decision (items 52, 54, 65).
 
-Real documents therefore require the full WP2 gate, encryption at rest,
-retention, complete export and probably OCR. Until then the pilot rehearses the
+Real documents therefore require the full WP2 gate, the key carried by backup
+and wipe, retention, complete export and probably OCR. Until then the pilot rehearses the
 product; it does not process anyone's actual application.
 
 ## 3. Cohort

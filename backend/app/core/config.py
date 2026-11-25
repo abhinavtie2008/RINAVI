@@ -1,3 +1,4 @@
+import base64
 from functools import lru_cache
 from pathlib import Path
 
@@ -5,6 +6,21 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+_STORAGE_KEY_BYTES = 32
+
+
+def _decode_storage_key(raw: str, source: str) -> bytes:
+    compact = raw.strip()
+    padded = compact + "=" * (-len(compact) % 4)
+    try:
+        key = base64.b64decode(padded, altchars=b"-_", validate=True)
+    except ValueError as exc:
+        raise ValueError(f"{source} is not valid base64") from exc
+    if len(key) != _STORAGE_KEY_BYTES:
+        raise ValueError(
+            f"{source} must decode to exactly {_STORAGE_KEY_BYTES} bytes, got {len(key)}"
+        )
+    return key
 
 
 class Settings(BaseSettings):
@@ -16,6 +32,14 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite+aiosqlite:///{_BACKEND_DIR.as_posix()}/rinavi.db"
     storage_dir: str = f"{_BACKEND_DIR.as_posix()}/data/vault"
     log_level: str = "INFO"
+
+    # Document blobs are authenticated ciphertext at rest (item 101). Set one
+    # of these to a base64-encoded 32-byte key; outside development the app
+    # refuses to start without one. Prefer the file when the key lives on the
+    # host, because process environment variables can be read by other local
+    # users and end up in crash reports.
+    storage_encryption_key: str | None = None
+    storage_encryption_key_file: str | None = None
 
     cookie_name: str = "rinavi_session"
     cookie_secure: bool = False
@@ -53,6 +77,24 @@ class Settings(BaseSettings):
     # X-Forwarded-For; otherwise clients can spoof their rate-limit key.
     trust_proxy_headers: bool = False
 
+    def storage_key(self) -> bytes | None:
+        """The decoded 32-byte blob key, or None when encryption is unset."""
+        if self.storage_encryption_key is not None:
+            return _decode_storage_key(
+                self.storage_encryption_key, "RINAVI_STORAGE_ENCRYPTION_KEY"
+            )
+        if self.storage_encryption_key_file is not None:
+            path = Path(self.storage_encryption_key_file)
+            try:
+                raw = path.read_text(encoding="utf-8")
+            except OSError as exc:
+                raise ValueError(
+                    "RINAVI_STORAGE_ENCRYPTION_KEY_FILE cannot be read: "
+                    f"{exc.strerror or exc}"
+                ) from exc
+            return _decode_storage_key(raw, "RINAVI_STORAGE_ENCRYPTION_KEY_FILE")
+        return None
+
     @model_validator(mode="after")
     def _reject_unsafe_production(self) -> "Settings":
         # An omitted RINAVI_ENVIRONMENT falls back to "production", which then
@@ -74,6 +116,20 @@ class Settings(BaseSettings):
             raise ValueError("cookie_secure must be true outside development")
         if not self.webauthn_origin.startswith("https://"):
             raise ValueError("webauthn_origin must use https outside development")
+        return self
+
+    @model_validator(mode="after")
+    def _require_storage_encryption(self) -> "Settings":
+        if self.storage_encryption_key and self.storage_encryption_key_file:
+            raise ValueError(
+                "set only one of RINAVI_STORAGE_ENCRYPTION_KEY and "
+                "RINAVI_STORAGE_ENCRYPTION_KEY_FILE"
+            )
+        if self.storage_key() is None and self.environment not in {"development", "test"}:
+            raise ValueError(
+                "document blobs must be encrypted outside development: set "
+                "RINAVI_STORAGE_ENCRYPTION_KEY or RINAVI_STORAGE_ENCRYPTION_KEY_FILE"
+            )
         return self
 
 

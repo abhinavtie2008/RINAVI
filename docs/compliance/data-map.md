@@ -30,15 +30,18 @@ those is a new processor and must be recorded here first.
 | Store | Path / mechanism | Encrypted at rest |
 |---|---|---|
 | Application database | SQLite file in dev and test; PostgreSQL 16 in the compose demo | No |
-| Document bytes (blobs) | `<storage_dir>/<user_id>/<document_id>.bin`, default `backend/data/vault` | No |
+| Document bytes (blobs) | `<storage_dir>/<user_id>/<document_id>.bin`, default `backend/data/vault` | Yes — AES-GCM (item 101); key held on the host |
 | Session cookie | Browser, `rinavi_session`, HttpOnly, SameSite=Lax, 7-day TTL | TLS only (not yet deployed) |
 | Rate-limit counters | In process memory (`memory://`), keyed by IP and session | N/A, ephemeral |
 | Application logs | Process stdout/stderr, redaction filter applied | No |
 | Pilot folder | Outside the system, on the facilitator's machine | No |
 
-Encryption at rest is accepted-not-done for synthetic data only (readiness
-ledger, item 2). Blobs are plaintext `.bin` files readable by the OS user that
-runs the backend.
+Every store except the blobs is plaintext. Each blob is written as AES-GCM
+ciphertext with a fresh nonce and the user/document ids bound in, and a
+production configuration refuses to start without a key (item 101). The key sits
+on the host, so this defeats a stray copy of a `.bin` file or an accidental read,
+not someone who takes the whole machine — and the database, with the values
+parsed out of those documents, is still plaintext.
 
 ## 3. Tables
 
@@ -242,7 +245,7 @@ surprise found here for the first time.
 
 | Gap | Effect | Owner |
 |---|---|---|
-| Blobs are plaintext on local disk | Anyone with the disk has the documents | Item 64, accepted for synthetic only |
+| The database is plaintext on local disk; blobs are ciphertext with the key on the same host | Anyone with the disk has the profile, drafts and parsed values; a whole-machine compromise gets the key too | Item 64 residual, accepted for synthetic only |
 | An Aadhaar line is still recognisable, and the number is still in the blob | The fact and the location of the line survive; the digits survive in the uploaded bytes | Item 35 residual; the extracted value itself is `[REDACTED]` |
 | Export returns only `user` + `consent_records` | A citizen cannot take documents or profile values with them | Item 65, accepted for the pilot |
 | No retention sweep, no session sweep, no audit sweep | Expired sessions and old audit rows accumulate | Item 68 |

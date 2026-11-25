@@ -37,7 +37,7 @@ Ordered by what the pilot would have to stop for.
 
 | # | Asset | Where | Impact if disclosed | Impact if lost or altered |
 |---|---|---|---|---|
-| A1 | Document bytes | `<storage_dir>/<user_id>/<document_id>.bin`, plaintext | Total for that participant: the whole document | Unrecoverable; no backup |
+| A1 | Document bytes | `<storage_dir>/<user_id>/<document_id>.bin`, AES-GCM ciphertext (item 101) | Total for that participant: the whole document | Unrecoverable; no backup |
 | A2 | Extracted field values; an `aadhaar_number` line is stored as `[REDACTED]` | `extracted_fields` | High: structured identity data; no Aadhaar digits survive here | Re-derivable from A1 |
 | A3 | Profile values and draft values | `profile_values`, `application_drafts` | High: name, address, income, date of birth, father's name | Participant re-enters by hand |
 | A4 | Case packets and reference numbers | `application_cases.packet_text`, `case_events` | High: the assembled application plus portal references | Tracking history lost |
@@ -72,7 +72,7 @@ power of the OS account — which is the honest way to describe it.
 ```
  [ participant browser ] --B1-- [ web (Next) + API (FastAPI) ] --B2-- [ database ]
                                           |
-                                          +--B3-- [ vault directory, plaintext ]
+                                          +--B3-- [ vault directory, AES-GCM blobs ]
                                           |
                                           +--B4-- [ logs / stdout ]
 
@@ -158,11 +158,14 @@ is a confidentiality risk.
 | T17 | **PII in logs** — a document value or email reaching stdout | A redaction filter scrubs email addresses, 12-digit runs (Aadhaar-shaped) and 10-digit runs (phone-shaped), while preserving UUIDs and SHA-256 digests for correlation; it covers `exc_info`/`stack_info` and is attached to uvicorn's own handlers as well as the app's | `core/redaction.py`, `core/logging.py`, `tests/security/test_redaction.py` |
 | T18 | **PII in the audit trail** | `emit_audit` redacts `details` on the way in; the recorded details are non-PII context — classification, content type, size, purpose, method, field keys/ids, service slug, group/document/case/draft ids, event type and confirmation flags — never field values, never filenames, never document text | `audit/service.py`, `tests/integration/test_applications_api.py::test_audit_events_never_contain_draft_values` |
 | T19 | **Aadhaar propagation** | Filtered from profile reads, promotions, draft snapshots, values, validation, export, packets and the `/fields` response; legacy rows deleted by migration | `core/privacy.py`, migration `b7e4f1a2c9d3`, PR #52 |
-| T20 | **Unauthorised read of the stored bytes** | Filesystem permissions of the OS account only | — |
+| T20 | **Unauthorised read of the stored bytes** | AES-GCM at rest; the key is held by the OS account, never beside the bytes it protects | `vault/storage.py`, `core/config.py`, `tests/security/test_storage_encryption.py` |
 
-**Residual:** T20 has no application control at all. Blobs are plaintext, owned
-by the user running the backend, readable by anything on the machine with that
-account (§6.1). T17 is content-blind: it recognises shapes, not meaning, so a
+**Residual:** T20 has one application control, and it is not a boundary against
+the OS account. Blobs are ciphertext, so a copied `.bin`, a stale backup of the
+vault directory or an accidental read yields bytes without meaning; the key
+sits on the same host under the same OS account, and the database stays
+plaintext, so an attacker with the machine or that account has everything
+(§6.1). T17 is content-blind: it recognises shapes, not meaning, so a
 name, an address or a free-text note is not redacted, and a parser exception
 message is covered only insofar as it contains an email or a digit run. T19
 now leaves only a marker: the `aadhaar_number` value is stored as `[REDACTED]`,
