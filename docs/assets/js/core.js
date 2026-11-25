@@ -263,7 +263,12 @@
     if (clean.length > MAX_VALUE) throw new ApiError(422, "That value is too long.");
     v.value = clean;
     v.status = "confirmed";
-    v.confidence = "high";
+    // The confirmed value is the citizen's now, not the document's. Mirrors
+    // profile service correct_value: drop the source pointer so deleting the
+    // document cannot mark a value they typed themselves as stale.
+    v.source_document_id = null;
+    v.source_locator = null;
+    v.confidence = null;
     v.corrected = true;
     v.stale_reason = null;
     audit("profile.corrected", v.field_key);
@@ -626,7 +631,14 @@
   S.exportAll = () => {
     const s = clone(state());
     s.documents.forEach((d) => { if (d.text !== null) d.text = "(text kept in your browser)"; });
-    return { exported_at: now(), note: "Everything this demo holds in your browser.", data: s };
+    return {
+      exported_at: now(),
+      // Document text is deliberately left out of the download, so the note
+      // must not promise it: the records and metadata are complete, the file
+      // contents are not.
+      note: "This demo's records and metadata. Document text is kept in your browser and is not included in this export.",
+      data: s,
+    };
   };
   S.eraseAll = () => {
     mem = blank();

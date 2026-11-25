@@ -48,7 +48,7 @@ No item is left undecided. Every accepted or deferred item names what reopens it
 | Consent, deny-by-default | Four purposes, checked as a dependency on the routes that need them; `apply-again` now also requires `applications.preparation` | PR #31, `api/deps.py`, `modules/locker/routes.py` |
 | Consent withdrawal | `/consent` page lists every purpose and withdraws an active grant | PR #34, `features/consent/ConsentPage.tsx` |
 | Extraction accuracy | Rupee amounts keep rupees (`Rs 120,000.00` → `120000`, not 12 million); impossible dates (`31/02/2000`) stay raw at low confidence | PR #30, `documents/extraction.py`, `tests/unit/test_extraction.py` |
-| Pack integrity | The loader refuses a checklist group that names a classification no document can hold | PR #30, `catalog/loader.py`, `tests/unit/test_catalog_loader.py` |
+| Pack integrity | The loader refuses a checklist group that names a classification no document can hold | PR #30, `backend/app/modules/catalog/loader.py`, `tests/unit/test_catalog_loader.py` |
 | Blob lifecycle | A record whose file is gone reports `content_unavailable` instead of 500; a rolled-back upload discards its bytes | PR #30, `documents/pipeline.py`, `vault/routes.py` |
 | Audit redaction | Document contents and PII never reach the audit log; SHA-256 digests preserved | PR #17, `audit/service.py`, `tests/security/test_redaction.py` |
 | Aadhaar portal-only | Aadhaar is filtered from profile reads and promotions, draft snapshots and values, validation, export, packets, and `/vault/documents/{id}/fields`; legacy profile rows are deleted; the dead UI label is gone | PR #52, `core/privacy.py`, migration `b7e4f1a2c9d3`, `tests/unit/test_application_builder.py`, `tests/integration/test_profile_api.py` |
@@ -63,10 +63,10 @@ No item is left undecided. Every accepted or deferred item names what reopens it
 | # | Item | State | What is actually there | Reopens when |
 |---|---|---|---|---|
 | 1 | Async processing isolation | **Accepted for the synthetic pilot** | `process_document` still runs inline inside the upload request (`vault/routes.py`). No worker package, no Celery/Redis dependency. A 10 MB PDF is parsed while the request is held open. | The pilot moves to real documents, uploads beyond the synthetic set, or overlapping users; then an async worker is required. |
-| 2 | Encryption at rest + object storage | **Accepted for synthetic only** | `LocalDiskStorage` writes plaintext bytes to `<storage_dir>/<user_id>/<document_id>.bin`. No `cryptography` dependency, no S3/MinIO client in `pyproject.toml`. The compose demo stack has no object-storage service: MinIO was dropped when it died upstream (checklist item 92, Option A), and item 64 still owns object storage. | The first real document is accepted, or storage leaves the founder's machine. Encryption + object storage must clear before either. |
+| 2 | Encryption at rest + object storage | **Accepted for synthetic only** (D2, 2026-11-24 — pre-commitment: blob-level encryption lands before the first real document, item 101) | `LocalDiskStorage` writes plaintext bytes to `<storage_dir>/<user_id>/<document_id>.bin`. No `cryptography` dependency, no S3/MinIO client in `pyproject.toml`. The compose demo stack has no object-storage service: MinIO was dropped when it died upstream (checklist item 92, Option A), and item 64 still owns object storage. | The first real document is accepted, or storage leaves the founder's machine. Encryption + object storage must clear before either. |
 | 3 | Image OCR | **Accepted (deliberate)** | PNG/JPEG uploads come back `needs_attention` with `note = "ocr_not_configured"`, asserted in `test_document_pipeline.py`. Consequence: image evidence is unusable, so pilot instructions must say PDF or TXT. | Image evidence is needed for a pilot service; OCR then becomes in scope. |
 | 4 | Aadhaar Verhoeff validation | **Moot under A1** | `_normalize_aadhaar` still accepts any 12 digits, but the value is never promoted, stored in a profile, shown in a draft, exported or put in a packet. The portal is the only place an Aadhaar number is entered or validated. | Aadhaar becomes a pack input or is stored outside `extracted_fields`; then checksum validation and a policy decision are required. |
-| 5 | Export completeness | **Accepted for the synthetic pilot** | `GET /auth/export` returns `user` and `consent_records` only (`identity/schemas.py::AccountExport`). Document metadata and profile values are missing. | RINAVI promises citizens they can take their data with them, or real documents are accepted. Both require a complete export. |
+| 5 | Export completeness | **Accepted for the synthetic pilot** (D7, 2026-11-24 — no portability promise; the narrow export is reachable at `/account`, item 102) | `GET /auth/export` returns `user` and `consent_records` only (`identity/schemas.py::AccountExport`). Document metadata and profile values are missing. | RINAVI promises citizens they can take their data with them, or real documents are accepted. Both require a complete export. |
 | 6 | Retention sweeps | **Accepted for the synthetic pilot** | No scheduler or cron job exists. A document whose delete fails at `storage.delete` (503) keeps both row and file, which is recoverable by retrying; nothing sweeps files left behind by an interrupted delete. | Real documents are accepted or the pilot has more than one user; then a scheduled sweep and an operator runbook are required. |
 | 7 | PostgreSQL migration | **Parity cleared; production cutover still deferred** | `asyncpg` is declared (PR #64), a `backend-postgres` CI job runs the full suite against PostgreSQL 16 (268 passed), Alembic `upgrade head` and `alembic check` pass against Postgres, and the compose demo stack runs the backend on PostgreSQL. `database_url` still defaults to `sqlite+aiosqlite` for local dev/test. | Real documents are accepted or the pilot host is chosen; the production cutover (checklist items 53/67) must still land before either. |
 | 8 | Extraction cost baseline | **Cleared by absence** | The pipeline is deterministic and makes no AI calls: no `openai`, `anthropic`, Tesseract or other inference dependency exists. Spend is zero, so there is nothing to meter yet. Correction counts already come from `profile.value_corrected` audit events. | Any inference dependency is added. |
@@ -105,11 +105,13 @@ unowned gaps.
    filters every API path, omits restricted bindings from new draft snapshots,
    rejects field updates for a restricted binding, and deletes legacy
    `profile_values` rows with migration `b7e4f1a2c9d3`. The extraction code
-   still reads and stores Aadhaar in `extracted_fields`; the owner-only `/fields`
-   response hides it, and audit logging already redacts 12-digit values. The
-   checksum item is moot because the portal is the only entry point. This
-   reopens if extracted fields are exposed beyond `/fields`, included in an
-   export, or a pack requires Aadhaar as an input.
+   still recognises an Aadhaar line so the document classifies, but
+   `documents/pipeline.py` now stores the literal marker `[REDACTED]` instead
+   of the digits; the owner-only `/fields` response hides the row, and audit
+   logging already redacts 12-digit values. The checksum item is moot because
+   the portal is the only entry point. This reopens if extracted fields are
+   exposed beyond `/fields`, included in an export, or a pack requires Aadhaar
+   as an input.
 6. **The minimatch advisory is cleared.** PR #50 moves `eslint` to 10.15 and
    forces `@typescript-eslint/typescript-estree` onto `minimatch` 11 through a
    scoped override; the override did not break lint. `npm audit` reports 0
@@ -130,12 +132,23 @@ unowned gaps.
 | 2 | Encryption at rest + object storage | Accept plaintext local disk for synthetic data only. | The first real document or a shared host; encryption and object storage must clear first. |
 | 3 | PostgreSQL cutover | Parity cleared (PR #64: `asyncpg`, `backend-postgres` CI job, 268 passed against PostgreSQL 16, Alembic verified); the production cutover itself stays deferred per ADR-0002. | Real documents or a chosen pilot host; the cutover must land before either. |
 | 4 | Compliance resolver | Assist-only in V1; resolver is post-pilot and additive; portal decides eligibility. | A resolver is scheduled; it must stay advisory and needs a new ADR or an ADR-0003 update. |
-| 5 | Export completeness | Accept user + consent records as the pilot export. | RINAVI promises "take your data with you" or accepts real documents; then document metadata and profile values must be included. |
-| 6 | Aadhaar handling | Portal-only. A1 cleared profile, draft, packet and UI propagation; legacy profile rows are deleted; extraction remains but is hidden from the API; checksum is moot. | Aadhaar becomes a pack input or extracted rows are exposed beyond `/fields`. |
+| 5 | Export completeness | Accept user + consent records as the pilot export (D7, 2026-11-24: no portability promise is made). The control is reachable from the account screen before the pilot — item 102, measured by `pilot-plan.md` §7. | RINAVI promises "take your data with you" or accepts real documents; then document metadata and profile values must be included. |
+| 6 | Aadhaar handling | Portal-only. A1 cleared profile, draft, packet and UI propagation; legacy profile rows are deleted; extraction still recognises the line but stores `[REDACTED]`, never the digits; checksum is moot. | Aadhaar becomes a pack input, extracted rows carry the number again, or they are exposed beyond `/fields`. |
 | 7 | Deployment topology | App images and a working compose demo stack exist (PR #65); host selection stays deferred; single worker with `memory://` rate limits. | Pilot launch; a host must be chosen and the app deployed before launch. |
 | 8 | OCR scope | Accept PDF/TXT only; the pilot script must say image uploads are unsupported. | Image evidence is required; OCR then enters scope. |
 | 9 | Concurrent workers | Accept a single worker with `memory://` rate-limit storage. | Multi-worker or autoscaling; a shared rate-limit backend is required. |
 | 10 | Dependency advisory | Cleared by the eslint 10.15 + scoped `minimatch` 11 override; no fallback was needed. | The override is removed or a new advisory affects shipped code. |
+
+**Dependency lock — drafted, not in effect.** `backend/requirements.lock`
+(draft PR #94) pins every runtime and dev requirement with hashes for Python
+3.12+, resolved from `backend/pyproject.toml` with `uv pip compile
+pyproject.toml --extra dev --python-version 3.12 --universal --generate-hashes`.
+Nothing installs from it and no job refreshes it, so it is parked deliberately:
+landing an unread pin set would look authoritative while drifting. D4 chose
+option (b) — CI and the images install with `pip install --require-hashes -r
+requirements.lock`, and a weekly job regenerates the lock and fails on drift;
+the draft is closed as superseded once that wiring lands. Until then
+`pyproject.toml` is the only install source.
 
 ## Pilot phase A artefacts
 
@@ -160,11 +173,11 @@ conditional on that review, so real documents and any hosted pilot stay blocked.
 
 What the mapping surfaced, for the reviewer rather than for a code change:
 
-1. **Aadhaar is still written to `extracted_fields`.** A1 stops it reaching a
-   profile, draft, packet, export or the `/fields` response, but the extracted
-   value is stored and readable with database access. Fine for SPECIMEN
-   numbers; needs a decision (drop on write, or encrypt) before any real
-   document.
+1. **Aadhaar is recognised but no longer written.** `documents/pipeline.py`
+   stores `[REDACTED]` for the `aadhaar_number` field instead of the digits, so
+   a database reader sees that the line existed but not its value. The field
+   key still classifies the document as identity. Reopens if a pack needs the
+   number or a reader starts depending on the stored value.
 2. **Two consent-scope questions.** `POST /applications/drafts/{id}/complete`
    snapshots draft values and evidence under `applications.preparation` alone;
    `apply-again` requires both `locker.tracking` and `applications.preparation`.
@@ -189,11 +202,12 @@ provide. Item 83 stays unticked until that review signs off; the gate remains
 Raised by the PR #65 review; each is recorded with what reopens it, or who
 owns it where no reopen condition applies.
 
-1. **No Docker CI job.** `ci.yml` runs `backend`, `backend-postgres` and `web`
-   only; neither Dockerfile nor the compose stack is built on PRs. A
-   path-filtered Docker build job would catch image regressions. Reopens when
-   Dockerfiles or compose change without local verification, or when the demo
-   becomes part of the launch path.
+1. **Docker CI job — cleared 2026-11-18.** `ci.yml` gained a path-filtered
+   `docker` job (PR #68, `fee4e9f`) that builds both images with Buildx,
+   validates the compose file, and asserts the image contract (UID 10001, an
+   entrypoint that runs `alembic upgrade head`); it is not the full smoke, which
+   stays a local pre-demo step. Reopens if the job is removed, or stops running
+   on PRs that touch `backend/`, `apps/web/`, `infra/compose/` or `ci.yml`.
 2. **The backend image is compose-only.** `docker run rinavi-backend` fails at
    startup (`RINAVI_ENVIRONMENT` is required) and its default SQLite/storage
    paths are root-owned. The image exists for the compose demo; standalone use
@@ -216,6 +230,26 @@ owns it where no reopen condition applies.
    manually (`docker volume rm compose_postgres_data`) once its data is
    unwanted. Reopens if the old compose project is ever restarted or the
    volume reappears on this machine.
+6. **PDF parsing has a soft, not hard, wall-clock bound.**
+   `extract_text_from_pdf` checks a 20-second deadline between pages and
+   returns the text read so far, so a single hostile page can still outlast
+   it. Uploads run inside the request on one worker
+   (threat-model.md §6.8). A hard bound needs a separate process or a job queue
+   that can be killed; until then the page and text limits bound the work and
+   the pilot is supervised. Reopens with concurrent users, a real document set
+   or a job queue.
+7. **No reverse proxy, so no proxy-level timeouts.** The compose stack exposes
+   the backend and web servers directly; the only client-side bounds are the
+   web app's 30-second request and 120-second upload timeouts
+   (`apps/web/src/lib/api.ts`). A host with a proxy must set read/send
+   timeouts at least as long as those, and the threat model must be redone
+   (review trigger 1). Reopens at host selection.
+8. **GitHub Pages publishes the whole `docs/` tree, not just the demo.**
+   `docs/index.html` and `docs/assets/` are the static demo, but the same site
+   also serves this readiness document, the pilot plan, the handbook and the
+   dated planning snapshot. They contain no pilot data, but they are public and
+   some are dated; treat publication of anything under `docs/` as publication
+   to the internet (`data-map.md` §10).
 
 ## What this pass did not verify
 

@@ -1,14 +1,15 @@
 # Reviewer brief — WP2 legal/privacy review
 
-**To:** the qualified legal/privacy reviewer engaged by the pilot owner ·
-**From:** the pilot owner · **Date:** 2026-11-19 · **Against:** `main` @ `ac8aa27`
+**To:** the qualified legal/privacy reviewer (not yet engaged) ·
+**From:** the pilot owner · **Date:** 2026-11-23 · **Against:** `main` @ `5c255e7`
+**Amended:** 2026-11-24 — the Hindi comprehension layer added to the review scope (ADR-0006).
 
 The reviewer's identity and engagement terms are held privately, not in this
 repository; the note in `docs/compliance/README.md` records what is public and
 what is not.
 
 **The ask:** approve, approve with conditions, or decline the **phase A synthetic
-pilot** described by the eight documents in this folder. They describe the system;
+pilot** described by the eight documents in this folder, plus the Hindi comprehension text below. They describe the system;
 this page states what we need you to decide. Not legal advice.
 
 **Scope.** Assist-only income-certificate assistant: nine backend modules, one
@@ -52,6 +53,24 @@ delete route at all**, and **confirmed profile values leave only with the accoun
 (non-confirmed values can be rejected) — see `data-map.md` §4, §8. Must they close
 before the pilot, or are they acceptable while every document is fake?
 
+## The Hindi text — and a second signature
+
+The pilot's own words are being prepared in Hindi as a **comprehension layer**
+over the English record (ADR-0006): the consent purposes, a summary of the
+notice, an explanation of the declaration, the validation messages that block
+progress, and the official-channel guidance. The government's quoted text — the
+form labels and the declaration itself — stays English, with the Hindi beside it
+as an explanation, never as a substitute.
+
+Two consequences for this review:
+
+- The Hindi summary and the declaration explanation are **in scope** alongside
+  the eight documents, so the engagement needs a **Hindi-fluent reviewer** — the
+  same person if qualified, or a second reader. We will not put unreviewed
+  translated legal text in front of a participant.
+- Where the two versions differ, **English governs**, and the notice will say so
+  once the Hindi text exists. The Hindi artefacts are added only after you
+  approve them; the English pilot does not wait for them.
 ## Risks we ask you to see accepted — synthetic only
 
 From `threat-model.md` §6; each is accepted *because* every document is fake, and
@@ -65,7 +84,7 @@ each names what reopens it.
 | 6.4 | No backup, so deletion is also loss | Any real document, or a promised restore |
 | 6.5 | No retention or session sweep | Real documents (item 68) |
 | 6.6 | Dev sign-in creates accounts for any email | Any environment where a participant can reach it |
-| 6.7 | Aadhaar survives in `extracted_fields` | Real documents (item 35 residual) |
+| 6.7 | An Aadhaar line is still recognised, though the value is stored as `[REDACTED]` | Real documents (item 35 residual) |
 | 6.8 | Parsing inside the upload request (thread-offloaded), single worker | Concurrent users, or a job queue with a worker-level timeout |
 
 **Outside this review:** hosting, TLS, proxy, WAF; encryption at rest; object

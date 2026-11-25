@@ -37,6 +37,26 @@ async def test_guard_blocks_after_withdrawal() -> None:
         assert exc_info.value.status_code == 403
 
 
+async def test_guard_blocks_a_grant_made_under_an_older_policy() -> None:
+    # The version is recorded with the grant, so it must also be enforced:
+    # bumping the notice has to ask the citizen again rather than reuse the
+    # permission they gave for the previous text.
+    async with async_session_factory() as db:
+        user = await identity_service.get_or_create_user(db, "citizen@example.com")
+        db.add(
+            ConsentRecord(
+                user_id=user.id,
+                purpose="documents.processing",
+                policy_version="0.9",
+            )
+        )
+        await db.commit()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await require_active_consent("documents.processing", user, db)
+        assert exc_info.value.status_code == 403
+
+
 async def test_guard_survives_duplicate_active_grants() -> None:
     async with async_session_factory() as db:
         user = await identity_service.get_or_create_user(db, "citizen@example.com")

@@ -103,6 +103,14 @@ async def correct_value(db: AsyncSession, value: ProfileValue, new_value: str) -
     value.correction_history = history
     value.value = new_value
     value.status = ProfileStatus.CONFIRMED
+    # The confirmed value is now the citizen's, not the document's. Keeping
+    # the source link would let a later document deletion mark a value they
+    # typed themselves as stale, and a correction made on a stale value would
+    # carry its stale_reason forever.
+    value.source_document_id = None
+    value.source_locator = None
+    value.confidence = None
+    value.stale_reason = None
     value.updated_at = utcnow()
     await db.flush()
 

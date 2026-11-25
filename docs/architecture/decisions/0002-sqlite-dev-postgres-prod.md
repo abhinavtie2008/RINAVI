@@ -24,3 +24,4 @@ as production. The sprint deadline makes tool installation a poor trade.
 - pgvector is added only when curated service retrieval is built, after the
   first workflow milestone.
 - Switch to PostgreSQL before the controlled pilot (WP8).
+- **Amended 2026-11-24 (ADR-0004):** the production cutover target is the hosting rung live at the time — the Oracle Always Free VM (rung 3) or the platform-scale host (rung 4). The cutover itself stays deferred until real data; nothing in this ADR changes the dev/staging split.

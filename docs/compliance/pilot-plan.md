@@ -17,9 +17,10 @@ an oversight — see §2.
 
 Three facts in the current build force this shape:
 
-1. A draft cannot be completed without **two evidence documents** (identity and
-   income). The pack's residence group has an empty `accepted_classifications`
-   list, so it accepts any processed document; the flow links the income
+1. A draft cannot be completed without **three evidence groups** (identity,
+   residence and income). The residence group accepts `residence` and
+   `identity` documents — an Aadhaar line carries the address, and extraction
+   classifies such a document as identity — so the flow links the identity
    document there as well. Profile values can only be created by promoting a
    document.
 2. Images are parked as `needs_attention` because **OCR is not implemented**, so
@@ -40,7 +41,7 @@ product; it does not process anyone's actual application.
 | Duration | 2–3 weeks, sessions of 25–30 minutes |
 | Channels | Personal network; an NGO, community group or college; WhatsApp groups and social media |
 | Mix to aim for | Self-applied vs agent-assisted; comfort with English; urban and semi-urban |
-| Language | English only — the UI is not localised, and the script must say so |
+| Language | English is the language of record; a Hindi comprehension layer (ADR-0006) lands before the first non-English session, and the script must say which one is in use |
 | Exclusion | Anyone who wants to process a real application during the pilot |
 
 Recruitment material must not promise approval, faster processing or government
@@ -100,6 +101,12 @@ identifiers. No third-party analytics or error-reporting SDK is installed.
 | Trust | Answers to "would you use this for your own application?" and "would you pay?" | Qualitative; ≥ half positive |
 | Blocker list | Every stall, misread label and abandoned step, with the screen | Ranked, not counted |
 
+The export screen these first two measures depend on is `/account` (item 102,
+D7 2026-11-24): *Download account record and permissions* saves
+`rinavi-account-export.json` — the account and its permission history, and the
+screen says in the same breath that documents and profile values are not in it.
+Record once, per session, whether the participant reached the button unaided.
+
 A session that ends in a blocker is a valid result. Do not coach a participant
 through a step to make a measure look better; record the stall.
 
@@ -134,10 +141,13 @@ This plan is superseded when **all** of the following hold:
 1. The narrow review in this folder has been signed off and any required product
    changes have landed.
 2. The full WP2 review (DPDP scope) is complete for real documents.
-3. Encryption at rest, retention sweeps, complete export and a host with TLS
-   have landed (checklist items 64, 68, 65, 58, 97, 98).
-4. A decision on OCR and localisation is recorded, because most real proofs
-   arrive as photographs and the UI is English-only.
+3. Encryption at rest (blob-level, item 101), retention sweeps, the complete
+   export (item 65) and a host with TLS have landed (checklist items 64, 68, 58,
+   97, 98). The account export screen (item 102) is no longer on this list: it
+   exists at `/account`.
+4. The localisation decision is recorded (ADR-0006: a Hindi comprehension layer
+   over an English record); the OCR decision is still owed, because most real
+   proofs arrive as photographs.
 
 Until then, any real-document request is out of scope and is handled by §8.
 

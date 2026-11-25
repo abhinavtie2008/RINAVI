@@ -2,7 +2,7 @@
 
 Two kinds of content live in this folder.
 
-**Project documents**: `architecture/`, `compliance/`, `evaluation/`, `handbook/` and `planning/`.
+**Project documents**: `architecture/`, `compliance/`, `discovery/`, `evaluation/`, `handbook/` and `planning/`.
 
 **A static demo of the web UI**: the `*.html` pages and `assets/`. It is a second,
 browser-only implementation of the citizen flow (consent, vault, profile, applications,
@@ -36,12 +36,15 @@ matching backend route first: for example, completing a draft is gated on
 
 Every link in the demo is relative, so it works wherever the folder is served.
 
-- With Pages set to build from `main` and the repository root, the demo is at
-  `/RINAVI/docs/`, and the README remains the site's home page.
-- To make the demo the site's home page, set Pages to build from `main` and `/docs`.
-  Then `404.html` and `.nojekyll` take effect, and the README is no longer the home page.
-  (Under the root setting they do nothing, because GitHub only reads them from the
-  folder it publishes.)
+**The live site is published from `main` and `/docs`**, which makes the demo the site's home
+page at `https://<owner>.github.io/RINAVI/`. Under that setting `404.html` and `.nojekyll`
+apply, because GitHub only reads them from the folder it publishes.
+
+Building from `main` and the repository root is the other arrangement: the demo would live at
+`/RINAVI/docs/` and the README would be the home page, but the two files would be ignored.
+
+If the setting is ever changed, update this paragraph in the same commit — a reader cannot tell
+from the repository which arrangement is live, and the URLs differ.
 
 ## Fonts
 

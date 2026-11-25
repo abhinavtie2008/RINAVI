@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+root=$(pwd)
 
 echo "== backend =="
 cd backend
@@ -22,6 +23,9 @@ npm run build
 cd ..
 
 echo "== demo (docs/) =="
+# Not the shell's cwd: the web steps above leave it in apps/, so the demo step
+# has to go back to the repository root before it can find scripts/.
+cd "$root"
 node scripts/check_demo_sync.mjs
 
 echo "All checks passed."

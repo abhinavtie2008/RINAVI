@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { expect, test, type Page } from "@playwright/test";
 
 // One citizen journey against the compose demo stack (dev sign-in enabled).
@@ -166,10 +168,11 @@ test("a citizen prepares a complete packet through the web app", async ({
     .getByRole("button", { name: "Save" })
     .click();
 
-  // residence_proof accepts any classification; income.pdf is a valid stand-in.
+  // residence_proof accepts residence and identity documents (an Aadhaar line
+  // carries the address), but not an income-only document.
   await attachEvidence(page, "identity_proof", "identity.pdf", 1);
   await attachEvidence(page, "income_evidence", "income.pdf", 2);
-  await attachEvidence(page, "residence_proof", "income.pdf", 3);
+  await attachEvidence(page, "residence_proof", "identity.pdf", 3);
 
   // The checkbox is controlled: it flips only after the declaration request
   // succeeds, so click and then poll rather than assert synchronously.
@@ -184,4 +187,55 @@ test("a citizen prepares a complete packet through the web app", async ({
   await expect(page.getByTestId("export-text")).toContainText(
     "Asha Devi",
   );
+});
+
+// Item 102: the controls the privacy notice promises. The export is checked by
+// reading the downloaded file, because the promise is about its contents, not
+// about a button having been clicked.
+test("a citizen downloads their account record and deletes the account", async ({
+  page,
+}) => {
+  const email = `e2e-account-${Date.now()}@example.com`;
+
+  await signIn(page, email);
+  await uploadDocuments(page, [
+    { name: "income.pdf", buffer: makeTextPdf(INCOME_LINES) },
+  ]);
+
+  await page.goto("/account");
+  await expect(page.getByTestId("account-user")).toContainText(email);
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page
+      .getByRole("button", { name: "Download account record and permissions" })
+      .click(),
+  ]);
+  expect(download.suggestedFilename()).toBe("rinavi-account-export.json");
+  const path = await download.path();
+  if (!path) {
+    throw new Error("the export was not saved to disk");
+  }
+  const exported = JSON.parse(readFileSync(path, "utf8"));
+  expect(exported.user.email).toBe(email);
+  // Exactly the server contract: no documents, no profile values.
+  expect(Object.keys(exported).sort()).toEqual(["consent_records", "user"]);
+  expect(
+    exported.consent_records.map((record: { purpose: string }) => record.purpose),
+  ).toContain("documents.processing");
+
+  page.on("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: "Delete my account" }).click();
+  await expect(page).toHaveURL(/\/$/);
+
+  // The session went with the account: the sign-in form is back.
+  await expect(page.getByLabel("Email")).toBeVisible();
+
+  // Signing in again creates a new account; the old documents are not there.
+  await signIn(page, email);
+  await page.goto("/vault");
+  await expect(
+    page.getByRole("button", { name: "Allow document processing" }),
+  ).toBeVisible();
+  await expect(page.getByTestId("document-row")).toHaveCount(0);
 });

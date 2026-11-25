@@ -68,15 +68,18 @@ proof of what was consented to when.
 | Table | Holds | Personal data | Retention |
 |---|---|---|---|
 | `documents` | `original_filename` (255), `content_type`, `size_bytes`, `status`, `classification`, `note`, `created_at`, `processed_at` | The filename can contain a name and a document type | Until the document is deleted or the account is deleted |
-| `extracted_fields` | `field_key`, `value`, `confidence`, `locator` per document | Field values read from the document, **including `aadhaar_number` when present** | Cascade-deleted with the document |
+| `extracted_fields` | `field_key`, `value`, `confidence`, `locator` per document | Field values read from the document; an `aadhaar_number` line is stored as the literal marker `[REDACTED]`, not the digits | Cascade-deleted with the document |
 | blob store | The uploaded bytes, unmodified | The whole document | Deleted before the row; account deletion purges the user's directory |
 
-`extracted_fields` is the honest edge in this map: A1 (item 35) stops Aadhaar
-from reaching a profile, draft, packet, export or the `/fields` response, but
-the extracted value itself is still written to this table and still readable by
-anyone with database access. Under the pilot that value is a fake SPECIMEN
-number; with real documents this row would need a decision (drop on write, or
-encrypt).
+A1 (item 35) stops Aadhaar from reaching a profile, draft, packet, export or
+the `/fields` response, and `documents/pipeline.py` stops it reaching this
+table: the line is still recognised, so the document classifies as identity,
+but what is written is the literal marker `[REDACTED]`. A reader with database
+access learns that a document carried an Aadhaar line, not what the number was.
+What remains is structural — `field_key`, `confidence` and `locator` say where
+in the document the line was — and the number itself still sits in the document
+bytes (§3.2, asset A1) until the document is deleted. Real documents still need
+the encryption-at-rest decision; the extracted-value half of that gap is closed.
 
 ### 3.4 Profile
 
@@ -92,6 +95,17 @@ participant can reject a value extracted under a purpose they have withdrawn.
 A `confirmed` value has no per-value delete route of its own; deleting its
 source document marks it `stale` (after which reject removes it), and account
 deletion removes it regardless.
+
+A correction makes the value the citizen's own rather than the document's:
+`POST /profile/values/{id}/correct` clears `source_document_id`,
+`source_locator` and `confidence`, records the old value in
+`correction_history`, and clears `stale_reason`. A corrected value therefore
+survives deletion of the document it was read from, and it is the only profile
+value with no provenance pointer — by design, because the citizen is now the
+source. The cost is recorded rather than hidden: the pointer to the document a
+corrected value was read from is not kept — `correction_history` holds the old
+value and the time, and the `profile.value_corrected` audit event holds the
+field key, so the link back to the source document is gone by design.
 
 ### 3.5 Preparation and tracking
 
@@ -229,7 +243,7 @@ surprise found here for the first time.
 | Gap | Effect | Owner |
 |---|---|---|
 | Blobs are plaintext on local disk | Anyone with the disk has the documents | Item 64, accepted for synthetic only |
-| `extracted_fields` keeps Aadhaar when present | A hidden but stored identifier | Item 35 residual; pilot uses fake numbers |
+| An Aadhaar line is still recognisable, and the number is still in the blob | The fact and the location of the line survive; the digits survive in the uploaded bytes | Item 35 residual; the extracted value itself is `[REDACTED]` |
 | Export returns only `user` + `consent_records` | A citizen cannot take documents or profile values with them | Item 65, accepted for the pilot |
 | No retention sweep, no session sweep, no audit sweep | Expired sessions and old audit rows accumulate | Item 68 |
 | Cases have no delete route | A recorded case can only be removed by deleting the account | Part 6, accepted |
@@ -254,10 +268,12 @@ URL is a surface a reviewer will ask about.
 | Question | Answer |
 |---|---|
 | What does it store? | Whatever a visitor adds, in that visitor's own browser: `localStorage` key `rinavi.demo.v1` and `sessionStorage` keys `rinavi:suggested-links:*`. Nothing is sent to a server; the demo code contains no `fetch`, `XMLHttpRequest` or `sendBeacon`. |
-| Who controls it? | The visitor. The account page exports everything as JSON and erases it all. |
+| Who controls it? | The visitor. The account page exports the demo's records and metadata as JSON (document text is deliberately left out and stays in the browser) and can erase everything. |
 | What data is meant to go in? | Synthetic only. The landing page, footer, trust page and vault say so, and the vault offers three made-up sample documents. |
 | Third-party requests? | None. The two typefaces are bundled in `docs/assets/fonts/` under the SIL OFL 1.1, and there are no analytics, cookies or external scripts. |
 | What does the host see? | GitHub, as the host, receives ordinary request metadata (IP address, user agent, path) for each visit, as any web host does. RINAVI has no say in those logs and has not treated this as a processor relationship because no pilot data is involved; the reviewer may see it differently. |
 | Aadhaar? | An Aadhaar line in an uploaded text file is replaced with `[not kept by RINAVI]` before anything is stored or shown. |
 | Where does it differ from the backend? | It reads `.txt` only; sign-in is a display name, not a passkey. Completing a draft needs `applications.preparation` alone, as the API does (§4, question 1), and opening the resulting case then asks for `locker.tracking`. |
-| How is it kept in step with the code? | `scripts/check_demo_sync.mjs`, run by `scripts/check.sh` and by CI, compares the demo's service pack and extraction rules with `catalog/` and `extraction.py`, and runs the same fixtures through both extractors. It does not check the demo's consent or locker logic. |
+| What else does the published site serve? | GitHub Pages publishes the whole `docs/` folder, not only the demo: the handbook and the documents in `docs/compliance/` and `docs/planning/` are public at the same origin. None of them contains pilot data, but publication of anything under `docs/` is publication to the internet, and dated snapshots should say so on their face. |
+| What is it? | **An illustration, not a twin.** It shows the citizen journey and must keep the promises the trust page makes; everything else about it may differ from the app. The contract is five promises, quoted from that page: consent is off until granted and withdrawable at any time; a value you corrected yourself is kept when its source document is deleted (an untouched one is marked for a re-check); erasure works after withdrawal; the activity log is redacted; Aadhaar never enters profile, draft, packet or log. A behaviour outside those five is not promised and is not guarded. |
+| How is it kept in step with the code? | `scripts/check_demo_sync.mjs`, run by `scripts/check.sh` and by CI, compares the demo's service pack and extraction rules with `catalog/` and `extraction.py`, and runs the same fixtures through both extractors. **It does not yet check the five trust-page promises** — that guard extension is requested from YooExE; until it lands, a regression on one of them reaches the public site silently, which is what #85 was (corrected values were dropped when their source document was deleted). Recording the gap here is deliberate: the demo's consent, provenance, erasure, audit and Aadhaar logic are in `docs/assets/js/core.js`, and nothing currently runs it. |

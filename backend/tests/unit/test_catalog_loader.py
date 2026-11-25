@@ -118,3 +118,28 @@ def test_pack_naming_an_unknown_classification_is_rejected(
 
     with pytest.raises(CatalogError, match="residance"):
         loader.get_pack("own-service", "1.0.0")
+
+
+def test_pack_naming_an_unknown_requirement_is_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The validator treats every value other than "at_least_one" as optional,
+    # so a misspelt requirement would switch a mandatory group off silently.
+    service_dir = _write_service(tmp_path, "own-service")
+    pack_path = service_dir / "versions" / "1.0.0" / "service_pack.json"
+    data = json.loads(pack_path.read_text(encoding="utf-8"))
+    data["checklist_groups"] = [
+        {
+            "id": "residence_proof",
+            "label": "Residence proof",
+            "requirement": "atleast_one",
+            "accepted_classifications": ["residence"],
+        }
+    ]
+    pack_path.write_text(json.dumps(data), encoding="utf-8")
+    monkeypatch.setattr(loader, "CATALOG_ROOT", tmp_path)
+    loader.list_services.cache_clear()
+    loader.get_pack.cache_clear()
+
+    with pytest.raises(CatalogError, match="atleast_one"):
+        loader.get_pack("own-service", "1.0.0")

@@ -1,5 +1,6 @@
 import os
 import threading
+import uuid
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from sqlalchemy import select
 from app.core.db import async_session_factory
 from app.main import app
 from app.modules.audit.models import AuditEvent
+from app.modules.documents.models import ExtractedField
 from tests.factories import make_multipage_pdf, make_text_pdf
 
 API = "/api/v1"
@@ -87,6 +89,23 @@ async def test_txt_document_is_processed_with_fields() -> None:
         assert by_key["full_name"]["value"] == "Asha Devi"
         assert by_key["full_name"]["confidence"] == "high"
         assert by_key["full_name"]["locator"] == "line 1"
+
+        # The Aadhaar line is still recognised (so the document classifies as
+        # identity), but the digits must not be stored at rest either.
+        async with async_session_factory() as db:
+            stored = (
+                await db.execute(
+                    select(ExtractedField).where(
+                        ExtractedField.document_id == uuid.UUID(body["id"])
+                    )
+                )
+            ).scalars()
+            aadhaar = [
+                field for field in stored if field.field_key == "aadhaar_number"
+            ]
+        assert len(aadhaar) == 1
+        assert aadhaar[0].value == "[REDACTED]"
+        assert "123456789012" not in aadhaar[0].value
 
 
 async def test_pdf_with_text_layer_is_processed() -> None:
