@@ -48,7 +48,7 @@ No item is left undecided. Every accepted or deferred item names what reopens it
 | Consent, deny-by-default | Four purposes, checked as a dependency on the routes that need them; `apply-again` now also requires `applications.preparation` | PR #31, `api/deps.py`, `modules/locker/routes.py` |
 | Consent withdrawal | `/consent` page lists every purpose and withdraws an active grant | PR #34, `features/consent/ConsentPage.tsx` |
 | Extraction accuracy | Rupee amounts keep rupees (`Rs 120,000.00` → `120000`, not 12 million); impossible dates (`31/02/2000`) stay raw at low confidence | PR #30, `documents/extraction.py`, `tests/unit/test_extraction.py` |
-| Pack integrity | The loader refuses a checklist group that names a classification no document can hold | PR #30, `catalog/loader.py`, `tests/unit/test_catalog_loader.py` |
+| Pack integrity | The loader refuses a checklist group that names a classification no document can hold | PR #30, `backend/app/modules/catalog/loader.py`, `tests/unit/test_catalog_loader.py` |
 | Blob lifecycle | A record whose file is gone reports `content_unavailable` instead of 500; a rolled-back upload discards its bytes | PR #30, `documents/pipeline.py`, `vault/routes.py` |
 | Audit redaction | Document contents and PII never reach the audit log; SHA-256 digests preserved | PR #17, `audit/service.py`, `tests/security/test_redaction.py` |
 | Aadhaar portal-only | Aadhaar is filtered from profile reads and promotions, draft snapshots and values, validation, export, packets, and `/vault/documents/{id}/fields`; legacy profile rows are deleted; the dead UI label is gone | PR #52, `core/privacy.py`, migration `b7e4f1a2c9d3`, `tests/unit/test_application_builder.py`, `tests/integration/test_profile_api.py` |
@@ -139,13 +139,16 @@ unowned gaps.
 | 9 | Concurrent workers | Accept a single worker with `memory://` rate-limit storage. | Multi-worker or autoscaling; a shared rate-limit backend is required. |
 | 10 | Dependency advisory | Cleared by the eslint 10.15 + scoped `minimatch` 11 override; no fallback was needed. | The override is removed or a new advisory affects shipped code. |
 
-**Dependency lock.** `backend/requirements.lock` pins every runtime and dev
-requirement with hashes for Python 3.12+, resolved from `backend/pyproject.toml`
-with `uv pip compile pyproject.toml --extra dev --python-version 3.12 --universal
---generate-hashes`. `pyproject.toml` stays the source of truth; refresh the lock
-in the same commit as any dependency change. CI still installs from
-`pyproject.toml`, so the next step is to install from the lock and add a
-freshness check — recorded here rather than wired in untested.
+**Dependency lock — drafted, not in effect.** `backend/requirements.lock`
+(draft PR #94) pins every runtime and dev requirement with hashes for Python
+3.12+, resolved from `backend/pyproject.toml` with `uv pip compile
+pyproject.toml --extra dev --python-version 3.12 --universal --generate-hashes`.
+Nothing installs from it and no job refreshes it, so it is parked deliberately:
+landing an unread pin set would look authoritative while drifting. D4 chose
+option (b) — CI and the images install with `pip install --require-hashes -r
+requirements.lock`, and a weekly job regenerates the lock and fails on drift;
+the draft is closed as superseded once that wiring lands. Until then
+`pyproject.toml` is the only install source.
 
 ## Pilot phase A artefacts
 
@@ -199,11 +202,12 @@ provide. Item 83 stays unticked until that review signs off; the gate remains
 Raised by the PR #65 review; each is recorded with what reopens it, or who
 owns it where no reopen condition applies.
 
-1. **No Docker CI job.** `ci.yml` runs `backend`, `backend-postgres` and `web`
-   only; neither Dockerfile nor the compose stack is built on PRs. A
-   path-filtered Docker build job would catch image regressions. Reopens when
-   Dockerfiles or compose change without local verification, or when the demo
-   becomes part of the launch path.
+1. **Docker CI job — cleared 2026-11-18.** `ci.yml` gained a path-filtered
+   `docker` job (PR #68, `fee4e9f`) that builds both images with Buildx,
+   validates the compose file, and asserts the image contract (UID 10001, an
+   entrypoint that runs `alembic upgrade head`); it is not the full smoke, which
+   stays a local pre-demo step. Reopens if the job is removed, or stops running
+   on PRs that touch `backend/`, `apps/web/`, `infra/compose/` or `ci.yml`.
 2. **The backend image is compose-only.** `docker run rinavi-backend` fails at
    startup (`RINAVI_ENVIRONMENT` is required) and its default SQLite/storage
    paths are root-owned. The image exists for the compose demo; standalone use
