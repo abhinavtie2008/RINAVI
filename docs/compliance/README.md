@@ -12,7 +12,7 @@ is deliberate, and the rules at the end keep it that way.
 
 | File | Why it is safe to publish |
 |---|---|
-| `reviewer-brief.md` | The ask, Q1–Q3, the eight accepted risks and the decision box. No reviewer name or contact details. |
+| `reviewer-brief.md` | The ask, Q1–Q3, the eight accepted risks, the answer sheet and the decision box. No reviewer name or contact details. |
 | `pilot-plan.md` | How the synthetic session runs; roles are named by role, not person. |
 | `pilot-runbook.md` | The operator's steps: topology and the dev-sign-in constraint, the pre-session gate, the between-session wipe, support, incidents, pack re-verification. No participant data. |
 | `data-map.md` | What is stored, where, and which consent purpose gates it. No real records. |
