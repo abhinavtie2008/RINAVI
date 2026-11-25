@@ -2,7 +2,7 @@
 
 **Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-19,
 against `main` @ `fee4e9f`. **Amended:** 2026-11-25 — blob encryption (item 101,
-PR #110) and key deletion at close-out, against `main` @ `a0732fb`.
+PR #110) and key deletion at close-out, against `main` @ `f541019`.
 **Companion to:** `data-map.md` (where the data is), `privacy-notice-draft.md`
 (what participants are told). Not legal advice.
 
