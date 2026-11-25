@@ -14,5 +14,10 @@ describe("SiteNav", () => {
       "href",
       "/locker",
     );
+    // The account screen is where the notice's export and delete controls live.
+    expect(screen.getByRole("link", { name: "Your data" })).toHaveAttribute(
+      "href",
+      "/account",
+    );
   });
 });
