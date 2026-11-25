@@ -2,7 +2,7 @@
 
 Two kinds of content live in this folder.
 
-**Project documents**: `architecture/`, `compliance/`, `evaluation/`, `handbook/` and `planning/`.
+**Project documents**: `architecture/`, `compliance/`, `discovery/`, `evaluation/`, `handbook/` and `planning/`.
 
 **A static demo of the web UI**: the `*.html` pages and `assets/`. It is a second,
 browser-only implementation of the citizen flow (consent, vault, profile, applications,
