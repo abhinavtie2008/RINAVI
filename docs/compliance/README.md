@@ -1,7 +1,7 @@
 # Compliance documents — what is public and what is not
 
-**Status:** repository note, not a compliance artefact. **Updated:** 2026-11-21,
-against `main` @ `9a536a0`.
+**Status:** repository note, not a compliance artefact. **Updated:** 2026-11-24,
+against `main` @ `71b5023`.
 
 This folder lives in a public repository. Everything here is written to be safe
 to publish: it describes a **synthetic, assist-only** phase A pilot and carries
@@ -14,6 +14,7 @@ is deliberate, and the rules at the end keep it that way.
 |---|---|
 | `reviewer-brief.md` | The ask, Q1–Q3, the eight accepted risks and the decision box. No reviewer name or contact details. |
 | `pilot-plan.md` | How the synthetic session runs; roles are named by role, not person. |
+| `pilot-runbook.md` | The operator's steps: topology and the dev-sign-in constraint, the pre-session gate, the between-session wipe, support, incidents, pack re-verification. No participant data. |
 | `data-map.md` | What is stored, where, and which consent purpose gates it. No real records. |
 | `privacy-notice-draft.md` | Participant-facing draft; contact is a role, not a private individual. |
 | `terms-draft.md` | Participant-facing draft; assist-only limits. |
