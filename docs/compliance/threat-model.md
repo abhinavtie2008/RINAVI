@@ -1,7 +1,8 @@
 # Threat model — V1, synthetic pilot
 
 **Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-19,
-against `main` @ `fee4e9f`.
+against `main` @ `fee4e9f`. **Amended:** 2026-11-25 — blob encryption (item 101,
+PR #110), against `main` @ `f541019`; risk 6.1 and §7/§8 reworded.
 **Companion to:** `data-map.md` (what exists and where), `portal-permission-register.md`
 (what the system may do with a portal), `retention-policy.md` (what outlives
 deletion). **Authority:** `wp8-pilot-readiness.md` stays authoritative for
@@ -216,7 +217,7 @@ phase A rather than a launch.
 
 | # | Risk | Why it is acceptable now | Reopens when |
 |---|---|---|---|
-| 6.1 | A plaintext database and a blob key held on the same host | SPECIMEN documents only; one machine. **Decided 2026-11-24 (D2):** accepted for the synthetic pilot against a pre-commitment that blobs are encrypted before the first real document — the whole file, not the extracted fields, because the Aadhaar number is inside the upload. **Landed 2026-11-25 (item 101, PR #110):** blobs are AES-GCM ciphertext and production refuses to start without a key, so what remains accepted is the database, which holds no Aadhaar digits, and the key's presence on the host | The first real document, storage leaving the founder's machine, a hosted or shared machine, or key custody moving off the host (D2, item 101) |
+| 6.1 | A plaintext database and a blob key held on the same host | SPECIMEN documents only; one machine. **Decided 2026-11-24 (D2):** accepted for the synthetic pilot against a pre-commitment that blobs are encrypted before the first real document — the whole file, not the extracted fields, because the Aadhaar number is inside the upload. **Landed 2026-11-25 (item 101, PR #110, `f541019`):** blobs are AES-GCM ciphertext and production refuses to start without a key, so what remains accepted is the database, which holds no Aadhaar digits, and the key's presence on the host | The first real document, storage leaving the founder's machine, a hosted or shared machine, or key custody moving off the host (D2, item 101) |
 | 6.2 | No admin barrier against the facilitator | One facilitator, named in the notice, who already controls the machine | Any hosted or multi-operator deployment |
 | 6.3 | Audit rows editable and permanent | They hold no content, and no incident process exists yet to need them as evidence | Real documents, or an incident-response requirement (item 85) |
 | 6.4 | No backup, so deletion is also loss | Fake data, re-creatable by hand | Any real document, or a promised restore (item 85) |

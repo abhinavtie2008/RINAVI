@@ -1,7 +1,7 @@
 # Reviewer brief — WP2 legal/privacy review
 
 **To:** the qualified legal/privacy reviewer (not yet engaged) ·
-**From:** the pilot owner · **Date:** 2026-11-23 · **Against:** `main` @ `a0732fb` (re-stamped at each re-cut)
+**From:** the pilot owner · **Date:** 2026-11-23 · **Against:** `main` @ `f541019` (re-stamped at each re-cut)
 **Amended:** 2026-11-24 — the Hindi comprehension layer added to the review scope (ADR-0006).
 **Amended:** 2026-11-25 — an answer sheet added before the decision box: what a reply has to cover.
 
