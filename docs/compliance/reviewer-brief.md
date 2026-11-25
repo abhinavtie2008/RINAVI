@@ -3,6 +3,7 @@
 **To:** the qualified legal/privacy reviewer (not yet engaged) ·
 **From:** the pilot owner · **Date:** 2026-11-23 · **Against:** `main` @ `5c255e7`
 **Amended:** 2026-11-24 — the Hindi comprehension layer added to the review scope (ADR-0006).
+**Amended:** 2026-11-25 — an answer sheet added before the decision box: what a reply has to cover.
 
 The reviewer's identity and engagement terms are held privately, not in this
 repository; the note in `docs/compliance/README.md` records what is public and
@@ -96,6 +97,33 @@ rewritten, not amended.
 **Sign-off means** item 83 closes and the pilot may run as `pilot-plan.md`
 describes. It brings no host, no real documents, no portal access, no Aadhaar
 handling, no claim of government approval or faster processing.
+
+## What we need back
+
+Answer in whatever format suits you. This is the shape we can act on, and a
+reply that covers 1–6 plus the box below closes item 83. One page is enough.
+
+1. **You.** Name, capacity (advocate, firm, in-house counsel, DPO), and whether
+   you have any current or former relationship with the Delhi Revenue
+   Department, an e-District vendor or the portal operator. Whether you can
+   review the Hindi layer yourself, or need a Hindi-fluent second reader.
+2. **Q1–Q3.** For each: our reading, the other reading, or a third. A sentence
+   of reasoning is enough; a citation is welcome, not required. One question
+   from outside the eight documents: the discovery sessions (item 82) record
+   interviews under `recording-consent.md` — may they reuse it unchanged, or
+   does an interview need its own form?
+3. **The eight risks.** For 6.1–6.8: accept, accept with a condition, or
+   reject. Where a condition is code, say what it must do, not how.
+4. **The portal items.** `portal-permission-register.md` §8 — six items, each a
+   yes or no plus a line.
+5. **The documents.** For `privacy-notice-draft.md`, `terms-draft.md`,
+   `retention-policy.md`, `recording-consent.md`, `portal-permission-register.md`
+   and `threat-model.md` §6: sufficient, sufficient with edits, or not
+   sufficient — and which sentence. Then the five values only you can settle:
+   entity name, address, contact email, grievance officer (name and email), and
+   whether the retention periods stand as written.
+6. **The decision.** The box below, your name, the date, and a reference we can
+   quote in `data-map.md` §4 and `wp8-pilot-readiness.md`.
 
 ## Decision
 
