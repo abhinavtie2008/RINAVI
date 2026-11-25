@@ -1,1 +1,7 @@
-* @abhinavtie2008
+# Every change needs the owner's review. This is the rule that makes
+# "review" mean one specific person rather than any teammate: the
+# protect-main-review ruleset requires code-owner review, so a PR by a
+# collaborator waits for @abhinavtie2008. The owner's own PRs pass through
+# that ruleset's bypass list instead, so adding a second name here would
+# only give collaborators another person who can unblock them.
+*       @abhinavtie2008
