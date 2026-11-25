@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from app.core.config import Settings
 
@@ -95,7 +95,9 @@ def test_production_requires_a_storage_key() -> None:
 
 
 def test_storage_key_decodes_to_32_bytes() -> None:
-    settings = Settings(environment="development", storage_encryption_key=_KEY)
+    settings = Settings(
+        environment="development", storage_encryption_key=SecretStr(_KEY)
+    )
     assert len(settings.storage_key() or b"") == 32
 
 
@@ -107,13 +109,13 @@ def test_storage_key_must_decode_to_32_bytes() -> None:
     with pytest.raises(ValidationError, match="32 bytes"):
         Settings(
             environment="development",
-            storage_encryption_key=base64.urlsafe_b64encode(b"short").decode(),
+            storage_encryption_key=SecretStr(base64.urlsafe_b64encode(b"short").decode()),
         )
 
 
 def test_storage_key_must_be_base64() -> None:
     with pytest.raises(ValidationError, match="base64"):
-        Settings(environment="development", storage_encryption_key="not base64!!")
+        Settings(environment="development", storage_encryption_key=SecretStr("not base64!!"))
 
 
 def test_storage_key_file_is_read(tmp_path: Path) -> None:
@@ -137,13 +139,15 @@ def test_only_one_storage_key_source_may_be_set() -> None:
     with pytest.raises(ValidationError, match="only one"):
         Settings(
             environment="development",
-            storage_encryption_key=_KEY,
+            storage_encryption_key=SecretStr(_KEY),
             storage_encryption_key_file="blob.key",
         )
 
 
 def test_storage_key_is_absent_from_repr_and_dump() -> None:
-    settings = Settings(environment="development", storage_encryption_key=_KEY)
+    settings = Settings(
+        environment="development", storage_encryption_key=SecretStr(_KEY)
+    )
     assert _KEY not in repr(settings)
     assert _KEY not in str(settings.model_dump())
     assert _KEY not in settings.model_dump_json()
@@ -153,7 +157,7 @@ def test_storage_key_is_absent_from_repr_and_dump() -> None:
 def test_invalid_storage_key_is_absent_from_validation_text() -> None:
     bad = "not base64!!"
     with pytest.raises(ValidationError) as caught:
-        Settings(environment="development", storage_encryption_key=bad)
+        Settings(environment="development", storage_encryption_key=SecretStr(bad))
     assert bad not in str(caught.value)
     # errors() is not part of the contract we log, but keep the reminder
     # visible here: the raw input survives in it, so nothing may serialise it.
