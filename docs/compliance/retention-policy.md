@@ -30,7 +30,7 @@ explicitly delete, and no sweep that catches leftovers. Those gaps are listed in
 | `credentials` | Passkey public key, sign counter | Until account deletion | Cascade with the user |
 | `consent_records` | Purpose, policy version, granted/withdrawn timestamps | Until account deletion | Cascade with the user; withdrawal sets `withdrawn_at` and keeps the row as proof |
 | `documents` | Filename, type, size, status, classification | Until the document or the account is deleted | `DELETE /vault/documents/{id}`; cascade with the user |
-| document blob | The uploaded bytes | Same as its `documents` row | File removed **before** the row; a failed unlink returns 503 and keeps both, so the citizen can retry |
+| document blob | The uploaded bytes, as AES-GCM ciphertext while a key is configured | Same as its `documents` row | File removed **before** the row; a failed unlink returns 503 and keeps both, so the citizen can retry |
 | `extracted_fields` | Field values read from a document | Same as the document | Cascade on document delete |
 | `profile_values` | Name, address, income, date of birth, gender, father's name | Until the account is deleted; a non-confirmed value can be rejected | Cascade with the user; `POST /profile/values/{id}/reject` hard-deletes a non-confirmed value without a consent check; a confirmed value has no per-value delete route (deleting its source document makes it `stale`, and reject then removes it) |
 | `application_drafts` | Draft values, evidence links, declaration flag | Until the draft or the account is deleted | `DELETE /applications/drafts/{id}`, or `DELETE /applications/drafts` for all of them; both are ungated, so they also work after `applications.preparation` is withdrawn; cascade with the user |
@@ -64,9 +64,11 @@ and no way to investigate an incident.
 
 **Bulk deletion outside the app.** If the facilitator must wipe everything — for
 example at the end of the pilot — the sequence is: stop the app, delete the
-vault directory, drop and recreate the database. Deleting the database is the
-only way to clear audit rows. There is no script for this yet, and it is a real
-gap for the pilot close-out (§5).
+vault directory, **delete the key file**, drop and recreate the database.
+Deleting the database is the only way to clear audit rows, and deleting the key
+is what makes any ciphertext left behind unreadable: ciphertext whose key
+survives is not erased. There is no script for this yet, and it is a real gap
+for the pilot close-out (§5).
 
 ## 4. Sessions and revocation
 
@@ -89,6 +91,7 @@ gap for the pilot close-out (§5).
 | Audit rows never expire | Grows without bound; must not become a shadow profile | Item 68 when real documents are in scope |
 | Log retention undefined | Depends on the host chosen | Decide with hosting (item 58) |
 | No backup, so no restore | "Deleted" is final; a disk failure is total loss | Item 85 (backup/restore drill) |
+| The blob key is stored once, on the same host | Losing it makes every stored document unreadable; it is also what makes a wipe complete | Gate G7 (backup/restore), runbook §6 |
 
 None of these is acceptable once real documents are accepted. All of them are
 acceptable for fake documents on one laptop, provided participants are told —
@@ -101,7 +104,8 @@ At the end of phase A:
 1. Tell every participant the deletion date, in writing, before it happens.
 2. Delete every pilot account through the app (so blobs and cascades run the
    tested path).
-3. Delete the vault directory and drop the database, then recreate it empty.
+3. Delete the vault directory, delete the storage key file (so leftover
+   ciphertext cannot be read), drop the database, then recreate it empty.
 4. Delete the pilot folder (notes, recordings, screenshots) and record the
    deletion in `docs/evaluation/` **without personal data**.
 5. Record the completion date in the pilot log.
@@ -111,7 +115,7 @@ entirely — which is why the recording consent form states the same date.
 
 ## 7. Review
 
-Review this policy when any of the following changes: hosting, encryption at
-rest, OCR, async workers, export completeness, the second service pack, or the
-first real document. Each of those adds a store or a processor, and each must
+Review this policy when any of the following changes: hosting, key custody or
+rotation, OCR, async workers, export completeness, the second service pack, or
+the first real document. Each of those adds a store or a processor, and each must
 land with its retention answer, not after it.

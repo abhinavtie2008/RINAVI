@@ -45,6 +45,10 @@ services:
       RINAVI_DEV_SIGNIN_ENABLED: "true"
       RINAVI_DATABASE_URL: postgresql+asyncpg://rinavi:rinavi@postgres:5432/rinavi
       RINAVI_STORAGE_DIR: /data/vault
+      # No storage key here, on purpose: the demo runs in development and its
+      # uploads are throwaway. Blobs staged in the demo land on disk as
+      # plaintext; a pilot deployment sets RINAVI_STORAGE_ENCRYPTION_KEY_FILE,
+      # which production refuses to start without (item 101).
       # WEB_PORT only changes the host-side binding, so the browser
       # origins must follow it or CORS/WebAuthn reject the web page.
       RINAVI_CORS_ORIGINS: '["http://localhost:${WEB_PORT:-3000}", "http://127.0.0.1:${WEB_PORT:-3000}"]'

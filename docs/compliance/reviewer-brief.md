@@ -1,7 +1,7 @@
 # Reviewer brief — WP2 legal/privacy review
 
 **To:** the qualified legal/privacy reviewer (not yet engaged) ·
-**From:** the pilot owner · **Date:** 2026-11-23 · **Against:** `main` @ `5c255e7`
+**From:** the pilot owner · **Date:** 2026-11-23 · **Against:** `main` @ `a0732fb` (re-stamped at each re-cut)
 **Amended:** 2026-11-24 — the Hindi comprehension layer added to the review scope (ADR-0006).
 **Amended:** 2026-11-25 — an answer sheet added before the decision box: what a reply has to cover.
 
@@ -16,8 +16,9 @@ this page states what we need you to decide. Not legal advice.
 **Scope.** Assist-only income-certificate assistant: nine backend modules, one
 service pack, a Next.js PWA — RINAVI prepares, the citizen submits on the official
 portal. Synthetic `SPECIMEN` documents only: no real Aadhaar, no portal
-credentials, no mobile numbers. One machine, loopback ports, plaintext disk, no host
-chosen, **no portal access at all** (every register row is A0). Adult supervised
+credentials, no mobile numbers. One machine, loopback ports, an unencrypted
+database with encrypted document files, no host chosen, **no portal access at
+all** (every register row is A0). Adult supervised
 volunteers, one at a time, recorded only under separate consent. Never: submission,
 OTP or CAPTCHA handling, portal calls, outbound transfer of user data, or any claim
 of government affiliation. A static, synthetic-only demo of the web UI is also
@@ -79,7 +80,7 @@ each names what reopens it.
 
 | # | Risk | Reopens when |
 |---|---|---|
-| 6.1 | Plaintext storage, no encryption at rest | First real document, or storage leaves the founder's machine |
+| 6.1 | The database is plaintext and the blob key sits on the same host; the blobs themselves are AES-GCM (item 101) | First real document, or storage leaves the founder's machine |
 | 6.2 | No admin barrier against the facilitator | Any hosted or multi-operator deployment |
 | 6.3 | Audit rows editable and permanent | Real documents, or an incident-response requirement |
 | 6.4 | No backup, so deletion is also loss | Any real document, or a promised restore |
@@ -88,8 +89,8 @@ each names what reopens it.
 | 6.7 | An Aadhaar line is still recognised, though the value is stored as `[REDACTED]` | Real documents (item 35 residual) |
 | 6.8 | Parsing inside the upload request (thread-offloaded), single worker | Concurrent users, or a job queue with a worker-level timeout |
 
-**Outside this review:** hosting, TLS, proxy, WAF; encryption at rest; object
-storage; OCR and real scans; retention automation; DigiLocker; any extension or
+**Outside this review:** hosting, TLS, proxy, WAF; key custody, rotation and
+backup; object storage; OCR and real scans; retention automation; DigiLocker; any extension or
 portal adapter (A0 → A2, with its own security review); mobile, accessibility,
 localisation; physical or insider coercion. Each reopens the threat model —
 rewritten, not amended.

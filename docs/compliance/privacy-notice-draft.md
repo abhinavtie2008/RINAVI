@@ -86,10 +86,13 @@ documents — the extraction is ordinary pattern matching on our own machine.
 
 ### 7. Where it is kept
 
-On a single computer used for the pilot, in **[city]**, India. It is not
-encrypted at rest yet: that is a known limitation of this prototype, and it is
-one reason the pilot uses fake documents only. It is not backed up; if the
-machine fails, the data is gone.
+On a single computer used for the pilot, in **[city]**, India. The document
+files you upload are stored encrypted, but the database that holds your account
+and the details RINAVI reads out of those files is not, and the key to the files
+sits on the same computer — so encryption guards against a stray copy of a file,
+not against someone who takes the whole machine. It is not backed up; if the
+machine fails, the data is gone. Those limits are one reason the pilot uses fake
+documents only.
 
 ### 8. How long we keep it
 

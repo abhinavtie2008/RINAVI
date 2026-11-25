@@ -37,7 +37,7 @@ Ordered by what the pilot would have to stop for.
 
 | # | Asset | Where | Impact if disclosed | Impact if lost or altered |
 |---|---|---|---|---|
-| A1 | Document bytes | `<storage_dir>/<user_id>/<document_id>.bin`, plaintext | Total for that participant: the whole document | Unrecoverable; no backup |
+| A1 | Document bytes | `<storage_dir>/<user_id>/<document_id>.bin`, AES-GCM ciphertext (item 101) | Total for that participant: the whole document | Unrecoverable; no backup |
 | A2 | Extracted field values; an `aadhaar_number` line is stored as `[REDACTED]` | `extracted_fields` | High: structured identity data; no Aadhaar digits survive here | Re-derivable from A1 |
 | A3 | Profile values and draft values | `profile_values`, `application_drafts` | High: name, address, income, date of birth, father's name | Participant re-enters by hand |
 | A4 | Case packets and reference numbers | `application_cases.packet_text`, `case_events` | High: the assembled application plus portal references | Tracking history lost |
@@ -72,7 +72,7 @@ power of the OS account — which is the honest way to describe it.
 ```
  [ participant browser ] --B1-- [ web (Next) + API (FastAPI) ] --B2-- [ database ]
                                           |
-                                          +--B3-- [ vault directory, plaintext ]
+                                          +--B3-- [ vault directory, AES-GCM blobs ]
                                           |
                                           +--B4-- [ logs / stdout ]
 
@@ -158,11 +158,14 @@ is a confidentiality risk.
 | T17 | **PII in logs** — a document value or email reaching stdout | A redaction filter scrubs email addresses, 12-digit runs (Aadhaar-shaped) and 10-digit runs (phone-shaped), while preserving UUIDs and SHA-256 digests for correlation; it covers `exc_info`/`stack_info` and is attached to uvicorn's own handlers as well as the app's | `core/redaction.py`, `core/logging.py`, `tests/security/test_redaction.py` |
 | T18 | **PII in the audit trail** | `emit_audit` redacts `details` on the way in; the recorded details are non-PII context — classification, content type, size, purpose, method, field keys/ids, service slug, group/document/case/draft ids, event type and confirmation flags — never field values, never filenames, never document text | `audit/service.py`, `tests/integration/test_applications_api.py::test_audit_events_never_contain_draft_values` |
 | T19 | **Aadhaar propagation** | Filtered from profile reads, promotions, draft snapshots, values, validation, export, packets and the `/fields` response; legacy rows deleted by migration | `core/privacy.py`, migration `b7e4f1a2c9d3`, PR #52 |
-| T20 | **Unauthorised read of the stored bytes** | Filesystem permissions of the OS account only | — |
+| T20 | **Unauthorised read of the stored bytes** | AES-GCM at rest; the key is held by the OS account, never beside the bytes it protects | `vault/storage.py`, `core/config.py`, `tests/security/test_storage_encryption.py` |
 
-**Residual:** T20 has no application control at all. Blobs are plaintext, owned
-by the user running the backend, readable by anything on the machine with that
-account (§6.1). T17 is content-blind: it recognises shapes, not meaning, so a
+**Residual:** T20 has one application control, and it is not a boundary against
+the OS account. Blobs are ciphertext, so a copied `.bin`, a stale backup of the
+vault directory or an accidental read yields bytes without meaning; the key
+sits on the same host under the same OS account, and the database stays
+plaintext, so an attacker with the machine or that account has everything
+(§6.1). T17 is content-blind: it recognises shapes, not meaning, so a
 name, an address or a free-text note is not redacted, and a parser exception
 message is covered only insofar as it contains an email or a digit run. T19
 now leaves only a marker: the `aadhaar_number` value is stored as `[REDACTED]`,
@@ -178,7 +181,7 @@ re-derivable from A1 and why `data-map.md` §3.3 still calls the blob the edge.
 | T22 | **Health probes exhausting the budget** | `/health` is exempt from the application limits | `core/rate_limit.py::EXEMPT_PATHS` |
 | T23 | **Audit trail tampering or deletion** | None in the application: no append-only store, no hash chain, no external sink. A DB owner can edit rows | — |
 | T24 | **Insider reads or exports everything** | None in the application: no admin panel, but no barrier either — the facilitator holds the database and the vault | — |
-| T25 | **Loss of the laptop** | No encryption at rest, no backup | — |
+| T25 | **Loss of the laptop** | Blobs are ciphertext, but the key sits on the same disk and the database is plaintext; no backup | — |
 | T26 | **Silent boundary change by a future contributor** | CI gate (`scripts/check.sh` on every push: ruff, pyright, pytest, eslint, tsc, vitest, production build), CodeQL on push and PR, a PR template that asks about portal bypasses, and this file plus the portal register as the place a boundary change must be recorded | `.github/workflows/ci.yml`, `.github/pull_request_template.md` |
 
 **Residual:** T23–T25 are accepted for the synthetic pilot and are exactly why
@@ -213,7 +216,7 @@ phase A rather than a launch.
 
 | # | Risk | Why it is acceptable now | Reopens when |
 |---|---|---|---|
-| 6.1 | Plaintext storage and no encryption at rest | SPECIMEN documents only; one machine. **Decided 2026-11-24 (D2):** accepted for the synthetic pilot, against a pre-commitment that document blobs are encrypted at rest before the first real document — the whole file, not the extracted fields, because the Aadhaar number is inside the upload; encrypting the parsed values would leave it readable on disk | The first real document, or storage leaves the founder's machine (readiness decision 2). Either way the remedy is already named — item 92 — not a fresh decision |
+| 6.1 | A plaintext database and a blob key held on the same host | SPECIMEN documents only; one machine. **Decided 2026-11-24 (D2):** accepted for the synthetic pilot against a pre-commitment that blobs are encrypted before the first real document — the whole file, not the extracted fields, because the Aadhaar number is inside the upload. **Landed 2026-11-25 (item 101, PR #110):** blobs are AES-GCM ciphertext and production refuses to start without a key, so what remains accepted is the database, which holds no Aadhaar digits, and the key's presence on the host | The first real document, storage leaving the founder's machine, a hosted or shared machine, or key custody moving off the host (D2, item 101) |
 | 6.2 | No admin barrier against the facilitator | One facilitator, named in the notice, who already controls the machine | Any hosted or multi-operator deployment |
 | 6.3 | Audit rows editable and permanent | They hold no content, and no incident process exists yet to need them as evidence | Real documents, or an incident-response requirement (item 85) |
 | 6.4 | No backup, so deletion is also loss | Fake data, re-creatable by hand | Any real document, or a promised restore (item 85) |
@@ -236,8 +239,8 @@ phase A rather than a launch.
   document bytes on any server, so it is outside this model. Reopens if the
   demo gains a server, an upload path, analytics or any link to the pilot's
   data, or if anything published under `docs/` starts carrying pilot data.
-- **Real documents.** OCR, real scans, real Aadhaar numbers, encryption at rest
-  and retention are all post-gate.
+- **Real documents.** Blob encryption is in code (item 101); OCR, real scans, real
+  Aadhaar numbers, key custody and rotation, and retention are post-gate.
 - **The portal side.** What the citizen does in their own browser is outside the
   system; `portal-permission-register.md` records what RINAVI may do with a
   portal, which today is nothing.
@@ -256,8 +259,8 @@ rather than adding a feature:
 1. A host, domain, TLS terminator or reverse proxy is added.
 2. More than one backend worker or instance runs.
 3. A real document, real Aadhaar number or real portal credential is accepted.
-4. Encryption at rest, object storage, OCR, email, analytics, error reporting or
-   an AI API is introduced — each is a new processor or a new store.
+4. Key rotation, a KMS or HSM, object storage, OCR, email, analytics, error
+   reporting or an AI API is introduced — each is a new processor or a new store.
 5. A browser extension, portal adapter or any runtime call to a portal is
    proposed (also a register change: A1 → A2).
 6. Authentication changes: a password, a recovery flow, a second factor, an

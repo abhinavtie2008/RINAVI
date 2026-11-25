@@ -20,6 +20,9 @@ dependencies = [
     "pydantic-settings>=2.6",
     "python-multipart>=0.0.20",
     "pypdf>=5.1",
+    # AES-GCM for document blobs at rest (item 101). Declared explicitly
+    # rather than relying on it arriving transitively through webauthn.
+    "cryptography>=43",
     # The global budget middleware calls slowapi internals
     # (slowapi.middleware.sync_check_limits and Limiter._inject_headers), so a
     # breaking release would stop every request rather than degrade. 0.1.10 is
