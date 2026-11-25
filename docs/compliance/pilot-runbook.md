@@ -100,7 +100,7 @@ reopen trigger. Status is re-checked the day before, not copied from here.
 | G4 | Pilot sign-in mode live (§2, D10): production posture, `dev_signin_enabled=false`, `pilot_invites_enabled=true`, and a single-use invite signs a fresh participant in from a device that is not the facilitator's, off the network | BLOCKED on #103 — decided, not built | YooExE + Owner |
 | G5 | `RINAVI_STORAGE_DIR` known and recorded, with `RINAVI_STORAGE_ENCRYPTION_KEY_FILE` beside it and a copy of the key outside the vault; one worker; rate-limit storage `memory://` documented as single-process | CLEARED in config, values PENDING with the host | YooExE |
 | G6 | The wipe in §5 rehearsed against a throwaway account on the host, with the verification command in the log | PENDING — script half is YooExE's | Owner + YooExE |
-| G7 | Backup and restore drill (A7) done; until then "deleted" is final and a disk failure is total loss | PENDING | YooExE |
+| G7 | Backup and restore drill — YooExE's task A7 — done, **including the blob key**; until then "deleted" is final and a disk failure is total loss | PENDING | YooExE |
 | G8 | Support person, channel and hours named in §7 | PENDING | Owner |
 | G9 | Consent forms printed twice, private folder path recorded, session log created, recording tool decided | PENDING, cheap | Owner |
 | G10 | Blob encryption at rest (item 101) | **CLEARED in code** — AES-GCM blobs, production refuses to start without a key. For synthetic sessions it is not a gate; it is the gate the moment a real document is involved, and the key then needs G5, G6 and G7 behind it | YooExE |
@@ -285,10 +285,13 @@ run. Do not compute it from pilot sessions.
 
 ## 11. Backup and restore
 
-**PENDING — A7 drill, YooExE.** There is no backup today, so "deleted" is
-final (`retention-policy.md` §5). Before the pilot starts, the drill must show:
-a database backup taken, the app restored on a clean volume, the restored data
-readable, and the restore time recorded. Until then, a disk failure during the
+**PENDING — backup drill (YooExE task A7, gate G7), YooExE.** There is no
+backup today, so "deleted" is final (`retention-policy.md` §5). Before the
+pilot starts, the drill must show: a database backup taken, the app restored on
+a clean volume, the restored data readable, **the restored blobs readable with
+the saved key**, and the restore time recorded. A backup that omits
+`RINAVI_STORAGE_ENCRYPTION_KEY_FILE` restores rows that point at ciphertext
+nobody can open. Until then, a disk failure during the
 pilot loses the pilot — which is acceptable for synthetic data and unacceptable
 as a launch posture, so it is a WP11 item (85) as well as a pilot gate (G7).
 

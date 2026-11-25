@@ -2,7 +2,7 @@ import base64
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
@@ -24,7 +24,15 @@ def _decode_storage_key(raw: str, source: str) -> bytes:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="RINAVI_", env_file=".env")
+    model_config = SettingsConfigDict(
+        env_prefix="RINAVI_",
+        env_file=".env",
+        # Invalid values would otherwise appear verbatim in the text of a
+        # startup ValidationError. This is not sufficient on its own for the
+        # storage key (see the field below), but it keeps every other secret
+        # out of a traceback.
+        hide_input_in_errors=True,
+    )
 
     app_name: str = "RINAVI"
     environment: str = "production"
@@ -38,7 +46,12 @@ class Settings(BaseSettings):
     # refuses to start without one. Prefer the file when the key lives on the
     # host, because process environment variables can be read by other local
     # users and end up in crash reports.
-    storage_encryption_key: str | None = None
+    #
+    # SecretStr keeps the value out of repr(), model_dump() and the text of a
+    # validation error. A model-level validator still records the raw input in
+    # ValidationError.errors()[0]["input"], so never serialise errors() from a
+    # Settings construction: log the field path and the message instead.
+    storage_encryption_key: SecretStr | None = Field(default=None, repr=False)
     storage_encryption_key_file: str | None = None
 
     cookie_name: str = "rinavi_session"
@@ -81,7 +94,8 @@ class Settings(BaseSettings):
         """The decoded 32-byte blob key, or None when encryption is unset."""
         if self.storage_encryption_key is not None:
             return _decode_storage_key(
-                self.storage_encryption_key, "RINAVI_STORAGE_ENCRYPTION_KEY"
+                self.storage_encryption_key.get_secret_value(),
+                "RINAVI_STORAGE_ENCRYPTION_KEY",
             )
         if self.storage_encryption_key_file is not None:
             path = Path(self.storage_encryption_key_file)
@@ -120,7 +134,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _require_storage_encryption(self) -> "Settings":
-        if self.storage_encryption_key and self.storage_encryption_key_file:
+        if self.storage_encryption_key is not None and self.storage_encryption_key_file:
             raise ValueError(
                 "set only one of RINAVI_STORAGE_ENCRYPTION_KEY and "
                 "RINAVI_STORAGE_ENCRYPTION_KEY_FILE"

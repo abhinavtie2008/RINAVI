@@ -140,3 +140,21 @@ def test_only_one_storage_key_source_may_be_set() -> None:
             storage_encryption_key=_KEY,
             storage_encryption_key_file="blob.key",
         )
+
+
+def test_storage_key_is_absent_from_repr_and_dump() -> None:
+    settings = Settings(environment="development", storage_encryption_key=_KEY)
+    assert _KEY not in repr(settings)
+    assert _KEY not in str(settings.model_dump())
+    assert _KEY not in settings.model_dump_json()
+    assert "storage_encryption_key=" not in repr(settings)
+
+
+def test_invalid_storage_key_is_absent_from_validation_text() -> None:
+    bad = "not base64!!"
+    with pytest.raises(ValidationError) as caught:
+        Settings(environment="development", storage_encryption_key=bad)
+    assert bad not in str(caught.value)
+    # errors() is not part of the contract we log, but keep the reminder
+    # visible here: the raw input survives in it, so nothing may serialise it.
+    assert "input" in caught.value.errors()[0]

@@ -30,15 +30,15 @@ those is a new processor and must be recorded here first.
 | Store | Path / mechanism | Encrypted at rest |
 |---|---|---|
 | Application database | SQLite file in dev and test; PostgreSQL 16 in the compose demo | No |
-| Document bytes (blobs) | `<storage_dir>/<user_id>/<document_id>.bin`, default `backend/data/vault` | Yes — AES-GCM (item 101); key held on the host |
+| Document bytes (blobs) | `<storage_dir>/<user_id>/<document_id>.bin`, default `backend/data/vault` | Only when a key is configured — AES-GCM (item 101); the compose demo sets none |
 | Session cookie | Browser, `rinavi_session`, HttpOnly, SameSite=Lax, 7-day TTL | TLS only (not yet deployed) |
 | Rate-limit counters | In process memory (`memory://`), keyed by IP and session | N/A, ephemeral |
 | Application logs | Process stdout/stderr, redaction filter applied | No |
 | Pilot folder | Outside the system, on the facilitator's machine | No |
 
-Every store except the blobs is plaintext. Each blob is written as AES-GCM
-ciphertext with a fresh nonce and the user/document ids bound in, and a
-production configuration refuses to start without a key (item 101). The key sits
+Every store except the blobs is plaintext, and a blob is ciphertext only when a
+key is configured: AES-GCM with a fresh nonce and the user/document ids bound
+in, and a production configuration refuses to start without a key (item 101). The key sits
 on the host, so this defeats a stray copy of a `.bin` file or an accidental read,
 not someone who takes the whole machine — and the database, with the values
 parsed out of those documents, is still plaintext.
