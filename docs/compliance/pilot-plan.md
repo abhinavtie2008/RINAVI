@@ -55,7 +55,8 @@ affiliation, and must state that the session uses fake documents.
 2. **Consent** (see `recording-consent.md`): notes, optional recording, support
    messages.
 3. **Walkthrough (10–15 min)** with the participant driving, not the facilitator:
-   home → sign-in (dev sign-in, described as a local prototype) → the three
+   home → sign-in (invite-only pilot mode, D10: the facilitator issues one
+   single-use invite, described as a local prototype) → the three
    consents → vault upload of the two SPECIMEN PDFs → profile promotion and
    confirmation → service catalogue → draft, evidence links, declaration →
    export, pointing at the **"NOT a submission"** line.

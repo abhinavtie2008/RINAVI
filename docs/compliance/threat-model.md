@@ -218,7 +218,7 @@ phase A rather than a launch.
 | 6.3 | Audit rows editable and permanent | They hold no content, and no incident process exists yet to need them as evidence | Real documents, or an incident-response requirement (item 85) |
 | 6.4 | No backup, so deletion is also loss | Fake data, re-creatable by hand | Any real document, or a promised restore (item 85) |
 | 6.5 | No retention or session sweep | Small volume, disclosed in the retention policy | Real documents (item 68) |
-| 6.6 | Dev sign-in creates accounts for any email | Disabled by default, refused in production, and the pilot uses passkeys or the demo stack | Any environment where `RINAVI_DEV_SIGNIN_ENABLED=true` is reachable by a participant |
+| 6.6 | Dev sign-in creates accounts for any email | Disabled by default, refused in production, and **D10 (decided 2026-11-25) takes it out of the pilot**: sessions run in an invite-only sign-in mode where the facilitator issues a single-use invite on the host and the participant never types an address. The mode is item 103, and runbook gate G4 refuses to start a session until it exists | Any environment where `RINAVI_DEV_SIGNIN_ENABLED=true` is reachable by a participant |
 | 6.7 | An Aadhaar line is still recognised in `extracted_fields` (stored as `[REDACTED]`, never the digits) | The pilot's Aadhaar values are visibly fake, and no number is stored | Real documents (item 35 residual) |
 | 6.8 | Parsing inside the upload request (thread-offloaded), single worker | One participant at a time, supervised | Concurrent users, or a job queue with a worker-level kill timeout (ledger item 1) |
 
