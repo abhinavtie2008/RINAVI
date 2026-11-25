@@ -30,7 +30,7 @@ the facilitator is also the support channel, a participant who emails mid-
 session gets no answer and the runbook's response promise is false. Name the
 support person and the hours in §7 before the first session.
 
-## 2. Topology, and the sign-in constraint that decides the gate
+## 2. Topology, and the sign-in mode that decides the gate
 
 D1 fixed the shape: **remote-supervised sessions, participants on their own
 devices**, hosting moving along the ladder in ADR-0004 — rung 2 is a Cloudflare
@@ -43,33 +43,49 @@ outside `development` (`core/config.py::_reject_unsafe_production`). In
 development the production posture is off — dev sign-in is live, `/docs` and
 `/openapi.json` are registered, and the cookie-secure and https-WebAuthn checks
 are skipped. A tunnel changes reachability, not posture: it publishes the
-origin, so the gate has to be a separate thing in front of it.
+origin, so the gate has to be something other than a longer cable.
 
-| # | Gate in front of the tunnel | Safe because | Cost |
-|---|---|---|---|
-| A | Cloudflare Access (one-time PIN or an allow-list) or basic auth at the proxy | The public never reaches the sign-in form; the participant passes one gate with a credential the facilitator issues and that dies with the session | The gate is the whole defence: verify it from a device that is not the facilitator's, off the network, with cookies cleared |
-| B | A pilot sign-in mode: production guards kept, dev sign-in replaced by a named synthetic identity per session | The real fix — no dev sign-in, no `/docs`, secure cookies | Code work by YooExE, and it delays the first session |
-| C | Neither — the tunnel straight onto a development-mode app | Nothing | It is not safe; it is only *recorded* as the compromise it is, with an expiry |
+**D10, decided 2026-11-25: a pilot sign-in mode (option B).** Three candidates
+were on the table:
 
-**Recommended: A now, B if the pilot runs longer than a fortnight or the first
-real document appears.** D1 decided the ladder, not the gate, so this is the one
-piece still open: G4 in §3. Whichever is chosen, note what the participant has to
-hold to pass the gate — an emailed one-time PIN is their own address reaching a
-third party (Cloudflare), and that belongs in the briefing if it is used.
+| Candidate | What it defended | Why it is not the answer |
+|---|---|---|
+| Edge gate — Cloudflare Access (one-time PIN or allow-list) | The public, in front of the tunnel | Gates *access*, not *identity*: the app behind it still signs in any email typed into it, so two participants can still land on one account — and the posture behind the gate is still development mode |
+| Edge gate without a domain — basic auth over a quick tunnel | The same, for free, in an hour | A shared credential with no audit trail, and browser auth dialogs fail inside the in-app browsers participants open links from |
+| **Pilot sign-in mode — chosen** | Both, inside the app | Two days of code (#103), because the mode has to exist before the first session |
 
-**One identity per participant, always.** `POST /auth/dev-signin` is
-`get_or_create_user(email)`: the same email returns the same account, with the
-same documents. Two participants on one identity is a cross-participant
-exposure, and it is the most likely way this pilot leaks. Use
-`p07.20261201@rinavi.test` — unique, synthetic, typed by the facilitator, never
-the participant's own address.
+Cloudflare stays as transport (rung 2): TLS, DDoS, the ephemeral hostname. It is
+not the gate, so G4 no longer asks for one in front of the tunnel.
 
-**One identity per participant, always.** `POST /auth/dev-signin` is
-`get_or_create_user(email)`: the same email returns the same account, with the
-same documents. Two participants on one identity is a cross-participant
-exposure, and it is the single most likely way this pilot leaks. Use
-`p07.20261201@rinavi.test` — unique, synthetic, typed by the facilitator, never
-the participant's own address.
+**What the mode is.** `RINAVI_ENVIRONMENT=production` with the guards on —
+`cookie_secure`, https `webauthn_origin`, no `/docs`, no `/openapi.json` —
+`dev_signin_enabled=false`, and `pilot_invites_enabled=true`. With that flag on,
+the only way in is a single-use invite the facilitator issues on the host:
+
+- **Issue** — one command prints a URL for one session. TTL 15 minutes; the
+  participant is on the call when it is issued; the token never reaches the
+  audit log or the HTTP log.
+- **Consume** — the URL creates a fresh synthetic identity
+  (`pilot+P07@rinavi.test`, one per session label) and burns the invite.
+  Identity is granted, not typed, so two participants cannot collide by
+  sharing an address.
+- **Re-issue and revoke** — one command each. Re-issuing invalidates the
+  previous invite for that label, which is what a participant whose in-app
+  browser reloaded mid-flow needs; revoking ends access immediately.
+- **Attribution** — the sign-in's audit row carries the session label, so the
+  log answers *which participant*, not *someone behind the gate*.
+- **Off, then retired** — the flag is false outside pilot runs and is refused
+  together with `dev_signin_enabled`; the path is retired at pilot close (#103)
+  rather than left as a second sign-in.
+
+**One identity per participant, always.** The invite now creates the identity,
+so the rule is structural rather than procedural: one invite, one session, one
+account. It still depends on the wipe in §5 — a reused label reuses the
+account, which is why the wipe is not optional.
+
+**G4 clears only when the mode is built and used from a device that is not the
+facilitator's, off the network, with cookies cleared.** An invite working on the
+facilitator's laptop proves nothing.
 
 ## 3. Before the first session — the gate
 
@@ -81,14 +97,14 @@ reopen trigger. Status is re-checked the day before, not copied from here.
 | G1 | Item 82 evidence exists — the problem is understood before the product is tested | BLOCKED, no sessions run | Owner (`../discovery/`) |
 | G2 | Item 83 qualified review has signed off | BLOCKED, external | Owner → reviewer |
 | G3 | Host chosen and deployed, TLS terminating at the proxy, one worker | PENDING, ADR-0004 ladder | Owner + YooExE |
-| G4 | The gate in §2 chosen and recorded; verified from a device that is not the facilitator's, off the network | OPEN | Owner |
+| G4 | Pilot sign-in mode live (§2, D10): production posture, `dev_signin_enabled=false`, `pilot_invites_enabled=true`, and a single-use invite signs a fresh participant in from a device that is not the facilitator's, off the network | BLOCKED on #103 — decided, not built | YooExE + Owner |
 | G5 | `RINAVI_STORAGE_DIR` known and recorded; one worker; rate-limit storage `memory://` documented as single-process | CLEARED in config, values PENDING with the host | YooExE |
 | G6 | The wipe in §5 rehearsed against a throwaway account on the host, with the verification command in the log | PENDING — script half is YooExE's | Owner + YooExE |
 | G7 | Backup and restore drill (A7) done; until then "deleted" is final and a disk failure is total loss | PENDING | YooExE |
 | G8 | Support person, channel and hours named in §7 | PENDING | Owner |
 | G9 | Consent forms printed twice, private folder path recorded, session log created, recording tool decided | PENDING, cheap | Owner |
 | G10 | Blob encryption at rest (item 101) | **Not a pilot gate** — synthetic documents only, accepted under D2. It is a gate the moment a real document is involved | YooExE |
-| G11 | Participants are 18 or over | PENDING — one screening line owed to `../discovery/02-recruitment-and-screening.md` once the discovery kit merges (#103) | Owner |
+| G11 | Participants are 18 or over | PENDING — one screening line owed to `../discovery/02-recruitment-and-screening.md` | Owner |
 
 G10 is deliberately in this table as a non-gate: it is the row most likely to be
 mistaken for one. The pilot's documents are marked SPECIMEN, and the privacy
