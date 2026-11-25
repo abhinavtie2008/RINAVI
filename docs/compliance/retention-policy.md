@@ -1,7 +1,8 @@
 # Retention policy — draft
 
 **Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-19,
-against `main` @ `fee4e9f`.
+against `main` @ `fee4e9f`. **Amended:** 2026-11-25 — blob encryption (item 101,
+PR #110) and key deletion at close-out, against `main` @ `a0732fb`.
 **Companion to:** `data-map.md` (where the data is), `privacy-notice-draft.md`
 (what participants are told). Not legal advice.
 
@@ -64,7 +65,9 @@ and no way to investigate an incident.
 
 **Bulk deletion outside the app.** If the facilitator must wipe everything — for
 example at the end of the pilot — the sequence is: stop the app, delete the
-vault directory, **delete the key file**, drop and recreate the database.
+vault directory, **delete the key file** (or unset
+`RINAVI_STORAGE_ENCRYPTION_KEY` if the key came from the environment), drop and
+recreate the database.
 Deleting the database is the only way to clear audit rows, and deleting the key
 is what makes any ciphertext left behind unreadable: ciphertext whose key
 survives is not erased. There is no script for this yet, and it is a real gap
@@ -104,8 +107,9 @@ At the end of phase A:
 1. Tell every participant the deletion date, in writing, before it happens.
 2. Delete every pilot account through the app (so blobs and cascades run the
    tested path).
-3. Delete the vault directory, delete the storage key file (so leftover
-   ciphertext cannot be read), drop the database, then recreate it empty.
+3. Delete the vault directory, delete the storage key file or unset
+   `RINAVI_STORAGE_ENCRYPTION_KEY` (so leftover ciphertext cannot be read), drop
+   the database, then recreate it empty.
 4. Delete the pilot folder (notes, recordings, screenshots) and record the
    deletion in `docs/evaluation/` **without personal data**.
 5. Record the completion date in the pilot log.

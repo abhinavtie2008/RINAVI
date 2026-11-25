@@ -272,9 +272,10 @@
   <p>Since this handbook was written, uploaded document files are stored encrypted at rest
   (AES-GCM, checklist item 101), and outside development the service refuses to start without a
   key. The database stays plaintext and the key sits on the same machine, so this guards a copied
-  file rather than a stolen machine. Read the storage paragraphs and the risk table below in that
-  light; <code>docs/compliance/data-map.md</code> §2 is current, and the downloadable PDF
-  predates this correction.</p>
+  file rather than a stolen machine. The one-command Docker demo is the exception on purpose: it
+  runs in development with no key, so its uploads stay plaintext. Read the storage paragraphs
+  and the risk table below in that light; <code>docs/compliance/data-map.md</code> §2 is
+  current, and the downloadable PDF predates this correction.</p>
 </div>
 
 <!-- ===================== CONTENTS ===================== -->

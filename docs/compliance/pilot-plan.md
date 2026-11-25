@@ -1,6 +1,6 @@
 # Pilot plan — phase A (synthetic, controlled)
 
-**Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-18, against `main` @ `fee4e9f`.
+**Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-18, against `main` @ `fee4e9f`. **Amended:** 2026-11-25 — blob encryption (item 101, PR #110) changes §2 and the §11 gate, against `main` @ `a0732fb`.
 **Authority:** `docs/compliance/wp8-pilot-readiness.md` stays authoritative for compliance decisions; this file records *how the first pilot runs*. Neither is legal advice.
 
 ## 1. What this pilot is
@@ -143,10 +143,11 @@ This plan is superseded when **all** of the following hold:
 1. The narrow review in this folder has been signed off and any required product
    changes have landed.
 2. The full WP2 review (DPDP scope) is complete for real documents.
-3. Key custody and backup for the encrypted blobs (item 101 landed the
-   encryption itself), retention sweeps, the complete export (item 65) and a
-   host with TLS have landed (checklist items 64, 68, 58, 97, 98). The account
-   export screen (item 102) is no longer on this list: it exists at `/account`.
+3. Key custody and backup for the encrypted blobs (item 101 built the
+   encryption itself in PR #110, unmerged), retention sweeps, the complete
+   export (item 65) and a host with TLS have landed (checklist items 64, 68,
+   58, 97, 98). The account export screen (item 102) is no longer on this
+   list: it exists at `/account`.
 4. The localisation decision is recorded (ADR-0006: a Hindi comprehension layer
    over an English record); the OCR decision is still owed, because most real
    proofs arrive as photographs.
