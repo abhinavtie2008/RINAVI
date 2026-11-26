@@ -1,6 +1,7 @@
 from httpx import ASGITransport, AsyncClient, Cookies
 
 from app.main import app
+from app.modules.consent.purposes import CONSENT_PURPOSES
 
 
 def make_client() -> AsyncClient:
@@ -87,6 +88,42 @@ async def test_grant_rejects_blank_purpose() -> None:
                 "/api/v1/consent/grants", json={"purpose": purpose}
             )
             assert response.status_code == 422
+
+
+async def test_grant_accepts_each_documented_purpose() -> None:
+    async with make_client() as client:
+        await sign_in(client, "citizen@example.com")
+        for purpose in CONSENT_PURPOSES:
+            granted = await client.post(
+                "/api/v1/consent/grants", json={"purpose": purpose}
+            )
+            assert granted.status_code == 201, purpose
+            assert granted.json()["purpose"] == purpose
+
+
+async def test_grant_rejects_purposes_outside_the_data_map() -> None:
+    # Only the four purposes in docs/compliance/data-map.md §4 exist. An
+    # unknown or differently-cased one must be refused before it is written,
+    # so the table the reviewer sees is the table the database holds.
+    async with make_client() as client:
+        await sign_in(client, "citizen@example.com")
+        for purpose in (
+            "marketing",
+            "Documents.Processing",
+            "documents.processing.v2",
+            "documents",
+        ):
+            response = await client.post(
+                "/api/v1/consent/grants", json={"purpose": purpose}
+            )
+            assert response.status_code == 422, purpose
+            message = response.json()["detail"][0]["msg"]
+            assert "Accepted values" in message
+            for accepted in CONSENT_PURPOSES:
+                assert accepted in message
+
+        listed = await client.get("/api/v1/consent/grants")
+        assert listed.json() == []
 
 
 async def test_grant_and_withdraw_emit_audit_events() -> None:
