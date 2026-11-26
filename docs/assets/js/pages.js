@@ -132,7 +132,7 @@
     const cases = S.hasConsent(PURPOSE.locker) ? S.listCases() : [];
 
     const steps = [
-      { key: "consent", label: "Permissions", href: "consent.html", done: st.consents > 0, note: st.consents + " allowed" },
+      { key: "consent", label: "Consent", href: "consent.html", done: st.consents > 0, note: st.consents + " allowed" },
       { key: "docs", label: "Documents", href: "vault.html", done: st.processed > 0, note: st.processed + " ready" },
       { key: "profile", label: "Profile", href: "profile.html", done: st.confirmed > 0, note: st.confirmed + " confirmed" },
       { key: "draft", label: "Application", href: "applications.html", done: st.drafts > 0, note: st.drafts + " in progress" },
@@ -259,7 +259,7 @@
   P.consent = (view) => {
     const render = () => {
       const grants = S.listGrants();
-      view.innerHTML = `${head("Permissions", "RINAVI only touches your data while the matching permission is allowed. Withdrawing one takes effect immediately. Nothing already saved is deleted for you, so delete documents and drafts yourself if you want them gone.")}
+      view.innerHTML = `${head("Consent", "RINAVI only touches your data while the matching permission is allowed. Withdrawing one takes effect immediately. Nothing already saved is deleted for you, so delete documents and drafts yourself if you want them gone.")}
         <div class="list-panel"><ul class="list">${S.PURPOSE_LIST.map((p) => {
           const info = L.purpose[p];
           const active = grants.find((g) => g.purpose === p && g.withdrawn_at === null);

@@ -82,7 +82,7 @@
     ["profile", "profile.html", "Profile"],
     ["applications", "applications.html", "Applications"],
     ["locker", "locker.html", "Locker"],
-    ["consent", "consent.html", "Permissions"],
+    ["consent", "consent.html", "Consent"],
   ];
   const NAV_OUT = [
     ["catalog", "catalog.html", "Services"],
@@ -132,7 +132,7 @@
     return `<section class="panel panel-big tint h-butter stack" data-gate="${purpose}">
       <h2>Allow ${U.esc(info.label.toLowerCase())}?</h2>
       <p>${U.esc(lead)}</p>
-      <p class="small">${U.esc(info.description)} You can withdraw this at any time on the <a href="consent.html">permissions page</a>.</p>
+      <p class="small">${U.esc(info.description)} You can withdraw this at any time on the <a href="consent.html">Consent page</a>.</p>
       <div><button class="btn" data-grant="${purpose}">${U.esc(buttonLabel)}</button></div></section>`;
   };
   U.bindGate = (root, rerender) => {
