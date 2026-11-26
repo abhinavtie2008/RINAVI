@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.db import get_session
 from app.modules.consent import service as consent_service
+from app.modules.consent.purposes import ConsentPurpose
 from app.modules.identity import service as identity_service
 from app.modules.identity.models import User
 
@@ -32,7 +33,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 async def require_active_consent(
-    purpose: str, user: CurrentUser, db: DbSession
+    purpose: ConsentPurpose, user: CurrentUser, db: DbSession
 ) -> None:
     if not await consent_service.has_active_consent(db, user, purpose):
         raise HTTPException(
@@ -41,5 +42,5 @@ async def require_active_consent(
         )
 
 
-def ConsentRequired(purpose: str) -> Any:
+def ConsentRequired(purpose: ConsentPurpose) -> Any:
     return Depends(partial(require_active_consent, purpose=purpose))
