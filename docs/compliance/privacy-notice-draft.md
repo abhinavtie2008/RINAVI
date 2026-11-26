@@ -56,7 +56,7 @@ say no, the matching part of the app stops working, and nothing else does.
 | **Application preparation** | Filling a draft from your profile and documents | You cannot create or export a draft |
 | **Application tracking** | Recording what happened to an application you filed yourself | You cannot record a case |
 
-You can withdraw any permission on the **Permissions** page. Withdrawing stops
+You can withdraw any permission on the **Consent** page. Withdrawing stops
 the next use; it does not delete what is already stored. Delete the item, or
 your account, for that.
 
@@ -118,7 +118,7 @@ at **[link]**.
   would rather say so than let you assume otherwise.
 - **Delete it:** delete a document, or delete your account. Account deletion
   erases your documents, profile, drafts and cases.
-- **Withdraw a permission:** on the Permissions page.
+- **Withdraw a permission:** on the Consent page.
 - **Complain:** write to **[grievance officer]**. We will reply within
   **[30] days**. If you are not satisfied, you can complain to the Data
   Protection Board of India.
