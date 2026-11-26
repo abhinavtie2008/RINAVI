@@ -1,7 +1,7 @@
 # Reviewer brief — WP2 legal/privacy review
 
 **To:** the qualified legal/privacy reviewer (not yet engaged) ·
-**From:** the pilot owner · **Date:** 2026-11-23 · **Against:** `main` @ `f541019` (re-stamped at each re-cut)
+**From:** the pilot owner · **Date:** 2026-11-23 · **Against:** `main` @ `7e4b87e` (re-stamped at each re-cut; this cut follows the item-101 merge, which corrected the baselines and the test counts across the eight artefacts)
 **Amended:** 2026-11-24 — the Hindi comprehension layer added to the review scope (ADR-0006).
 **Amended:** 2026-11-25 — an answer sheet added before the decision box: what a reply has to cover.
 
@@ -25,11 +25,12 @@ of government affiliation. A static, synthetic-only demo of the web UI is also
 published from `docs/` on GitHub Pages; it stores nothing outside the visitor's own
 browser (`data-map.md` §10).
 
-## Three questions we cannot answer from inside the repository
+## Five questions we cannot answer from inside the repository
 
-Each names the route, so an answer can be checked against the code. (The register's
-§8 puts six further questions to you on portal terms and naming — not consent
-scope, so not repeated here.)
+Q1–Q3 each name the route, so an answer can be checked against the code. Q4–Q5
+are about the horizon after this pilot: they say what the next step needs, and
+the decision does not wait on them. (The register's §8 puts six further questions
+to you on portal terms and naming — not consent scope, so not repeated here.)
 
 **Q1 — Does completing a case belong under `applications.preparation` alone?**
 `POST /applications/drafts/{id}/complete` snapshots draft values and evidence into
@@ -54,6 +55,27 @@ the consent gate without reading withdrawn data. Two gaps remain: **cases have n
 delete route at all**, and **confirmed profile values leave only with the account**
 (non-confirmed values can be rejected) — see `data-map.md` §4, §8. Must they close
 before the pilot, or are they acceptable while every document is fake?
+
+**Q4 — What must a processor agreement establish before hosting leaves this machine?**
+The pilot has no host. D1 fixes a ladder: a Cloudflare Tunnel for supervised
+remote sessions, then a free VM, then a paid or managed platform. Each rung makes
+an infrastructure provider a processor, `data-map.md` §1 says a processor is
+recorded before it is used, and there is no processing agreement today because
+there is no processor. We are not asking you to pick a vendor. We are asking for
+the test: the questions a processor agreement must answer — where data sits, who
+can reach it, how deletion and breach notice work, what the provider may do with
+metadata — so that the choice at rung 4 is defensible against the same standard
+you apply here.
+
+**Q5 — What has to be true before a minor's session?**
+An income certificate is used for scholarships and other schemes where the
+applicant is often a minor, so the first real-data day may bring a child's
+document, and the DPDP Act requires verifiable parental consent for a child's
+personal data. `pilot-runbook.md` G11 keeps the pilot adults-only and participants
+are told so. What must be true before a minor's session may run at all — who
+verifies the parent, what is recorded, what may never be recorded — and is
+"adults only until you answer, with the gate written into the runbook" an
+acceptable position for the synthetic phase?
 
 ## The Hindi text — and a second signature
 
@@ -113,6 +135,8 @@ reply that covers 1–6 plus the box below closes item 83. One page is enough.
    from outside the eight documents: the discovery sessions (item 82) record
    interviews under `recording-consent.md` — may they reuse it unchanged, or
    does an interview need its own form?
+   **Q4–Q5.** A sentence each; they are horizon questions, and a reply that
+   leaves them open still closes item 83.
 3. **The eight risks.** For 6.1–6.8: accept, accept with a condition, or
    reject. Where a condition is code, say what it must do, not how.
 4. **The portal items.** `portal-permission-register.md` §8 — six items, each a
@@ -132,7 +156,7 @@ reply that covers 1–6 plus the box below closes item 83. One page is enough.
 - [ ] Approved with conditions — below
 - [ ] Declined
 
-Answers to Q1–Q3 and any conditions are recorded in `data-map.md` §4 and
+Answers to Q1–Q5 and any conditions are recorded in `data-map.md` §4 and
 `wp8-pilot-readiness.md`; a change that moves a trust boundary reopens the threat
 model.
 
