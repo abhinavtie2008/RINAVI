@@ -3,17 +3,21 @@
 Draft service packs live here. Nothing in this folder is served by the app, copied
 into the demo, or offered to a citizen.
 
-## Why this folder is invisible
+## Why the app does not serve this folder
 
 The loader reads one root, declared in `backend/app/modules/catalog/loader.py`:
 
     CATALOG_ROOT = <repo>/catalog/services
 
 `list_services()`, `get_service()` and the pack lookups read only
-`catalog/services/**`. A pack under `catalog/candidates/` therefore cannot appear in
-the app, cannot be read by a draft, and cannot drift into `docs/assets/js/pack.js`.
-Invisibility is a property of the code path, not a convention someone has to
-remember.
+`catalog/services/**`. A pack under `catalog/candidates/` therefore cannot appear
+in the app, cannot be read by a draft, and cannot reach `docs/assets/js/pack.js`
+through the loader. That is a property of the code path, not a convention someone
+has to remember.
+
+Public is not the same as harmless. This repository is public on GitHub, so a
+candidate is published the moment it is pushed. A candidate is a draft of a
+citizen-facing document; treat it as something a stranger may already be reading.
 
 ## What a candidate contains
 
@@ -37,14 +41,20 @@ A candidate becomes a service only when both of these happen:
    updates the demo mirror in `docs/assets/js/pack.js` in the same change.
 
 A green test publishes nothing, and merging a candidate publishes nothing. The
-recorded decision is the only thing that promotes it.
+recorded decision is the gate; the promotion PR is the mechanism.
 
 ## `last_verified` is not available yet
 
-Do not add `last_verified` to a candidate. That optional key arrives with the loader
-work recorded as D5; until then the dossier carries the retrieval date.
+Do not add `last_verified` to a candidate. ADR-0005 (D5) makes it an optional
+additive pack key rather than a separate knowledge file; it becomes usable when
+YooExE's loader work lands, which is also B7's prerequisite. Until then the
+session log's pack-in-use column is the record of when a pack was last confirmed,
+not a field inside the file.
 
 ## Status
 
-The first candidate is Delhi's domicile certificate. Its dossier (S2) precedes its
-pack (S3), and neither is published.
+The first planned candidate is Delhi's domicile certificate. It is at the dossier
+stage: the research that would justify a pack is not written yet, and no candidate
+pack exists in this folder today. The dossier stage ends with a written account of
+how the service actually behaves; the pack stage begins after that, when a
+proposal is placed here for review.
