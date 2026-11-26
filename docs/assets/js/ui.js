@@ -82,7 +82,7 @@
     ["profile", "profile.html", "Profile"],
     ["applications", "applications.html", "Applications"],
     ["locker", "locker.html", "Locker"],
-    ["consent", "consent.html", "Permissions"],
+    ["consent", "consent.html", "Consent"],
   ];
   const NAV_OUT = [
     ["catalog", "catalog.html", "Services"],
