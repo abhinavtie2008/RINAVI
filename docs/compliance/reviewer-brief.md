@@ -1,8 +1,9 @@
 # Reviewer brief — WP2 legal/privacy review
 
 **To:** the qualified legal/privacy reviewer (not yet engaged) ·
-**From:** the pilot owner · **Date:** 2026-11-23 · **Against:** `main` @ `5c255e7`
+**From:** the pilot owner · **Date:** 2026-11-23 · **Against:** `main` @ `7e4b87e` (re-stamped at each re-cut; this cut follows the item-101 merge, which corrected the baselines and the test counts across the eight artefacts)
 **Amended:** 2026-11-24 — the Hindi comprehension layer added to the review scope (ADR-0006).
+**Amended:** 2026-11-25 — an answer sheet added before the decision box: what a reply has to cover.
 
 The reviewer's identity and engagement terms are held privately, not in this
 repository; the note in `docs/compliance/README.md` records what is public and
@@ -15,19 +16,21 @@ this page states what we need you to decide. Not legal advice.
 **Scope.** Assist-only income-certificate assistant: nine backend modules, one
 service pack, a Next.js PWA — RINAVI prepares, the citizen submits on the official
 portal. Synthetic `SPECIMEN` documents only: no real Aadhaar, no portal
-credentials, no mobile numbers. One machine, loopback ports, plaintext disk, no host
-chosen, **no portal access at all** (every register row is A0). Adult supervised
+credentials, no mobile numbers. One machine, loopback ports, an unencrypted
+database with encrypted document files, no host chosen, **no portal access at
+all** (every register row is A0). Adult supervised
 volunteers, one at a time, recorded only under separate consent. Never: submission,
 OTP or CAPTCHA handling, portal calls, outbound transfer of user data, or any claim
 of government affiliation. A static, synthetic-only demo of the web UI is also
 published from `docs/` on GitHub Pages; it stores nothing outside the visitor's own
 browser (`data-map.md` §10).
 
-## Three questions we cannot answer from inside the repository
+## Five questions we cannot answer from inside the repository
 
-Each names the route, so an answer can be checked against the code. (The register's
-§8 puts six further questions to you on portal terms and naming — not consent
-scope, so not repeated here.)
+Q1–Q3 each name the route, so an answer can be checked against the code. Q4–Q5
+are about the horizon after this pilot: they say what the next step needs, and
+the decision does not wait on them. (The register's §8 puts six further questions
+to you on portal terms and naming — not consent scope, so not repeated here.)
 
 **Q1 — Does completing a case belong under `applications.preparation` alone?**
 `POST /applications/drafts/{id}/complete` snapshots draft values and evidence into
@@ -52,6 +55,27 @@ the consent gate without reading withdrawn data. Two gaps remain: **cases have n
 delete route at all**, and **confirmed profile values leave only with the account**
 (non-confirmed values can be rejected) — see `data-map.md` §4, §8. Must they close
 before the pilot, or are they acceptable while every document is fake?
+
+**Q4 — What must a processor agreement establish before hosting leaves this machine?**
+The pilot has no host. D1 fixes a ladder: a Cloudflare Tunnel for supervised
+remote sessions, then a free VM, then a paid or managed platform. Each rung makes
+an infrastructure provider a processor, `data-map.md` §1 says a processor is
+recorded before it is used, and there is no processing agreement today because
+there is no processor. We are not asking you to pick a vendor. We are asking for
+the test: the questions a processor agreement must answer — where data sits, who
+can reach it, how deletion and breach notice work, what the provider may do with
+metadata — so that the choice at rung 4 is defensible against the same standard
+you apply here.
+
+**Q5 — What has to be true before a minor's session?**
+An income certificate is used for scholarships and other schemes where the
+applicant is often a minor, so the first real-data day may bring a child's
+document, and the DPDP Act requires verifiable parental consent for a child's
+personal data. `pilot-runbook.md` G11 keeps the pilot adults-only and participants
+are told so. What must be true before a minor's session may run at all — who
+verifies the parent, what is recorded, what may never be recorded — and is
+"adults only until you answer, with the gate written into the runbook" an
+acceptable position for the synthetic phase?
 
 ## The Hindi text — and a second signature
 
@@ -78,17 +102,17 @@ each names what reopens it.
 
 | # | Risk | Reopens when |
 |---|---|---|
-| 6.1 | Plaintext storage, no encryption at rest | First real document, or storage leaves the founder's machine |
+| 6.1 | The database is plaintext and the blob key sits on the same host; the blobs themselves are AES-GCM (item 101) | First real document, or storage leaves the founder's machine |
 | 6.2 | No admin barrier against the facilitator | Any hosted or multi-operator deployment |
 | 6.3 | Audit rows editable and permanent | Real documents, or an incident-response requirement |
 | 6.4 | No backup, so deletion is also loss | Any real document, or a promised restore |
 | 6.5 | No retention or session sweep | Real documents (item 68) |
-| 6.6 | Dev sign-in creates accounts for any email | Any environment where a participant can reach it |
+| 6.6 | Dev sign-in creates accounts for any email | Any environment where a participant can reach it. The pilot runs invite-only instead (D10, item 103), and no session starts before that mode exists |
 | 6.7 | An Aadhaar line is still recognised, though the value is stored as `[REDACTED]` | Real documents (item 35 residual) |
 | 6.8 | Parsing inside the upload request (thread-offloaded), single worker | Concurrent users, or a job queue with a worker-level timeout |
 
-**Outside this review:** hosting, TLS, proxy, WAF; encryption at rest; object
-storage; OCR and real scans; retention automation; DigiLocker; any extension or
+**Outside this review:** hosting, TLS, proxy, WAF; key custody, rotation and
+backup; object storage; OCR and real scans; retention automation; DigiLocker; any extension or
 portal adapter (A0 → A2, with its own security review); mobile, accessibility,
 localisation; physical or insider coercion. Each reopens the threat model —
 rewritten, not amended.
@@ -97,13 +121,42 @@ rewritten, not amended.
 describes. It brings no host, no real documents, no portal access, no Aadhaar
 handling, no claim of government approval or faster processing.
 
+## What we need back
+
+Answer in whatever format suits you. This is the shape we can act on, and a
+reply that covers 1–6 plus the box below closes item 83. One page is enough.
+
+1. **You.** Name, capacity (advocate, firm, in-house counsel, DPO), and whether
+   you have any current or former relationship with the Delhi Revenue
+   Department, an e-District vendor or the portal operator. Whether you can
+   review the Hindi layer yourself, or need a Hindi-fluent second reader.
+2. **Q1–Q3.** For each: our reading, the other reading, or a third. A sentence
+   of reasoning is enough; a citation is welcome, not required. One question
+   from outside the eight documents: the discovery sessions (item 82) record
+   interviews under `recording-consent.md` — may they reuse it unchanged, or
+   does an interview need its own form?
+   **Q4–Q5.** A sentence each; they are horizon questions, and a reply that
+   leaves them open still closes item 83.
+3. **The eight risks.** For 6.1–6.8: accept, accept with a condition, or
+   reject. Where a condition is code, say what it must do, not how.
+4. **The portal items.** `portal-permission-register.md` §8 — six items, each a
+   yes or no plus a line.
+5. **The documents.** For `privacy-notice-draft.md`, `terms-draft.md`,
+   `retention-policy.md`, `recording-consent.md`, `portal-permission-register.md`
+   and `threat-model.md` §6: sufficient, sufficient with edits, or not
+   sufficient — and which sentence. Then the five values only you can settle:
+   entity name, address, contact email, grievance officer (name and email), and
+   whether the retention periods stand as written.
+6. **The decision.** The box below, your name, the date, and a reference we can
+   quote in `data-map.md` §4 and `wp8-pilot-readiness.md`.
+
 ## Decision
 
 - [ ] Approved for phase A (synthetic) as described
 - [ ] Approved with conditions — below
 - [ ] Declined
 
-Answers to Q1–Q3 and any conditions are recorded in `data-map.md` §4 and
+Answers to Q1–Q5 and any conditions are recorded in `data-map.md` §4 and
 `wp8-pilot-readiness.md`; a change that moves a trust boundary reopens the threat
 model.
 

@@ -267,6 +267,17 @@
   </div>
 </section>
 
+<div class="note">
+  <span class="tag">Correction · 25 November 2026</span>
+  <p>Since this handbook was written, uploaded document files are stored encrypted at rest
+  (AES-GCM, checklist item 101), and outside development the service refuses to start without a
+  key. The database stays plaintext and the key sits on the same machine, so this guards a copied
+  file rather than a stolen machine. The one-command Docker demo is the exception on purpose: it
+  runs in development with no key, so its uploads stay plaintext. Read the storage paragraphs
+  and the risk table below in that light; <code>docs/compliance/data-map.md</code> §2 is
+  current, and the downloadable PDF predates this correction.</p>
+</div>
+
 <!-- ===================== CONTENTS ===================== -->
 <section class="contents">
   <h2>Contents</h2>
@@ -584,7 +595,7 @@ loopback.</p>
                             ┌─────────────▼───┐   ┌───────▼────────────────┐
                             │ database        │   │ vault directory        │
                             │ SQLite (dev)    │   │ <user_id>/<doc>.bin    │
-                            │ PostgreSQL      │   │ plaintext, no backup   │
+                            │ PostgreSQL      │   │ AES-GCM, no backup     │
                             │ (staging/pilot) │   └────────────────────────┘
                             └─────────────────┘
                      catalog/  versioned JSON packs, loaded by the catalog module
@@ -985,10 +996,12 @@ account deletion with the actor link severed, because the record of how the syst
 outlives the user's data.</p>
 
 <h3>Storage and failure behaviour</h3>
-<p>Documents sit in a plaintext per-user directory with no backup. Deletion erases the file before
-the row and returns an error if the unlink fails, so the citizen can retry rather than being told
-a document is gone while the file remains. Plaintext-at-rest and no-backup are accepted risks for
-synthetic data, with explicit reopen triggers (chapter 16).</p>
+<p>Documents sit in an encrypted per-user directory — AES-GCM, a fresh nonce per write, with the
+user and document ids bound into the ciphertext — and there is no backup. Deletion erases the file
+before the row and returns an error if the unlink fails, so the citizen can retry rather than being
+told a document is gone while the file remains. The database and the key that opens the blobs stay
+on the same machine, so encryption guards a copied file, not a stolen machine; no-backup is the
+accepted risk for synthetic data, with explicit reopen triggers (chapter 16).</p>
 
 <h3>Supply chain</h3>
 <p>Lockfiles pin the dependency trees; CI runs lint, type checks, tests and a production build on
@@ -1040,7 +1053,7 @@ citizen assume a complete export, and completing it is a precondition for real d
 and each has a trigger that reopens it.</p>
 <table>
   <tr><th style="width:32%">Residual</th><th style="width:34%">Why acceptable now</th><th>Reopens when</th></tr>
-  <tr><td>Plaintext storage, no encryption at rest</td><td>Specimen documents only, one machine</td><td>A real document, or storage leaves the owner's machine</td></tr>
+  <tr><td>A plaintext database and a blob key on the same machine</td><td>Document files themselves are AES-GCM ciphertext; specimen documents only, one machine</td><td>A real document, or storage leaves the owner's machine</td></tr>
   <tr><td>No admin barrier against the facilitator</td><td>One named facilitator who already controls the machine</td><td>Any hosted or multi-operator deployment</td></tr>
   <tr><td>Audit rows are editable and permanent</td><td>They hold no content; no incident process depends on them yet</td><td>Real documents, or an incident-response requirement</td></tr>
   <tr><td>No backup, so deletion is also loss</td><td>Fake data, re-creatable by hand</td><td>Any real document, or a promised restore</td></tr>
@@ -1090,7 +1103,7 @@ product decisions; some are gates. The difference matters, and is stated.</p>
   <tr><td>Storing portal credentials or handling OTP/CAPTCHA</td><td>Permanent</td><td>No field, no flow, no dependency exists to do it.</td></tr>
   <tr><td>Portal integration or browser extension</td><td>Gated</td><td>Would need an approved register entry and its own security review before any code.</td></tr>
   <tr><td>OCR and real scans</td><td>Gated</td><td>Images upload but are parked; real proofs usually arrive as photographs, so this is a precondition for real documents.</td></tr>
-  <tr><td>Encryption at rest</td><td>Gated</td><td>Accepted for synthetic data; required before a real document.</td></tr>
+  <tr><td>Blob encryption at rest</td><td>Shipped</td><td>AES-GCM with a key the service refuses to start without outside development. What stays gated: key custody, rotation and backup, before a real document.</td></tr>
   <tr><td>Retention automation</td><td>Gated</td><td>Deletion is explicit and immediate; nothing expires by itself yet.</td></tr>
   <tr><td>A complete export</td><td>Gated</td><td>Account and consent history only; documents, values and cases are readable in the app but not exportable.</td></tr>
   <tr><td>Hosting and TLS</td><td>Gated</td><td>The pilot runs on one machine at loopback; a host becomes a processor and rewrites the threat model.</td></tr>
@@ -1115,7 +1128,7 @@ meaningful, and none can be skipped by shipping a feature.</p>
 <h3>The rungs</h3>
 <ol>
   <li><strong>A qualified legal and privacy review of the current documents</strong> — the data map, the retention policy, the notice, the register and the threat model — for the synthetic pilot, plus answers to the open questions the documents raise about consent scope and erasure coverage.</li>
-  <li><strong>Technical preconditions for real documents:</strong> encryption at rest, retention sweeps, a complete export, a host with TLS, and an OCR decision, because most real proofs are photographs.</li>
+  <li><strong>Technical preconditions for real documents:</strong> key custody and backup for the encrypted blobs, retention sweeps, a complete export, a host with TLS, and an OCR decision, because most real proofs are photographs.</li>
   <li><strong>A hosted pilot with real data</strong>, under the same four purposes and the same boundaries, with the threat model rewritten rather than amended.</li>
   <li><strong>Any portal access at all</strong> — A2 or beyond — which requires an approved register, a security review, and for A3 written authorisation from the operator plus a new architecture decision.</li>
 </ol>
@@ -1135,7 +1148,7 @@ be revisited:</p>
   <li>A host, domain, TLS terminator or reverse proxy.</li>
   <li>More than one backend worker, which invalidates in-process rate limiting and inline parsing assumptions.</li>
   <li>A real document, real Aadhaar number or real portal credential.</li>
-  <li>Encryption at rest, object storage, OCR, email, analytics, error reporting or an AI API — each is a new processor or a new store.</li>
+  <li>Key rotation, a KMS or HSM, object storage, OCR, email, analytics, error reporting or an AI API — each is a new processor or a new store.</li>
   <li>A browser extension, portal adapter, or any runtime call to a portal.</li>
   <li>Authentication changes: passwords, recovery flows, a second factor, or any staff role.</li>
   <li>A new module or a new route family, which is where cross-account exposure tends to appear.</li>

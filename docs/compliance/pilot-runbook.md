@@ -98,13 +98,13 @@ reopen trigger. Status is re-checked the day before, not copied from here.
 | G2 | Item 83 qualified review has signed off | BLOCKED, external | Owner → reviewer |
 | G3 | Host chosen and deployed, TLS terminating at the proxy, one worker | PENDING, ADR-0004 ladder | Owner + YooExE |
 | G4 | Pilot sign-in mode live (§2, D10): production posture, `dev_signin_enabled=false`, `pilot_invites_enabled=true`, and a single-use invite signs a fresh participant in from a device that is not the facilitator's, off the network | BLOCKED on #103 — decided, not built | YooExE + Owner |
-| G5 | `RINAVI_STORAGE_DIR` known and recorded; one worker; rate-limit storage `memory://` documented as single-process | CLEARED in config, values PENDING with the host | YooExE |
+| G5 | `RINAVI_STORAGE_DIR` known and recorded, with `RINAVI_STORAGE_ENCRYPTION_KEY_FILE` beside it and a copy of the key outside the vault; one worker; rate-limit storage `memory://` documented as single-process | CLEARED in config, values PENDING with the host | YooExE |
 | G6 | The wipe in §5 rehearsed against a throwaway account on the host, with the verification command in the log | PENDING — script half is YooExE's | Owner + YooExE |
-| G7 | Backup and restore drill (A7) done; until then "deleted" is final and a disk failure is total loss | PENDING | YooExE |
+| G7 | Backup and restore drill — YooExE's task A7 — done, **including the blob key**; until then "deleted" is final and a disk failure is total loss | PENDING | YooExE |
 | G8 | Support person, channel and hours named in §7 | PENDING | Owner |
 | G9 | Consent forms printed twice, private folder path recorded, session log created, recording tool decided | PENDING, cheap | Owner |
-| G10 | Blob encryption at rest (item 101) | **Not a pilot gate** — synthetic documents only, accepted under D2. It is a gate the moment a real document is involved | YooExE |
-| G11 | Participants are 18 or over | PENDING — one screening line owed to `../discovery/02-recruitment-and-screening.md` | Owner |
+| G10 | Blob encryption at rest (item 101) | **CLEARED in code** — AES-GCM blobs, production refuses to start without a key. For synthetic sessions it is not a gate; it is the gate the moment a real document is involved, and the key then needs G5, G6 and G7 behind it | YooExE |
+| G11 | Participants are 18 or over | **CLEARED in the script** — question 1 of the screening script asks it as a yes/no; a minor stops before consent is taken | Owner |
 
 G10 is deliberately in this table as a non-gate: it is the row most likely to be
 mistaken for one. The pilot's documents are marked SPECIMEN, and the privacy
@@ -114,7 +114,9 @@ G11 is a gate because D1 put children's data on the real-data horizon (an income
 certificate is often requested for a scholarship, and the applicant can be a
 minor). Verifiable parental consent is not set up, so the pilot stays adults
 only; a minor's session is out of scope until that changes, and a participant who
-turns out to be under 18 stops before consent is taken.
+turns out to be under 18 stops before consent is taken. The screening script
+(`../discovery/02-recruitment-and-screening.md`) now asks the question directly,
+first, before anything else about the attempt.
 
 ## 4. Session lifecycle
 
@@ -144,6 +146,12 @@ alternative (participants keep accounts) is an open decision in `pilot-plan.md`
 | 5 | Delete the browser profile or clear storage for the origin | Next sign-in starts clean | Use a dedicated profile per session and delete it; do not reuse the facilitator's main profile |
 | 6 | Write the wipe line | Participant code, time, 204/503, directories remaining, export file deleted | — |
 
+**The key.** The blobs are ciphertext, but one key unlocks every account's files
+and it survives the per-session wipe. So a directory left behind is still
+readable, to the app and to anyone holding the key: delete the directory anyway.
+The key is destroyed only at close-out (§6, step 3). After that, ciphertext left
+on the disk has no reader.
+
 What the wipe does **not** remove, and why that is acceptable here:
 
 - **Audit rows.** They survive account deletion by design (`retention-policy.md
@@ -168,8 +176,9 @@ browser profile deleted | facilitator initials | note
 
 1. Tell every participant the deletion date in writing, before it happens.
 2. Delete every remaining account through the app (the tested path).
-3. Stop the app, delete the vault directory, drop and recreate the database —
-   the only way to clear audit rows.
+3. Stop the app, delete the vault directory **and the key file**, drop and
+   recreate the database — the key deletion is what makes any ciphertext left on
+   the disk unreadable, and the database drop is the only way to clear audit rows.
 4. Delete the pilot folder (notes, recordings, screenshots) and record the
    deletion in `../evaluation/` with no personal data.
 5. Write the completion date into the session log and the wipe log.
@@ -278,10 +287,13 @@ run. Do not compute it from pilot sessions.
 
 ## 11. Backup and restore
 
-**PENDING — A7 drill, YooExE.** There is no backup today, so "deleted" is
-final (`retention-policy.md` §5). Before the pilot starts, the drill must show:
-a database backup taken, the app restored on a clean volume, the restored data
-readable, and the restore time recorded. Until then, a disk failure during the
+**PENDING — backup drill (YooExE task A7, gate G7), YooExE.** There is no
+backup today, so "deleted" is final (`retention-policy.md` §5). Before the
+pilot starts, the drill must show: a database backup taken, the app restored on
+a clean volume, the restored data readable, **the restored blobs readable with
+the saved key**, and the restore time recorded. A backup that omits
+`RINAVI_STORAGE_ENCRYPTION_KEY_FILE` restores rows that point at ciphertext
+nobody can open. Until then, a disk failure during the
 pilot loses the pilot — which is acceptable for synthetic data and unacceptable
 as a launch posture, so it is a WP11 item (85) as well as a pilot gate (G7).
 

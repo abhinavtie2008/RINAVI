@@ -1,6 +1,6 @@
 # Pilot plan — phase A (synthetic, controlled)
 
-**Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-18, against `main` @ `fee4e9f`.
+**Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-18, against `main` @ `fee4e9f`. **Amended:** 2026-11-25 — blob encryption (item 101, PR #110) changes §2 and the §11 gate, against `main` @ `f541019`.
 **Authority:** `docs/compliance/wp8-pilot-readiness.md` stays authoritative for compliance decisions; this file records *how the first pilot runs*. Neither is legal advice.
 
 ## 1. What this pilot is
@@ -25,12 +25,13 @@ Three facts in the current build force this shape:
    document.
 2. Images are parked as `needs_attention` because **OCR is not implemented**, so
    only PDF/TXT can become evidence — and most people photograph their proofs.
-3. Storage is **plaintext local disk**, there is **no retention scheduler**, and
-   `/auth/export` returns only the account and consent records. Those are
-   accepted only for synthetic data, by recorded decision (items 52, 54, 65).
+3. Storage is **encrypted document files over a plaintext database**, there is
+   **no retention scheduler**, and `/auth/export` returns only the account and
+   consent records. Those are accepted only for synthetic data, by recorded
+   decision (items 52, 54, 65).
 
-Real documents therefore require the full WP2 gate, encryption at rest,
-retention, complete export and probably OCR. Until then the pilot rehearses the
+Real documents therefore require the full WP2 gate, the key carried by backup
+and wipe, retention, complete export and probably OCR. Until then the pilot rehearses the
 product; it does not process anyone's actual application.
 
 ## 3. Cohort
@@ -55,7 +56,8 @@ affiliation, and must state that the session uses fake documents.
 2. **Consent** (see `recording-consent.md`): notes, optional recording, support
    messages.
 3. **Walkthrough (10–15 min)** with the participant driving, not the facilitator:
-   home → sign-in (dev sign-in, described as a local prototype) → the three
+   home → sign-in (invite-only pilot mode, D10: the facilitator issues one
+   single-use invite, described as a local prototype) → the three
    consents → vault upload of the two SPECIMEN PDFs → profile promotion and
    confirmation → service catalogue → draft, evidence links, declaration →
    export, pointing at the **"NOT a submission"** line.
@@ -141,10 +143,11 @@ This plan is superseded when **all** of the following hold:
 1. The narrow review in this folder has been signed off and any required product
    changes have landed.
 2. The full WP2 review (DPDP scope) is complete for real documents.
-3. Encryption at rest (blob-level, item 101), retention sweeps, the complete
-   export (item 65) and a host with TLS have landed (checklist items 64, 68, 58,
-   97, 98). The account export screen (item 102) is no longer on this list: it
-   exists at `/account`.
+3. Key custody and backup for the encrypted blobs (item 101 merged as
+   `f541019`), retention sweeps, the complete
+   export (item 65) and a host with TLS have landed (checklist items 64, 68,
+   58, 97, 98). The account export screen (item 102) is no longer on this
+   list: it exists at `/account`.
 4. The localisation decision is recorded (ADR-0006: a Hindi comprehension layer
    over an English record); the OCR decision is still owed, because most real
    proofs arrive as photographs.

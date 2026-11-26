@@ -106,9 +106,9 @@ end the pilot, we will tell you what happens to your data and by when.
 ### 12. Your data
 
 Handled as described in the privacy notice and the retention policy. In short:
-stored on one pilot machine in India, not encrypted at rest, not backed up, not
-shared, not sold, deleted when you delete it, and some security records kept
-after deletion with the link to you removed.
+stored on one pilot machine in India — uploaded document files encrypted, the
+database not yet — not backed up, not shared, not sold, deleted when you delete
+it, and some security records kept after deletion with the link to you removed.
 
 ### 13. Changes to these terms
 
