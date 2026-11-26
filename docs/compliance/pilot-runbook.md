@@ -104,7 +104,7 @@ reopen trigger. Status is re-checked the day before, not copied from here.
 | G8 | Support person, channel and hours named in §7 | PENDING | Owner |
 | G9 | Consent forms printed twice, private folder path recorded, session log created, recording tool decided | PENDING, cheap | Owner |
 | G10 | Blob encryption at rest (item 101) | **CLEARED in code** — AES-GCM blobs, production refuses to start without a key. For synthetic sessions it is not a gate; it is the gate the moment a real document is involved, and the key then needs G5, G6 and G7 behind it | YooExE |
-| G11 | Participants are 18 or over | **CLEARED** — question 1 of the screening script asks it as a yes/no; a minor stops before consent is taken | Owner |
+| G11 | Participants are 18 or over | **CLEARED in the script** — question 1 of the screening script asks it as a yes/no; a minor stops before consent is taken | Owner |
 
 G10 is deliberately in this table as a non-gate: it is the row most likely to be
 mistaken for one. The pilot's documents are marked SPECIMEN, and the privacy

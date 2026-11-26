@@ -64,7 +64,7 @@ Ask these seven, in this order, and stop as soon as one answer disqualifies.
 
 | # | Question | Disqualifies when |
 |---|---|---|
-| 1 | "Are you 18 or over?" | No → stop and thank them; record only that the screen ended, never a date of birth or a document |
+| 1 | "Are you 18 or over?" | No → stop and thank them; record only the eligibility outcome, never a date of birth or a document |
 | 2 | "Have you applied for, or tried to apply for, an income certificate in the last two years?" | No, and never considered it → not a primary participant |
 | 3 | "Did you finish the application, or did it stop somewhere?" | — (either is useful; record which) |
 | 4 | "Who filled the form — you, someone in your family, or an agent?" | — (this assigns the group) |
@@ -72,11 +72,12 @@ Ask these seven, in this order, and stop as soon as one answer disqualifies.
 | 6 | "Would you rather do this in Hindi or English?" | Hindi, and the facilitator is not fluent → note it and book only if a fluent facilitator is available; otherwise record as a language finding |
 | 7 | "Do you want RINAVI to process a real application for you during this?" | Yes → excluded, and explain the Assist-only boundary in one sentence |
 
-Age is the only personal fact asked for, and it is asked as a yes/no, never as a
-date. Do not screen for income, caste or documents: you do not need any of it,
-and asking creates a record you then have to protect. The pilot is adults only
-because verifiable parental consent is not set up (`../compliance/pilot-runbook.md`,
-G11), so a participant who turns out to be under 18 stops before consent is taken.
+Age is asked only as a yes/no, never as a date, and nothing about it is written
+down beyond the eligibility outcome. Do not screen for income, caste or
+documents: you do not need any of it, and asking creates a record you then have
+to protect. The pilot is adults only because verifiable parental consent is not
+set up (`../compliance/pilot-runbook.md`, G11), so a participant who turns out to
+be under 18 stops before consent is taken.
 
 ## The recruitment log
 
