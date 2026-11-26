@@ -104,7 +104,7 @@ reopen trigger. Status is re-checked the day before, not copied from here.
 | G8 | Support person, channel and hours named in §7 | PENDING | Owner |
 | G9 | Consent forms printed twice, private folder path recorded, session log created, recording tool decided | PENDING, cheap | Owner |
 | G10 | Blob encryption at rest (item 101) | **CLEARED in code** — AES-GCM blobs, production refuses to start without a key. For synthetic sessions it is not a gate; it is the gate the moment a real document is involved, and the key then needs G5, G6 and G7 behind it | YooExE |
-| G11 | Participants are 18 or over | PENDING — one screening line owed to `../discovery/02-recruitment-and-screening.md` | Owner |
+| G11 | Participants are 18 or over | **CLEARED** — question 1 of the screening script asks it as a yes/no; a minor stops before consent is taken | Owner |
 
 G10 is deliberately in this table as a non-gate: it is the row most likely to be
 mistaken for one. The pilot's documents are marked SPECIMEN, and the privacy
@@ -114,7 +114,9 @@ G11 is a gate because D1 put children's data on the real-data horizon (an income
 certificate is often requested for a scholarship, and the applicant can be a
 minor). Verifiable parental consent is not set up, so the pilot stays adults
 only; a minor's session is out of scope until that changes, and a participant who
-turns out to be under 18 stops before consent is taken.
+turns out to be under 18 stops before consent is taken. The screening script
+(`../discovery/02-recruitment-and-screening.md`) now asks the question directly,
+first, before anything else about the attempt.
 
 ## 4. Session lifecycle
 
