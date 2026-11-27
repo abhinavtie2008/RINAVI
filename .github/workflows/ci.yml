@@ -185,8 +185,8 @@ jobs:
           docker image inspect rinavi-web:ci > /dev/null
 
   # The journeys need the whole compose stack, so they do not run on every PR.
-  # This gate decides whether a given PR can affect them at all; a PR that
-  # touches the web sources, the journeys or the compose file runs e2e.
+  # This gate uses the same predicate as the docker job below: anything that can
+  # change the built images, or the catalogue they serve, can change the journeys.
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -203,7 +203,7 @@ jobs:
             exit 0
           fi
           git diff --name-only "origin/${{ github.base_ref }}...HEAD" > changed.txt
-          if grep -Eq '^(apps/web/(src|e2e)/|infra/compose/|\.github/workflows/ci\.yml)' changed.txt; then
+          if grep -Eq '^(backend/|apps/web/|catalog/|infra/compose/|\.dockerignore|\.github/workflows/ci\.yml)' changed.txt; then
             echo "web=true" >> "$GITHUB_OUTPUT"
           else
             echo "web=false" >> "$GITHUB_OUTPUT"
