@@ -19,7 +19,9 @@ jobs:
           python-version: "3.14"
       - name: Install
         working-directory: backend
-        run: pip install -e ".[dev]"
+        run: |
+          pip install --require-hashes -r requirements-dev.lock
+          pip install --no-deps -e .
       - name: Security audit
         working-directory: backend
         run: pip-audit --skip-editable
@@ -60,7 +62,9 @@ jobs:
           python-version: "3.14"
       - name: Install
         working-directory: backend
-        run: pip install -e ".[dev]"
+        run: |
+          pip install --require-hashes -r requirements-dev.lock
+          pip install --no-deps -e .
       - name: Assert Postgres test target
         working-directory: backend
         run: >-
