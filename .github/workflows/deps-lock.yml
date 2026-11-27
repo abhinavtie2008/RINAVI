@@ -1,0 +1,35 @@
+name: deps-lock
+
+# D4: the hashed lock is authoritative, but a dependency bump still edits only
+# pyproject.toml - Dependabot cannot regenerate the pins. This job recompiles
+# the locks in place once a week and fails when the committed files change, so
+# drift is caught within a week instead of never. Per-PR checking was rejected
+# as friction for a two-person team; reopen that if the window proves too wide.
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install the compiler
+        run: pip install pip-tools
+      - name: Recompile both locks in place
+        working-directory: backend
+        run: |
+          pip-compile --generate-hashes --strip-extras --output-file requirements.lock pyproject.toml
+          pip-compile --generate-hashes --strip-extras --all-extras --output-file requirements-dev.lock pyproject.toml
+      - name: Fail when the committed lock has drifted
+        run: |
+          git diff --stat -- backend/requirements.lock backend/requirements-dev.lock
+          git diff --exit-code -- backend/requirements.lock backend/requirements-dev.lock

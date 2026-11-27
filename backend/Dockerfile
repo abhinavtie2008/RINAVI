@@ -12,7 +12,10 @@ WORKDIR /app/backend
 # /app/catalog/services outside site-packages.
 COPY backend/ /app/backend/
 COPY catalog/ /app/catalog/
-RUN pip install -e .
+# Dependencies come from the hashed lock; the project itself has no hash to
+# verify, so the editable install runs separately with --no-deps.
+RUN pip install --require-hashes --no-cache-dir -r requirements.lock \
+    && pip install --no-deps -e .
 
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin rinavi \
     && mkdir -p /data/vault \
