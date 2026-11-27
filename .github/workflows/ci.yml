@@ -184,10 +184,33 @@ jobs:
             'test -x /app/backend/docker-entrypoint.sh && grep -q "alembic upgrade head" /app/backend/docker-entrypoint.sh'
           docker image inspect rinavi-web:ci > /dev/null
 
-  # Manual only: it needs the whole compose stack, and the unit and integration
-  # suites already run on every PR. Kept off PRs so review stays fast.
+  # The journeys need the whole compose stack, so they do not run on every PR.
+  # This gate decides whether a given PR can affect them at all; a PR that
+  # touches the web sources, the journeys or the compose file runs e2e.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: filter
+        name: Decide whether the journeys can be affected
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "web=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --name-only "origin/${{ github.base_ref }}...HEAD" > changed.txt
+          if grep -Eq '^(apps/web/(src|e2e)/|infra/compose/|\.github/workflows/ci\.yml)' changed.txt; then
+            echo "web=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "web=false" >> "$GITHUB_OUTPUT"
+          fi
   e2e:
-    if: github.event_name == 'workflow_dispatch'
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
