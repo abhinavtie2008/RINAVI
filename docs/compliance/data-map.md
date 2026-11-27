@@ -253,7 +253,7 @@ surprise found here for the first time.
 | Cases have no delete route | A recorded case can only be removed by deleting the account | Part 6, accepted |
 | No backup or restore drill | A disk failure loses everything; "deleted" also means gone | Item 85 |
 | Log retention depends on the host | Undefined today | Decide with hosting |
-| `consent_records.purpose` is not constrained in the database | A direct write can store a purpose this map does not describe; the API refuses anything outside the four with 422, so the allow-list is an API guarantee, not a schema one | #118 (open), PR #117 |
+| `consent_records.purpose` is not constrained in the database | A direct write can store a purpose this map does not describe; the API refuses anything outside the four with 422, so the allow-list is an API guarantee, not a schema one | PR #117 (API guarantee); test parity tracked in #118 (open); DB constraint unowned |
 
 ## 9. What is deliberately not in the system
 
