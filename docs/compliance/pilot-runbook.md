@@ -137,6 +137,12 @@ default is that no participant's account outlives their session; the
 alternative (participants keep accounts) is an open decision in `pilot-plan.md`
 §12, and choosing it means changing `retention-policy.md` first, not this list.
 
+Step 2 is the deletion contract, not just a button press: `retention-policy.md`
+§3 records what the wipe takes (documents, profile values, drafts, cases,
+consents), what it leaves (redacted audit rows, nothing else), and why a
+withdrawn consent does not outlive its account. If a script replaces this list,
+it implements that paragraph.
+
 | # | Step | Expect | If it fails |
 |---|---|---|---|
 | 1 | Sign out in the app, then close every tab on the pilot origin | Session cookie gone | Clear the cookie for the origin in the browser's storage settings; note it |
