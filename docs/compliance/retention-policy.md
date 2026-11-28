@@ -2,7 +2,9 @@
 
 **Status:** draft for the WP2 legal/privacy review. **Date:** 2026-11-19,
 against `main` @ `fee4e9f`. **Amended:** 2026-11-25 — blob encryption (item 101,
-PR #110) and key deletion at close-out, against `main` @ `f541019`.
+PR #110) and key deletion at close-out, against `main` @ `f541019`;
+2026-11-26 — the between-session wipe is account deletion, against `main` @
+`7c1cc01` (#126).
 **Companion to:** `data-map.md` (where the data is), `privacy-notice-draft.md`
 (what participants are told). Not legal advice.
 
@@ -72,6 +74,24 @@ Deleting the database is the only way to clear audit rows, and deleting the key
 is what makes any ciphertext left behind unreadable: ciphertext whose key
 survives is not erased. There is no script for this yet, and it is a real gap
 for the pilot close-out (§5).
+
+**The between-session wipe (pilot).** The wipe between participants is account
+deletion, not a second retention rule: `DELETE /auth/account` — runbook §5, step
+2 — plus the directory, export-file and browser-profile checks a person can see.
+Three consequences follow from §2, and they are written here because the wipe
+script is built against them:
+
+- **Cases go with the session.** `application_cases` and `case_events` cascade
+  with the account and have no delete route of their own. Nothing writes a case
+  after its session closes.
+- **Audit rows stay, severed and redacted.** `account.deleted` and
+  `consent.withdrawn` survive with `actor_user_id` NULL and `details` that never
+  held content (see above). They are what ties a wipe to a session label; the
+  runbook's wipe line carries the code, the time and the 204/503.
+- **A withdrawn consent does not outlive its account.** While the account
+  exists, withdrawal keeps the row with `withdrawn_at` as proof (§2). The wipe
+  deletes that row with the account; what remains is the redacted audit event
+  and, if the participant took one, their own export.
 
 ## 4. Sessions and revocation
 
