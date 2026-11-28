@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { caseRecord } from "./caseFixtures";
@@ -57,7 +57,7 @@ describe("PacketPage", () => {
     render(<PacketPage caseId="case-1" />);
 
     expect(await screen.findByText(/Asha Devi/)).toBeInTheDocument();
-    expect(document.title).toBe("REF-1 · Packet · RINAVI");
+    await waitFor(() => expect(document.title).toBe("REF-1 · Packet · RINAVI"));
   });
 
   it("falls back to the service name before a reference is recorded", async () => {
@@ -66,7 +66,11 @@ describe("PacketPage", () => {
     render(<PacketPage caseId="case-1" />);
 
     expect(await screen.findByText(/Asha Devi/)).toBeInTheDocument();
-    expect(document.title).toBe("Income Certificate (Delhi) · Packet · RINAVI");
+    await waitFor(() =>
+      expect(document.title).toBe(
+        "Income Certificate (Delhi) · Packet · RINAVI",
+      ),
+    );
   });
 
   it("prints from the print button", async () => {

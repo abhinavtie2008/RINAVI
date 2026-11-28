@@ -63,7 +63,9 @@ describe("DraftDetail", () => {
     render(<DraftDetail draftId="draft-1" />);
 
     await screen.findByLabelText("Applicant name *");
-    expect(document.title).toBe("Income Certificate (Delhi) · RINAVI");
+    await waitFor(() =>
+      expect(document.title).toBe("Income Certificate (Delhi) · RINAVI"),
+    );
   });
 
   it("shows validation issues returned by the API", async () => {
