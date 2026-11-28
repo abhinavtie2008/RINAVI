@@ -16,6 +16,7 @@ import {
   type Draft,
 } from "@/lib/applications";
 import { completeDraft, type SuggestedLink } from "@/lib/locker";
+import { usePageTitle } from "@/lib/page-title";
 import { listDocuments, type DocumentRecord } from "@/lib/vault";
 
 const SUGGESTED_LINKS_PREFIX = "rinavi:suggested-links:";
@@ -54,6 +55,8 @@ export function DraftDetail({ draftId }: { draftId: string }) {
   const [exportText, setExportText] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  usePageTitle(draft?.service_name);
 
   useEffect(() => {
     async function load() {

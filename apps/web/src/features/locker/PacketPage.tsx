@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 
 import { SiteNav } from "@/components/SiteNav";
 import { getCase, type CaseRecord } from "@/lib/locker";
+import { usePageTitle } from "@/lib/page-title";
 
 export function PacketPage({ caseId }: { caseId: string }) {
   const [record, setRecord] = useState<CaseRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  usePageTitle(record?.reference_number ?? record?.service_name, "Packet");
 
   useEffect(() => {
     async function load() {
