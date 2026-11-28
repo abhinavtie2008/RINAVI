@@ -1,0 +1,98 @@
+name: Failure watcher
+
+# A red default branch should not depend on anyone opening the Actions tab.
+# When CI, deps-lock or CodeQL finishes on the default branch, this opens one
+# issue per workflow - or comments on the open one - and closes it again the
+# next time that workflow succeeds. Pull-request runs are ignored: their author
+# already sees the result on the pull request, and so does the reviewer.
+#
+# The issue is assigned to the repository owner and labelled `ci-failure`, so it
+# shows up in their dashboard whether or not email notifications are on.
+on:
+  workflow_run:
+    workflows: [CI, deps-lock, CodeQL]
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: failure-watcher-${{ github.event.workflow_run.name }}
+  cancel-in-progress: false
+
+jobs:
+  report:
+    if: github.event.workflow_run.head_branch == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const { owner, repo } = context.repo();
+            const label = "ci-failure";
+            const branch = run.head_branch || context.payload.repository?.default_branch || "the default branch";
+            const title = `${run.name} failed on ${branch}`;
+            const bad = ["failure", "timed_out", "startup_failure"];
+            const sha = (run.head_sha || "").slice(0, 7);
+
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: "open", labels: label, per_page: 100,
+            });
+            const existing = open.find((issue) => issue.title === title);
+
+            if (!bad.includes(run.conclusion)) {
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: existing.number,
+                  body: `Green again: ${run.html_url} (\`${sha}\`).`,
+                });
+                await github.rest.issues.update({
+                  owner, repo, issue_number: existing.number,
+                  state: "closed", state_reason: "completed",
+                });
+              }
+              return;
+            }
+
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              owner, repo, run_id: run.id, per_page: 100,
+            });
+            const failed = jobs.filter((job) => job.conclusion === "failure").map((job) => `\`${job.name}\``);
+            const where = failed.length
+              ? `Failed: ${failed.join(", ")}.`
+              : "It failed before any job reported a result.";
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: existing.number,
+                body: `Failed again: ${run.html_url} (\`${sha}\`). ${where}`,
+              });
+              return;
+            }
+
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: label });
+            } catch {
+              await github.rest.issues.createLabel({
+                owner, repo, name: label,
+                color: "b60205",
+                description: "A workflow is failing on the default branch",
+              });
+            }
+
+            const body = [
+              `**${run.name}** failed on the default branch.`,
+              "",
+              `- Run: ${run.html_url}`,
+              `- Commit: \`${sha}\``,
+              `- ${where}`,
+              "",
+              "Open the run for the failing step and its log. If it is a flake, re-run the job; this issue closes itself the next time the workflow succeeds on this branch, and any further failure before that adds a comment here rather than opening another issue.",
+            ].join("\n");
+
+            await github.rest.issues.create({
+              owner, repo, title, body, labels: [label], assignees: [owner],
+            });
