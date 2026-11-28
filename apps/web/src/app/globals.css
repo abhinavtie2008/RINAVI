@@ -12,12 +12,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* There is no dark palette: every component uses fixed light-theme neutrals
+   (text-neutral-500/600, border-neutral-200, bg-amber-50, ...). Swapping the
+   background under prefers-color-scheme: dark left dark text on a dark page
+   (4.17:1 and 2.53:1 against 4.5:1 required), so the app keeps one palette
+   until a dark theme is actually designed. See
+   docs/evaluation/accessibility-audit.md F1. */
 
 body {
   background: var(--background);
