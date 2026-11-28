@@ -183,7 +183,7 @@ re-derivable from A1 and why `data-map.md` §3.3 still calls the blob the edge.
 | T23 | **Audit trail tampering or deletion** | None in the application: no append-only store, no hash chain, no external sink. A DB owner can edit rows | — |
 | T24 | **Insider reads or exports everything** | None in the application: no admin panel, but no barrier either — the facilitator holds the database and the vault | — |
 | T25 | **Loss of the laptop** | Blobs are ciphertext, but the key sits on the same disk and the database is plaintext; no backup | — |
-| T26 | **Silent boundary change by a future contributor** | CI gate (`scripts/check.sh` on every push: ruff, pyright, pytest, eslint, tsc, vitest, production build), CodeQL on push and PR, a PR template that asks about portal bypasses, and this file plus the portal register as the place a boundary change must be recorded | `.github/workflows/ci.yml`, `.github/pull_request_template.md` |
+| T26 | **Silent boundary change by a future contributor** | CI gate on every push and PR (ruff, pyright, pytest on SQLite and PostgreSQL, eslint, tsc, vitest, production build, image build and compose validation, e2e on affected PRs), CodeQL on push and PR, a PR template that asks about portal bypasses, and this file plus the portal register as the place a boundary change must be recorded | `.github/workflows/ci.yml`, `.github/pull_request_template.md` |
 
 **Residual:** T23–T25 are accepted for the synthetic pilot and are exactly why
 real documents are out of scope. T21's counters live in process memory, so with
