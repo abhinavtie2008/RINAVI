@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 import { ProfilePage } from "@/features/profile/ProfilePage";
+
+export const metadata: Metadata = { title: "Your profile" };
 
 export default function ProfileRoute() {
   return (

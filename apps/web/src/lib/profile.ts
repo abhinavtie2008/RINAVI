@@ -15,6 +15,18 @@ export type ProfileValue = {
 
 export const PROFILE_PURPOSE = "profile.storage";
 
+/**
+ * Formatting for the profile fields whose stored value is normalised rather
+ * than prose. Gender is stored lowercase by extraction and the backend tests
+ * assert that, so only the rendered text is capitalised here.
+ */
+export function formatProfileValue(fieldKey: string, value: string): string {
+  if (fieldKey !== "gender") {
+    return value;
+  }
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 export function listProfileValues(): Promise<ProfileValue[]> {
   return apiFetch<ProfileValue[]>("/api/v1/profile/values");
 }

@@ -6,6 +6,7 @@ import {
   PROFILE_PURPOSE,
   confirmValue,
   correctValue,
+  formatProfileValue,
   listProfileValues,
   promoteDocument,
   rejectValue,
@@ -214,7 +215,9 @@ export function ProfilePage() {
               <p className="text-xs uppercase tracking-wide text-neutral-500">
                 {fieldLabel(value.field_key)}
               </p>
-              <p className="font-medium">{value.value}</p>
+              <p className="font-medium">
+                {formatProfileValue(value.field_key, value.value)}
+              </p>
               <p className="text-xs text-neutral-500">
                 {value.status === "unconfirmed"
                   ? `Needs review${value.confidence === "low" ? " (low confidence)" : ""}`
