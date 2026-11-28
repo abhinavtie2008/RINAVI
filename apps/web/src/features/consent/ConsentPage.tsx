@@ -5,9 +5,15 @@ import { useEffect, useState } from "react";
 import { SiteNav } from "@/components/SiteNav";
 import { listGrants, withdrawConsent, type ConsentRecord } from "@/lib/vault";
 
-type PurposeInfo = { purpose: string; label: string; description: string };
+export type PurposeInfo = {
+  purpose: string;
+  label: string;
+  description: string;
+};
 
-const PURPOSES: PurposeInfo[] = [
+// Must stay equal to backend/app/modules/consent/purposes.py and
+// docs/compliance/data-map.md §4; the test below pins the four strings.
+export const PURPOSES: PurposeInfo[] = [
   {
     purpose: "documents.processing",
     label: "Document processing",
