@@ -275,34 +275,35 @@
   file rather than a stolen machine. The one-command Docker demo is the exception on purpose: it
   runs in development with no key, so its uploads stay plaintext. Read the storage paragraphs
   and the risk table below in that light; <code>docs/compliance/data-map.md</code> §2 is
-  current, and the downloadable PDF predates this correction.</p>
+  current. The downloadable PDF is regenerated from this file, so it carries the correction
+  too.</p>
 </div>
 
 <!-- ===================== CONTENTS ===================== -->
 <section class="contents">
   <h2>Contents</h2>
   <ol>
-    <li><span class="n">1</span><span class="t">RINAVI in one page</span><span class="d">what it is, and the bet behind it</span><span class="pg">3</span></li>
-    <li><span class="n">2</span><span class="t">The problem</span><span class="d">why a companion, not a portal</span><span class="pg">4</span></li>
-    <li><span class="n">3</span><span class="t">Who it is for</span><span class="d">and who it is not for</span><span class="pg">4</span></li>
-    <li><span class="n">4</span><span class="t">The citizen journey</span><span class="d">seven steps, end to end</span><span class="pg">5</span></li>
-    <li><span class="n">5</span><span class="t">The boundary</span><span class="d">what RINAVI never does, and why that is structural</span><span class="pg">6</span></li>
-    <li><span class="n">6</span><span class="t">Design principles</span><span class="d">the eight rules that decide arguments</span><span class="pg">7</span></li>
-    <li><span class="n">7</span><span class="t">Architecture</span><span class="d">one monolith, nine modules, no outbound calls</span><span class="pg">8</span></li>
-    <li><span class="n">8</span><span class="t">The data model</span><span class="d">what is stored, and what is absent on purpose</span><span class="pg">9</span></li>
-    <li><span class="n">9</span><span class="t">Consent</span><span class="d">four purposes, and what refusing one does</span><span class="pg">11</span></li>
-    <li><span class="n">10</span><span class="t">Documents and extraction</span><span class="d">from upload to a value you can verify</span><span class="pg">11</span></li>
-    <li><span class="n">11</span><span class="t">Profile values</span><span class="d">promote, correct, confirm, go stale</span><span class="pg">12</span></li>
-    <li><span class="n">12</span><span class="t">Drafts and preflight</span><span class="d">the packet, and the checks before it</span><span class="pg">13</span></li>
-    <li><span class="n">13</span><span class="t">The application locker</span><span class="d">memory of what was filed</span><span class="pg">14</span></li>
-    <li><span class="n">14</span><span class="t">The service catalog</span><span class="d">packs, versioning, snapshots</span><span class="pg">15</span></li>
-    <li><span class="n">15</span><span class="t">Security</span><span class="d">authentication, limits, redaction, audit</span><span class="pg">16</span></li>
-    <li><span class="n">16</span><span class="t">Privacy and compliance posture</span><span class="d">DPDP framing, retention, accepted residuals</span><span class="pg">17</span></li>
-    <li><span class="n">17</span><span class="t">Deliberate limits</span><span class="d">what V1 does not do, and must not pretend to</span><span class="pg">19</span></li>
-    <li><span class="n">18</span><span class="t">The decision ladder</span><span class="d">what must be true before real documents</span><span class="pg">19</span></li>
-    <li><span class="n">19</span><span class="t">Repository and running it</span><span class="d">layout, scripts, the demo stack</span><span class="pg">20</span></li>
-    <li><span class="n">20</span><span class="t">How it is evaluated</span><span class="d">the pilot's design, not its numbers</span><span class="pg">21</span></li>
-    <li><span class="n">21</span><span class="t">Glossary</span><span class="d">the words this document uses precisely</span><span class="pg">23</span></li>
+    <li><span class="n">1</span><span class="t">RINAVI in one page</span><span class="d">what it is, and the bet behind it</span><span class="pg">4</span></li>
+    <li><span class="n">2</span><span class="t">The problem</span><span class="d">why a companion, not a portal</span><span class="pg">5</span></li>
+    <li><span class="n">3</span><span class="t">Who it is for</span><span class="d">and who it is not for</span><span class="pg">6</span></li>
+    <li><span class="n">4</span><span class="t">The citizen journey</span><span class="d">seven steps, end to end</span><span class="pg">6</span></li>
+    <li><span class="n">5</span><span class="t">The boundary</span><span class="d">what RINAVI never does, and why that is structural</span><span class="pg">8</span></li>
+    <li><span class="n">6</span><span class="t">Design principles</span><span class="d">the eight rules that decide arguments</span><span class="pg">9</span></li>
+    <li><span class="n">7</span><span class="t">Architecture</span><span class="d">one monolith, nine modules, no outbound calls</span><span class="pg">10</span></li>
+    <li><span class="n">8</span><span class="t">The data model</span><span class="d">what is stored, and what is absent on purpose</span><span class="pg">11</span></li>
+    <li><span class="n">9</span><span class="t">Consent</span><span class="d">four purposes, and what refusing one does</span><span class="pg">13</span></li>
+    <li><span class="n">10</span><span class="t">Documents and extraction</span><span class="d">from upload to a value you can verify</span><span class="pg">14</span></li>
+    <li><span class="n">11</span><span class="t">Profile values</span><span class="d">promote, correct, confirm, go stale</span><span class="pg">15</span></li>
+    <li><span class="n">12</span><span class="t">Drafts and preflight</span><span class="d">the packet, and the checks before it</span><span class="pg">15</span></li>
+    <li><span class="n">13</span><span class="t">The application locker</span><span class="d">memory of what was filed</span><span class="pg">16</span></li>
+    <li><span class="n">14</span><span class="t">The service catalog</span><span class="d">packs, versioning, snapshots</span><span class="pg">17</span></li>
+    <li><span class="n">15</span><span class="t">Security</span><span class="d">authentication, limits, redaction, audit</span><span class="pg">18</span></li>
+    <li><span class="n">16</span><span class="t">Privacy and compliance posture</span><span class="d">DPDP framing, retention, accepted residuals</span><span class="pg">20</span></li>
+    <li><span class="n">17</span><span class="t">Deliberate limits</span><span class="d">what V1 does not do, and must not pretend to</span><span class="pg">22</span></li>
+    <li><span class="n">18</span><span class="t">The decision ladder</span><span class="d">what must be true before real documents</span><span class="pg">22</span></li>
+    <li><span class="n">19</span><span class="t">Repository and running it</span><span class="d">layout, scripts, the demo stack</span><span class="pg">23</span></li>
+    <li><span class="n">20</span><span class="t">How it is evaluated</span><span class="d">the pilot's design, not its numbers</span><span class="pg">24</span></li>
+    <li><span class="n">21</span><span class="t">Glossary</span><span class="d">the words this document uses precisely</span><span class="pg">26</span></li>
   </ol>
   <p class="closing">Read chapters 1–6 for the product, 7–14 for the engineering, 15–18 for the
   trust argument, and 19–21 for the practical detail. Every chapter stands alone well enough
