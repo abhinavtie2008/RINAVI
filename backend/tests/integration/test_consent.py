@@ -91,9 +91,17 @@ async def test_grant_rejects_blank_purpose() -> None:
 
 
 async def test_grant_accepts_each_documented_purpose() -> None:
+    # The four strings are hardcoded: iterating CONSENT_PURPOSES would read the
+    # same tuple the validator reads, so adding a fifth purpose there would keep
+    # this test green while the API started accepting it.
     async with make_client() as client:
         await sign_in(client, "citizen@example.com")
-        for purpose in CONSENT_PURPOSES:
+        for purpose in (
+            "documents.processing",
+            "profile.storage",
+            "applications.preparation",
+            "locker.tracking",
+        ):
             granted = await client.post(
                 "/api/v1/consent/grants", json={"purpose": purpose}
             )

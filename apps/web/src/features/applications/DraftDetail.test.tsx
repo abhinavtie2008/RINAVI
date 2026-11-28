@@ -54,6 +54,18 @@ describe("DraftDetail", () => {
     );
   });
 
+  it("titles the page with the service name", async () => {
+    mockApi([
+      ["/api/v1/applications/drafts/draft-1", () => jsonResponse(draftRecord())],
+      ["/api/v1/vault/documents", () => jsonResponse([])],
+    ]);
+
+    render(<DraftDetail draftId="draft-1" />);
+
+    await screen.findByLabelText("Applicant name *");
+    expect(document.title).toBe("Income Certificate (Delhi) · RINAVI");
+  });
+
   it("shows validation issues returned by the API", async () => {
     const draft = draftRecord({
       validation: [

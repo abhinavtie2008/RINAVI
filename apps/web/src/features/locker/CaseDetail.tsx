@@ -13,6 +13,7 @@ import {
   type CaseEventInput,
   type CaseRecord,
 } from "@/lib/locker";
+import { usePageTitle } from "@/lib/page-title";
 
 import { STATUS_META } from "./statusMeta";
 
@@ -64,6 +65,8 @@ export function CaseDetail({ caseId }: { caseId: string }) {
   const [deadline, setDeadline] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  usePageTitle(record?.reference_number ?? record?.service_name, "Case");
 
   useEffect(() => {
     async function load() {

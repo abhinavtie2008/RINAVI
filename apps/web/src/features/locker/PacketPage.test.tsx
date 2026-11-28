@@ -46,6 +46,29 @@ describe("PacketPage", () => {
     expect(screen.getByText(/If the portal is unavailable/)).toBeInTheDocument();
   });
 
+  it("titles the page with the case reference and the packet section", async () => {
+    mockApi([
+      [
+        "/api/v1/locker/cases/case-1",
+        () => jsonResponse(caseRecord({ reference_number: "REF-1" })),
+      ],
+    ]);
+
+    render(<PacketPage caseId="case-1" />);
+
+    expect(await screen.findByText(/Asha Devi/)).toBeInTheDocument();
+    expect(document.title).toBe("REF-1 · Packet · RINAVI");
+  });
+
+  it("falls back to the service name before a reference is recorded", async () => {
+    mockApi([["/api/v1/locker/cases/case-1", () => jsonResponse(caseRecord())]]);
+
+    render(<PacketPage caseId="case-1" />);
+
+    expect(await screen.findByText(/Asha Devi/)).toBeInTheDocument();
+    expect(document.title).toBe("Income Certificate (Delhi) · Packet · RINAVI");
+  });
+
   it("prints from the print button", async () => {
     const printSpy = vi.spyOn(window, "print").mockImplementation(() => {});
     mockApi([["/api/v1/locker/cases/case-1", () => jsonResponse(caseRecord())]]);

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ConsentPage } from "./ConsentPage";
+import { ConsentPage, PURPOSES } from "./ConsentPage";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -45,6 +45,17 @@ describe("ConsentPage", () => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     vi.clearAllMocks();
+  });
+
+  it("offers exactly the four documented purposes", () => {
+    // The web copy of the list, pinned so a purpose added here alone fails
+    // instead of becoming an action the API would refuse with 422.
+    expect(PURPOSES.map((info) => info.purpose)).toEqual([
+      "documents.processing",
+      "profile.storage",
+      "applications.preparation",
+      "locker.tracking",
+    ]);
   });
 
   it("lists every purpose with the state of its grant", async () => {

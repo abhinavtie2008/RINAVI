@@ -153,6 +153,31 @@ describe("ProfilePage", () => {
     expect(screen.getByText(/source_document_deleted/)).toBeInTheDocument();
   });
 
+  it("shows gender capitalised but keeps the stored value lowercase", async () => {
+    mockApi([
+      ["/api/v1/consent/grants", () => jsonResponse([ACTIVE_GRANT])],
+      [
+        "/api/v1/profile/values",
+        () =>
+          jsonResponse([
+            value({ id: "v2", field_key: "gender", value: "female" }),
+          ]),
+      ],
+      ["/api/v1/vault/documents", () => jsonResponse([])],
+    ]);
+
+    render(<ProfilePage />);
+
+    expect(await screen.findByText("Female")).toBeInTheDocument();
+    expect(screen.queryByText("female")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Correct" }));
+
+    expect(await screen.findByLabelText("Correct Gender")).toHaveValue(
+      "female",
+    );
+  });
+
   it("promotes values from a processed document", async () => {
     mockApi([
       ["/api/v1/consent/grants", () => jsonResponse([ACTIVE_GRANT])],

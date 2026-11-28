@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 import { ConsentPage } from "@/features/consent/ConsentPage";
+
+export const metadata: Metadata = { title: "Consent" };
 
 export default function ConsentRoute() {
   return (
