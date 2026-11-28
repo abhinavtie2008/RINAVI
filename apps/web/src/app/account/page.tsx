@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 import { AccountPage } from "@/features/account/AccountPage";
+
+export const metadata: Metadata = { title: "Your data" };
 
 export default function AccountRoute() {
   return (

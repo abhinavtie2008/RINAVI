@@ -13,7 +13,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RINAVI",
+  title: {
+    default: "RINAVI",
+    template: "%s · RINAVI",
+  },
   description: "Your companion across government portals.",
 };
 

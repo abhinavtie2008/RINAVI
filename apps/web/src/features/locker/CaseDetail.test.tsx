@@ -78,6 +78,20 @@ describe("CaseDetail", () => {
     expect(events[2]).toHaveTextContent("Application prepared");
   });
 
+  it("titles the page with the case reference", async () => {
+    mockApi([
+      [
+        "/api/v1/locker/cases/case-1",
+        () => jsonResponse(caseRecord({ reference_number: "REF-1" })),
+      ],
+    ]);
+
+    render(<CaseDetail caseId="case-1" />);
+
+    await screen.findByTestId("case-status-chip");
+    expect(document.title).toBe("REF-1 · Case · RINAVI");
+  });
+
   it("shows acknowledgement guidance for a submitted case without one", async () => {
     mockApi([
       [
