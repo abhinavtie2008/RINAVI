@@ -1,3 +1,6 @@
+import re
+from pathlib import Path
+
 import pytest
 from fastapi import HTTPException
 
@@ -6,7 +9,34 @@ from app.core.config import get_settings
 from app.core.db import async_session_factory
 from app.modules.consent import service as consent_service
 from app.modules.consent.models import ConsentRecord
+from app.modules.consent.purposes import CONSENT_PURPOSES
 from app.modules.identity import service as identity_service
+
+DATA_MAP = Path(__file__).resolve().parents[3] / "docs" / "compliance" / "data-map.md"
+
+
+def documented_purposes() -> tuple[str, ...]:
+    """The purpose column of the §4 table, in document order."""
+    text = DATA_MAP.read_text(encoding="utf-8")
+    start = text.index("## 4.")
+    section = text[start : text.index("\n## ", start)]
+    purposes: list[str] = []
+    for line in section.splitlines():
+        if not line.startswith("|"):
+            continue
+        first_cell = line.split("|")[1]
+        match = re.search(r"`([^`]+)`", first_cell)
+        if match:
+            purposes.append(match.group(1))
+    return tuple(purposes)
+
+
+def test_code_and_data_map_agree_on_the_purposes() -> None:
+    # docs/compliance/data-map.md §4 is the normative list; CONSENT_PURPOSES is
+    # what the schema and the route guards enforce. A purpose added, removed or
+    # renamed on either side must fail here rather than quietly widen consent.
+    assert documented_purposes() == CONSENT_PURPOSES
+    assert len(CONSENT_PURPOSES) == 4
 
 
 async def test_guard_blocks_without_consent() -> None:
