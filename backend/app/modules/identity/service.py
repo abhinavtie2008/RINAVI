@@ -4,6 +4,7 @@ import uuid
 from datetime import timedelta
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -23,14 +24,29 @@ def canonical_email(email: str) -> str:
     return email.strip().lower()
 
 
+async def find_user_by_email(db: AsyncSession, email: str) -> User | None:
+    result = await db.execute(select(User).where(User.email == email))
+    return result.scalar_one_or_none()
+
+
 async def get_or_create_user(db: AsyncSession, email: str) -> User:
     email = canonical_email(email)
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-    if user is None:
+    user = await find_user_by_email(db, email)
+    if user is not None:
+        return user
+    try:
         user = User(email=email, display_name=email.split("@")[0])
         db.add(user)
         await db.flush()
+    except IntegrityError:
+        # users.email is unique: two sign-ins for the same address can both
+        # miss the read above. The loser rolls back and returns the winner's
+        # row rather than a 500. Nothing else is written this early in a
+        # sign-in, so the rollback discards only the failed insert.
+        await db.rollback()
+        user = await find_user_by_email(db, email)
+        if user is None:
+            raise
     return user
 
 

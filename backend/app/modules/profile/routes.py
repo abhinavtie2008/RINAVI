@@ -33,6 +33,10 @@ async def promote(
     document = await vault_service.get_own_document(db, user, payload.document_id)
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    # Read before promote_document: it rolls back to recover from a lost insert
+    # race, and a rollback expires the instances these ids come from.
+    user_id = user.id
+    document_id = document.id
     try:
         values = await service.promote_document(db, user, document)
     except service.PromoteError as exc:
@@ -41,10 +45,10 @@ async def promote(
         ) from exc
     await emit_audit(
         db,
-        actor_user_id=user.id,
+        actor_user_id=user_id,
         action="profile.values_promoted",
         resource_type="document",
-        resource_id=str(document.id),
+        resource_id=str(document_id),
         details={"field_keys": sorted(value.field_key for value in values)},
     )
     await db.commit()

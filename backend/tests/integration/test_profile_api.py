@@ -269,6 +269,45 @@ async def test_profile_is_scoped_to_the_owner() -> None:
             assert (await promote(bob, document_id_alice)).status_code == 404
 
 
+async def test_promote_survives_a_lost_insert_race(monkeypatch) -> None:
+    # Two promotes of one document can both see "no value yet" and then collide
+    # on the unique (user_id, field_key). The loser must merge into the winner's
+    # rows: no 500, and still exactly one row per field key.
+    from app.modules.profile import service as profile_service
+
+    async with make_client() as client:
+        await sign_in(client)
+        await allow(client, "documents.processing")
+        await allow(client, "profile.storage")
+        document_id = await upload_income_document(client)
+
+        first = await promote(client, document_id)
+        assert first.status_code == 200
+        first_ids = {value["field_key"]: value["id"] for value in first.json()}
+
+        original = profile_service.get_values_by_key
+        calls = {"n": 0}
+
+        async def miss_once(db, user_id):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return {}
+            return await original(db, user_id)
+
+        monkeypatch.setattr(profile_service, "get_values_by_key", miss_once)
+
+        second = await promote(client, document_id)
+
+        assert second.status_code == 200
+        assert {value["field_key"]: value["id"] for value in second.json()} == first_ids
+        assert calls["n"] == 2
+
+    async with async_session_factory() as session:
+        rows = (await session.execute(select(ProfileValue))).scalars().all()
+    keys = [(row.user_id, row.field_key) for row in rows]
+    assert len(keys) == len(set(keys))
+
+
 async def test_reject_works_without_active_consent() -> None:
     async with make_client() as client:
         await sign_in(client)
