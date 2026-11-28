@@ -89,7 +89,9 @@ describe("CaseDetail", () => {
     render(<CaseDetail caseId="case-1" />);
 
     await screen.findByTestId("case-status-chip");
-    expect(document.title).toBe("REF-1 · Case · RINAVI");
+    // The title is set in an effect after the record lands, so read it with the
+    // same retry the element assertions get rather than once, immediately.
+    await waitFor(() => expect(document.title).toBe("REF-1 · Case · RINAVI"));
   });
 
   it("shows acknowledgement guidance for a submitted case without one", async () => {
