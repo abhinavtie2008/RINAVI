@@ -1,6 +1,7 @@
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.privacy import RESTRICTED_PROFILE_FIELD_KEYS, is_restricted_field_key
@@ -43,23 +44,31 @@ async def get_own_value(
     return result.scalar_one_or_none()
 
 
-async def promote_document(
-    db: AsyncSession, user: User, document: Document
-) -> list[ProfileValue]:
-    if document.status != DocumentStatus.PROCESSED:
-        raise PromoteError("Document has no extracted fields to promote")
+async def get_values_by_key(
+    db: AsyncSession, user_id: uuid.UUID
+) -> dict[str, ProfileValue]:
+    """Every profile value the user holds, keyed by field.
 
+    Takes a plain id rather than the ``User`` instance so the promote merge can
+    be re-run after a rollback, which expires loaded ORM instances.
+    """
+    result = await db.execute(
+        select(ProfileValue).where(ProfileValue.user_id == user_id)
+    )
+    return {value.field_key: value for value in result.scalars()}
+
+
+async def _merge_document_fields(
+    db: AsyncSession, user_id: uuid.UUID, document_id: uuid.UUID
+) -> list[ProfileValue]:
     result = await db.execute(
         select(ExtractedField)
-        .where(ExtractedField.document_id == document.id)
+        .where(ExtractedField.document_id == document_id)
         .order_by(ExtractedField.field_key)
     )
     fields = list(result.scalars())
 
-    existing_result = await db.execute(
-        select(ProfileValue).where(ProfileValue.user_id == user.id)
-    )
-    by_key = {value.field_key: value for value in existing_result.scalars()}
+    by_key = await get_values_by_key(db, user_id)
 
     for field in fields:
         if is_restricted_field_key(field.field_key):
@@ -69,13 +78,13 @@ async def promote_document(
             continue
         if current is None:
             current = ProfileValue(
-                user_id=user.id, field_key=field.field_key, value=field.value
+                user_id=user_id, field_key=field.field_key, value=field.value
             )
             db.add(current)
             by_key[field.field_key] = current
         current.value = field.value
         current.status = ProfileStatus.UNCONFIRMED
-        current.source_document_id = document.id
+        current.source_document_id = document_id
         current.source_locator = field.locator
         current.confidence = field.confidence
         current.stale_reason = None
@@ -87,6 +96,31 @@ async def promote_document(
         for value in sorted(by_key.values(), key=lambda item: item.field_key)
         if not is_restricted_field_key(value.field_key)
     ]
+
+
+async def promote_document(
+    db: AsyncSession, user: User, document: Document
+) -> list[ProfileValue]:
+    if document.status != DocumentStatus.PROCESSED:
+        raise PromoteError("Document has no extracted fields to promote")
+
+    # Captured before the flush that can fail: a rollback expires every instance
+    # this session loaded, so user.id and document.id could not be read after it.
+    user_id = user.id
+    document_id = document.id
+    try:
+        return await _merge_document_fields(db, user_id, document_id)
+    except IntegrityError as exc:
+        # (user_id, field_key) is unique. Two promotes of the same document can
+        # both see "no value yet" and then collide on the insert; the loser
+        # merges into the winner's rows instead of returning a 500.
+        await db.rollback()
+        try:
+            return await _merge_document_fields(db, user_id, document_id)
+        except IntegrityError:
+            raise PromoteError(
+                "Profile changed while promoting; try again"
+            ) from exc
 
 
 async def confirm_value(db: AsyncSession, value: ProfileValue) -> None:
